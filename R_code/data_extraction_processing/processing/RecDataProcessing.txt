@@ -1,0 +1,1 @@
+See the MRIP-BLAST repository for R code to process a bunch of MRIP data on black sea bass
