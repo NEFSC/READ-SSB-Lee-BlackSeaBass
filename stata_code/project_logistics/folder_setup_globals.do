@@ -12,9 +12,7 @@ global user minyangWin;
 
 /*minyangWin  */
 if strmatch("$user","minyangWin"){;
-global my_projdir "C:/Users/Min-Yang.Lee/Documents/new-project-templates";
-quietly do "C:/Users/Min-Yang.Lee/Documents/common/odbc_setup_macros.do";
-global oracle_cxn " $mysole_conn lower";
+global my_projdir "C:/Users/Min-Yang.Lee/Documents/READ-SSB-Lee-BlackSeaBass";
 
 };
 
