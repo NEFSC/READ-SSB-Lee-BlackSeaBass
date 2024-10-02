@@ -1,0 +1,33 @@
+# .Rprofile -- Execute some R commands at the beginning of each R session
+# You can use this file to load packages, set options, etc.
+# It's a particularly good place to store usernames, passwords, or the location of an oracle server. 
+# Just make sure you never commit the file to a git repository.
+
+
+# To use this, delete _sample and put this in a place that R searches for a .Rprofile file.
+# One good place to put this file is the result of Sys.getenv("HOME")
+# Don't delete the leading period   
+
+# NOTE: changes in this file won't be reflected until after you quit
+# and start a new session
+#
+
+# Load the NEFSC network into a variable
+network_location_desktop = "<the_ipaddress_to_the_network>"
+# This might work better 
+network_location_desktop = "blah.blah..noaa.gov"
+network_location_remote = "//net"
+
+# You might even want to store your database usernames and passwords here, so they are always loaded into the R environment when you start up R.
+
+id<-"your_user_id_here"
+password<-"your_secret_password_here"
+database_location<-"path.to.database.gov"
+
+# You can set system environment variables, like a GITHUB or GITLAB Personal Access Token or an API key.
+# Sys.setenv(GITHUB_PAT = "YOUR PAT HERE")
+# Sys.setenv(GITLAB_PAT="YOUR PAT HERE")
+# Sys.setenv(FRED_API_KEY="YOUR API KEY HERE")
+
+# and it might be useful to make R aware of someone elses network share. 
+# someone_elses_dir<-file.path("/home","your_user_id","path_to_other_dir")
