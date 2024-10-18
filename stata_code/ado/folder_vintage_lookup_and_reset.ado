@@ -9,10 +9,17 @@ This program will pick through the subfolders in data_main and lookup the most r
 */
 cap program drop folder_vintage_lookup_and_reset
 program folder_vintage_lookup_and_reset
+syntax [, search_folder(string)]
 
-	/* Look through the data_main folder to see what data vintages are available */
+if "`search_folder'" == "" {
+	local search_folder="$data_main"
+}
+ 
 
-	local data_vintage : dir "${data_main}" dirs "*" 
+
+	/* Look through the search_folder folder to see what data vintages are available */
+
+	local data_vintage : dir "`search_folder'" dirs "*" 
 	
 	/* look through all the files and pick out the unique vintages, which are in the last 10 characters */
 	/* Use a regular expression, to only keep things that end in YYYY_MM_DD*/
@@ -37,7 +44,7 @@ program folder_vintage_lookup_and_reset
 	di "The vintage_string global is currently set as: $vintage_string"
 	
 	/* tell the user what vintages are available and give the option to change the data vintage*/
-	di "Data vintage(s) found in the data_main folder :" `"`data_vintage'"'.
+	di "Data vintage(s) found in the `search_folder' folder:" `"`data_vintage'"'.
 	di "To manually set the data vintage, enter it now. Do not use double quotes.  Otherwise, press <Enter> to keep the current string" _request(_vintage_string_bypass)
 
 	local bypass_length: strlen local vintage_string_bypass
