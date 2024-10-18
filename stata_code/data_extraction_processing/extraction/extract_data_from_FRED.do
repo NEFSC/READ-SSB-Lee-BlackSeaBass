@@ -50,15 +50,15 @@ clear
 
 /*annual GDP Deflator with a base period equal to basey */
 
-local basey=2010
+local basey=2023
 
-import fred GDPDEF WPU311 PCU31173117 PCU3117103117102 PCU31171031171021 DDFUELNYH PCU483483,  daterange(2001-01-01 .) aggregate(annual,avg) clear
+import fred CPIAUCSL,  daterange(1996-01-01 .) aggregate(annual,avg) clear
 gen year=yofd(daten)
 drop daten datestr
 
 notes: deflators extracted on $vintage_string;
 
-foreach var of varlist  GDPDEF WPU311 PCU31173117 PCU3117103117102 PCU31171031171021 DDFUELNYH PCU483483{
+foreach var of varlist CPIAUCSL {
 
 gen base`var'=`var' if year==`basey'
 sort base`var'
@@ -77,7 +77,6 @@ order year f*`basey'
 tsset year
 
 save "$data_external/deflatorsY_${vintage_string}.dta", replace
-drop fDDFUEL
 tsline f* if year>=2009
 
 
@@ -85,18 +84,18 @@ tsline f* if year>=2009
 */
 
 
-local b1 "2010Q1"
+local b1 "2023Q1"
 local baseq=quarterly("`b1'","Yq")
 
 
-import fred GDPDEF WPU311 PCU31173117 PCU3117103117102 PCU31171031171021 DDFUELNYH PCU483483,  daterange(2001-01-01 .) aggregate(quarterly,avg) clear
+import fred CPIAUCSL,  daterange(1996-01-01 .) aggregate(quarterly,avg) clear
 gen dateq=qofd(daten)
 drop daten datestr
 format dateq %tq
 notes: deflators extracted on $vintage_string
 
 
-foreach var of varlist  GDPDEF WPU311 PCU31173117 PCU3117103117102 PCU31171031171021 DDFUELNYH PCU483483{
+foreach var of varlist  CPIAUCSL{
 	gen base`var'=`var' if dateq==`baseq'
 	sort base`var'
 	replace base`var'=base`var'[1] if base`var'==.
@@ -111,6 +110,5 @@ order dateq f*`b1'
 tsset dateq
 
 save "$data_external/deflatorsQ_${vintage_string}.dta", replace
-drop fDDFUEL
 
 tsline f* if year(dofq(dateq))>=2009
