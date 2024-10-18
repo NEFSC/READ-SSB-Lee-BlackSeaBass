@@ -6,7 +6,7 @@ library("here")
 library("haven")
 library("survey")
 library("srvyr")
-here::i_am("R_code/survey_means.R")
+here::i_am("R_code/01_MRIP_Targeting.R")
 options(scipen=999)
 
 #Handle single PSUs
