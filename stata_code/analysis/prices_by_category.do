@@ -6,6 +6,17 @@ keep if _merge==3
 replace dlr_date=dofc(dlr_date)
 format dlr_date %td
 
+
+/* rebin Mixed or unsized to unclassified 
+rebin pee wee to extra small */ 
+
+replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
+replace market_code="UN" if market_code=="MX"
+
+
+replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
+replace market_code="ES" if market_code=="PW"
+
 /* this is a silly regression because I have collapsed things to the day already */
 encode market_desc, gen(mym)
 regress price i.year i.month i.mym
