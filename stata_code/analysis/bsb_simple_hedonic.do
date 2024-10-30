@@ -1,4 +1,4 @@
-global in_string 2024_10_15
+global in_string 2024_10_18
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
@@ -17,7 +17,7 @@ gen price=value/lndlb
 
 
 /* merge deflators _merge=1 has been the current month */ 
-merge m:1 dateq using "$data_external/deflatorsQ_${vintage_string}.dta", keep(1 3)
+merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
 assert year==2024 & month>=9 if _merge==1
 drop if _merge==1
 drop _merge
@@ -27,7 +27,7 @@ notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
 
 
 /* merge gearcodes */
-merge m:1 negear using "${data_raw}\commercial\cams_gears_${vintage_string}.dta", keep(1 3)
+merge m:1 negear using "${data_main}\commercial\cams_gears_${in_string}.dta", keep(1 3)
 
 assert _merge==3
 drop _merge
@@ -63,6 +63,15 @@ replace mygear="Unknown" if inlist(negear,999)
 
 replace mygear="Misc" if inlist(mygear,"Dredge","Unknown", "Seine")
 
+/* rebin Mixed or unsized to unclassified 
+rebin pee wee to extra small */ 
+
+replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
+replace market_code="UN" if market_code=="MX"
+
+
+replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
+replace market_code="ES" if market_code=="PW"
 
 encode market_desc, gen(mym)
 encode grade_desc, gen(mygrade)
@@ -77,9 +86,14 @@ replace keep=0 if inlist(market_code, "ES","MX", "PW")
 replace keep=0 if inlist(state, "CN","FL","ME", "NH","PA","SC")
 replace keep=0 if inlist(grade_desc,"UNGRADED")
 
-replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
+*replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
 replace total=total/1000
+
+
+
+
+summ priceR, detail
 
 
 preserve
@@ -149,7 +163,7 @@ foreach var of varlist Q*{
 
 
 
-
+/*
 /* takes a long ass time 
 mixed priceR ibn.mym#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.year i.mys, noc || dlr_date: QJumbo QLarge QMedium QSmall, emonly emiterate(2000)
 */
@@ -194,7 +208,7 @@ replace rec_open=1 if dlr_date>=mdy(5,21,2022) & dlr_date<=mdy(9,4,2022) & state
 
 
 
-
+*/
 
 
 
