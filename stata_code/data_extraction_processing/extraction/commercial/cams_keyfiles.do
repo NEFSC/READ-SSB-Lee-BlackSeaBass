@@ -29,7 +29,6 @@ compress;
 notes: "`sql'";
 
 save  $data_main/cams_port_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_port_$today_date_string.csv, replace;
 
 /* dealer keyfile */
 
@@ -43,7 +42,6 @@ compress;
 notes: "`sql'";
 
 save  $data_main/dealer_permit_$today_date_string.dta, replace;
-export delimited using  $data_main/dealer_permit_$today_date_string.csv, replace;
 
 
 /* DLR_MKT and DLR_GRADE , DLR_DISP */
@@ -61,7 +59,6 @@ compress;
 notes: "`sql'";
 
 save  $data_main/dealer_species_itis_ne$today_date_string.dta, replace;
-export delimited using  $data_main/dealer_species_itis_ne$today_date_string.csv, replace;
 
 
 
@@ -77,7 +74,6 @@ compress;
 notes: "`sql'";
 
 save  $data_main/cams_master_gear_keyfile_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_master_gear_keyfile_$today_date_string.csv, replace;
 
 
 local sql "select * from cams_garfo.cfg_NEGEAR" ; 
@@ -88,7 +84,6 @@ compress;
 notes: "`sql'";
 
 save  $data_main/cams_negear_keyfile_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_negear_keyfile_$today_date_string.csv, replace;
 
 
 
@@ -102,4 +97,3 @@ compress;
 notes: "`sql'";
 
 save  $data_main/cams_vlgear_keyfile_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_vlgear_keyfile_$today_date_string.csv, replace;
