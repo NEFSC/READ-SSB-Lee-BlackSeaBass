@@ -10,9 +10,7 @@ duplicates drop;
 destring, replace;
 compress;
 notes: "`sql'";
-save  $data_main/cams_species_keyfile_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_species_keyfile_$today_date_string.csv, replace;
-
+save  $data_main/commercial/cams_species_keyfile_$vintage_string.dta, replace;
 
 /* Port keyfile 
 
@@ -28,7 +26,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/cams_port_$today_date_string.dta, replace;
+save  $data_main/commercial/cams_port_$vintage_string.dta, replace;
 
 /* dealer keyfile */
 
@@ -41,11 +39,10 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/dealer_permit_$today_date_string.dta, replace;
+save  $data_main/commercial/dealer_permit_$vintage_string.dta, replace;
 
 
 /* DLR_MKT and DLR_GRADE , DLR_DISP */
-
 /*this has market categories, but  I'm not sure if it's the proper support table */
 
 
@@ -58,7 +55,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/dealer_species_itis_ne$today_date_string.dta, replace;
+save  $data_main/commercial/dealer_species_itis_ne$vintage_string.dta, replace;
 
 
 
@@ -73,7 +70,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/cams_master_gear_keyfile_$today_date_string.dta, replace;
+save  $data_main/commercial/cams_master_gear_keyfile_$vintage_string.dta, replace;
 
 
 local sql "select * from cams_garfo.cfg_NEGEAR" ; 
@@ -83,7 +80,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/cams_negear_keyfile_$today_date_string.dta, replace;
+save  $data_main/commercial/cams_negear_keyfile_$vintage_string.dta, replace;
 
 
 
@@ -96,4 +93,13 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/cams_vlgear_keyfile_$today_date_string.dta, replace;
+save  $data_main/commercial/cams_vlgear_keyfile_$vintage_string.dta, replace;
+
+
+
+clear;
+local sql "select table_name, column_name, comments from all_col_comments where owner='CAMS_GARFO' and table_name in('CAMS_SUBTRIP','CAMS_LAND','CAMS_ORPHAN_SUBTRIP') order by column_name, table_name" ;
+odbc load, exec("`sql' ;") lower;
+save  $data_main/commercial/cams_keyfile_$vintage_string.dta, replace;
+
+
