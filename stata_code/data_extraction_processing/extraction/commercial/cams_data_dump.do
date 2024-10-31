@@ -23,8 +23,6 @@ notes: "`sql'";
 
 
 save $data_main/cams_land_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_land_$today_date_string.csv, replace;
-
 
 clear;
 /*subtrip */
@@ -37,8 +35,6 @@ jdbc load, exec("`sql'") case(lower);
 destring, replace;
 notes: "`sql'";
 save $data_main/cams_subtrip_$today_date_string.dta, replace;
-
-export delimited using  $data_main/cams_subtrip_$today_date_string.csv, replace;
 
 
 
@@ -57,4 +53,3 @@ notes: "`sql'";
 
 
 save $data_main/cams_orphan_subtrip_$today_date_string.dta, replace;
-export delimited using  $data_main/cams_orphan_subtrip_$today_date_string.csv, replace;
