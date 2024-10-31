@@ -22,7 +22,7 @@ destring, replace;
 notes: "`sql'";
 
 
-save $data_main/cams_land_$today_date_string.dta, replace;
+save $data_main/commercial/cams_land_$vintage_string.dta, replace;
 
 clear;
 /*subtrip */
@@ -34,7 +34,7 @@ local sql "select * from cams_subtrip cst
 jdbc load, exec("`sql'") case(lower);
 destring, replace;
 notes: "`sql'";
-save $data_main/cams_subtrip_$today_date_string.dta, replace;
+save $data_main/commercial/cams_subtrip_$vintage_string.dta, replace;
 
 
 
@@ -52,4 +52,7 @@ destring, replace;
 notes: "`sql'";
 
 
-save $data_main/cams_orphan_subtrip_$today_date_string.dta, replace;
+save $data_main/commercial/cams_orphan_subtrip_$vintage_string.dta, replace;
+
+
+
