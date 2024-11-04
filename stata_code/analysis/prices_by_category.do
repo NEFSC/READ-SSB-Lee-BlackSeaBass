@@ -18,7 +18,13 @@ replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
 replace market_code="ES" if market_code=="PW"
 
 /* this is a silly regression because I have collapsed things to the day already */
-encode market_desc, gen(mym)
+
+label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
+
+encode market_desc, gen(mym) label(market_category) 
+
+
+
 regress price i.year i.month i.mym
 
 /* */
@@ -62,9 +68,9 @@ xtline price if keep==1 & price<=10
 Something happens in 2020 */
 
 
-xtline price if price<=10 & inlist(mym, 2,3,4), overlay
+xtline price if price<=10 & inlist(mym, 1,2,3), overlay
 
 
- xtline price if price<=10 & inlist(mym, 2,3,4) & year>=2010 & year<=2019, overlay
+ xtline price if price<=10 & inlist(mym,1, 2,3) & year>=2010 & year<=2019, overlay
  
 /*just eyeballing it, it looks like something happens in 2016*/

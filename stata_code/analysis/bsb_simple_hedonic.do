@@ -73,7 +73,9 @@ replace market_code="UN" if market_code=="MX"
 replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
 replace market_code="ES" if market_code=="PW"
 
-encode market_desc, gen(mym)
+label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
+
+encode market_desc, gen(mym) label(market_category) 
 encode grade_desc, gen(mygrade)
 encode state, gen(mys)
 rename mygear mygear_string
@@ -121,10 +123,10 @@ est store weighted_hullFEs
 
 /*  market level quantity supplied */
 xi, prefix(_S) noomit i.mym*lndlb
-bysort dlr_date: egen QJumbo=total(_SmymXlndlb_2)
-bysort dlr_date: egen QLarge=total(_SmymXlndlb_3)
-bysort dlr_date: egen QMedium=total(_SmymXlndlb_4)
-bysort dlr_date: egen QSmall=total(_SmymXlndlb_7)
+bysort dlr_date: egen QJumbo=total(_SmymXlndlb_1)
+bysort dlr_date: egen QLarge=total(_SmymXlndlb_2)
+bysort dlr_date: egen QMedium=total(_SmymXlndlb_3)
+bysort dlr_date: egen QSmall=total(_SmymXlndlb_4)
 drop _Smym*
 
 
