@@ -99,7 +99,7 @@ save  $data_main/commercial/cams_vlgear_keyfile_$vintage_string.dta, replace;
 
 clear;
 local sql "select table_name, column_name, comments from all_col_comments where owner='CAMS_GARFO' and table_name in('CAMS_SUBTRIP','CAMS_LAND','CAMS_ORPHAN_SUBTRIP') order by column_name, table_name" ;
-odbc load, exec("`sql' ;") lower $myNEFSC_USERS_conn;
+odbc load, exec("`sql' ;") $myNEFSC_USERS_conn;
 save  $data_main/commercial/cams_keyfile_$vintage_string.dta, replace;
 
 
