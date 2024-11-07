@@ -5,7 +5,7 @@ jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  
 
 
 
-local sql "select year, week, sum(value) as value, sum(lndlb) as landings, state from cams_land where itis_tsn='167687' group by year, week, state"
+local sql "select year, week, sum(value) as value, sum(lndlb) as landings, state from cams_land where itis_tsn='167687' and rec=0 group by year, week, state"
 jdbc load, exec("`sql'") case(lower)
 
 

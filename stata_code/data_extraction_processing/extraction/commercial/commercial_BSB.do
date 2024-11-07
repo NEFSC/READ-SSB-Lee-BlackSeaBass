@@ -1,5 +1,5 @@
 /* code to read in annual landings of black sea bass by permit */
-/* code to read in trip-level landings of all species on trips that landed at least 100lbs of BSB */
+/* code to read in trip-level landings of all species on commercial trips that landed at least 100lbs of BSB */
 
 #delimit ;
 /* Pull data from CAMS, group by permit, year and species */
@@ -8,7 +8,7 @@ jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  
 
 
 local sql "select permit, year, sum(nvl(lndlb,0)) as landings, sum(nvl(value,0)) as value, itis_tsn from cams_land cl where 
-		itis_tsn =167687 
+		cl.itis_tsn =167687 and cl.rec=0
         group by permit, year, itis_tsn" ;
 		
 clear;
@@ -26,7 +26,7 @@ save ${data_main}\commercial\yearly_landings_by_type_${vintage_string}.dta, repl
 /* select trip level landings of all species from trips that had at least 100lbs of black sea bass landings */
 local sql "select sum(lndlb) as landings, sum(value) as value, year, state, itis_tsn, itis_group1 from cams_land where camsid in (
 	select distinct camsid from (
-		select camsid, sum(lndlb) as landings from cams_land where itis_tsn=167687 group by camsid)
+		select camsid, sum(lndlb) as landings from cams_land where itis_tsn=167687 and rec=0 group by camsid)
 	where landings>100
 )
      group by year, state, itis_tsn, itis_group1";

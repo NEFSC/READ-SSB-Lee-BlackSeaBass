@@ -1,4 +1,4 @@
-/* code to read in weekly landings of black sea bass and compute a price  */
+/* code to read in weekly commercial landings of black sea bass and compute a price  */
 
 # delimit ;
 clear;
@@ -23,7 +23,7 @@ save "${data_raw}\commercial\bsb_sizes_${vintage_string}.dta", replace;
 /* and landings from cams by market category and size */
 
 local sql "select year, month, week, dlr_date, dlr_mkt as market_code , dlr_grade as grade_code , itis_tsn, sum(lndlb) as landings, sum(value) as value, sum(livlb) as live from cams_land where itis_tsn='167687' 
-	and status in ('MATCH','DLR_ORPHAN_SPECIES', 'PZERO', 'DLR_ORPHAN_TRIP') 
+	and status in ('MATCH','DLR_ORPHAN_SPECIES', 'PZERO', 'DLR_ORPHAN_TRIP') and rec=0
     group by dlr_mkt, dlr_grade, dlr_date, year, month, week, itis_tsn" ;
 	
 clear;	
