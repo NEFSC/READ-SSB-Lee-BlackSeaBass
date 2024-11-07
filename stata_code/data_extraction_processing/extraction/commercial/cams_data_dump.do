@@ -1,6 +1,7 @@
 #delimit ;
-jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  user("$myuid") password("$mypwd");
 
+/*jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  user("$myuid") password("$mypwd");
+*/
 global firstyr 1996;
 global lastyr = 2024;
 clear;
@@ -13,12 +14,16 @@ clear;
 
 
 local sql "select * from cams_land cl
-	where year>=$firstyr and year<=$lastyr" ; 
+	where cl.year>=$firstyr and cl.year<=$lastyr and cl.rec=0" ; 
 
 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql' ") case(lower);*/
+
+odbc load, exec("`sql'; ")  $myNEFSC_USERS_conn;
+
 destring, replace;
+compress;
 notes: "`sql'";
 
 
@@ -30,9 +35,14 @@ clear;
 local sql "select * from cams_subtrip cst
 	where year>=$firstyr and year<=$lastyr" ; 
 	
-	
+/*	
 jdbc load, exec("`sql'") case(lower);
+*/
+odbc load, exec("`sql'; ")  $myNEFSC_USERS_conn;
+
 destring, replace;
+compress;
+
 notes: "`sql'";
 save $data_main/commercial/cams_subtrip_$vintage_string.dta, replace;
 
@@ -47,8 +57,14 @@ clear;
 local sql "select * from CAMS_VTR_ORPHANS_SUBTRIP where year>=$firstyr and year<=$lastyr" ; 
 	
 	
+/*	
 jdbc load, exec("`sql'") case(lower);
+*/
+odbc load, exec("`sql'; ")  $myNEFSC_USERS_conn;
+
 destring, replace;
+compress;
+
 notes: "`sql'";
 
 

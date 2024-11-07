@@ -1,13 +1,13 @@
-/* code to read in weekly landings of black sea bass and compute a price  */
+/* code to read in commercial landings of black sea bass and compute a price  */
 
 # delimit ;
 clear;
 jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  user("$myuid") password("$mypwd");
 
-local sql "select st.docid, st.subtrip, st.area, st.negear, st.mesh_cat, st.record_sail, st.record_land, st.ves_len, cl.dlr_stid, cl.dlr_cflic, cl.camsid, cl.permit, cl.hullid, cl.year, cl.month, cl.week, cl.dlr_date, cl.dlr_mkt as market_code, cl.dlr_grade as grade_code, cl.dlrid, cl.itis_tsn, cl.state, cl.port, cl.lndlb , cl.value , cl.livlb, cl.status, cl.dlr_source from cams_land cl 
+local sql "select st.docid, st.subtrip, st.area, st.negear, st.mesh_cat, st.record_sail, st.record_land, st.ves_len, cl.dlr_stid, cl.dlr_cflic, cl.camsid, cl.permit, cl.hullid, cl.year, cl.month, cl.week, cl.dlr_date, cl.dlr_mkt as market_code, cl.dlr_grade as grade_code, cl.dlrid, cl.itis_tsn, cl.state, cl.port, cl.lndlb , cl.value , cl.livlb, cl.status, cl.dlr_source, cl.rec from cams_land cl 
     LEFT JOIN cams_subtrip st
     on cl.camsid=st.camsid 
-    where cl.itis_tsn='167687' " ;
+    where cl.itis_tsn='167687' and cl.rec=0" ;
 	
 clear;	
 jdbc load, exec("`sql'") case(lower);
