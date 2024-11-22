@@ -13,6 +13,8 @@ format dateq %tq
 /* how much of the CAMS landings are matched to a trip for black sea bass */
 gen s2=status=="MATCH"
 
+replace s2=1 if status=="DLR_ORPHAN_SPECIES"
+
 
 
 collapse (sum) lndlb , by(year state s2)
@@ -28,7 +30,7 @@ keep if inlist(state,"CT","DE", "MA","MD", "NC","NJ", "NY","RI","VA")
 
 encode state, gen(mystate)
 xtset mystate year
-xtline frac if year<=2023, ytitle("Fraction of Landings with STATUS==MATCH")
+xtline frac if year<=2023, ytitle("Fraction of Landings with STATUS==MATCH_OS")  tlabel(1995(10)2025)
 graph export ${exploratory}\cams_match_state.png, as(png) width(2000) replace
 
 
@@ -44,7 +46,7 @@ keep if s2==1
 
 
 tsset year
-tsline frac if year<=2023, ytitle("Fraction of Landings with STATUS==MATCH")
+tsline frac if year<=2023, ytitle("Fraction of Landings with STATUS==MATCH_OS")  tlabel(1995(10)2025)
 graph export ${exploratory}\cams_match.png, as(png) width(2000) replace
 
 restore
@@ -71,7 +73,7 @@ foreach var of varlist cams_landings_nomatch cams_landings_match veslog_kept_lbs
 }
 tsset year
 
-tsline cams_landings_nomatch cams_landings_match veslog_kept_lbs, legend(order(1 "CAMS No Match" 2 "CAMS Match" 3 "VTR" ) rows(1) position(6)) 
+tsline cams_landings_nomatch cams_landings_match veslog_kept_lbs if year<=2023, legend(order(1 "CAMS No Match" 2 "CAMS MATCH_OS" 3 "VTR" ) rows(1) position(6))   tlabel(1995(10)2025) tmtick(##5)
 
 graph export ${exploratory}\cams_veslog_hails.png, as(png) width(2000) replace
 
@@ -96,7 +98,7 @@ foreach var of varlist cams_landings_nomatch cams_landings_match veslog_kept_lbs
 }
 encode state, gen(mystate)
 xtset mystate year
-xtline  cams_landings_nomatch cams_landings_match veslog_kept_lbs, legend(order(1 "CAMS No Match" 2 "CAMS Match" 3 "VTR" ) rows(1) position(6)) tlabel(1995(10)2025, labsize(small))  lwidth(thick)
+xtline  cams_landings_nomatch cams_landings_match veslog_kept_lbs if year<=2023, legend(order(1 "CAMS No Match" 2 "CAMS MATCH_OS" 3 "VTR" ) rows(1) position(6)) tlabel(1995(10)2025, labsize(small))  lwidth(thick)  tmtick(##5)
 graph export ${exploratory}\state_cams_veslog_hails.png, as(png) width(2000) replace
 
 assert _merge==3
@@ -108,11 +110,19 @@ levelsof state, local(mystates)
 	local j=1
 
 foreach l of local mystates{
-	tsline cams_landings_nomatch cams_landings_match veslog_kept_lbs if state=="`l'", legend(order(1 "CAMS No Match" 2 "CAMS Match" 3 "VTR" ) rows(1) position(6)) tlabel(1995(10)2025, labsize(small))  lwidth(thick) name(state`j', replace)
+	tsline cams_landings_nomatch cams_landings_match veslog_kept_lbs if state=="`l'" & year<=2023, legend(order(1 "CAMS No Match" 2 "CAMS MATCH_OS" 3 "VTR" ) rows(1) position(6)) tlabel(1995(10)2025, labsize(small))  tmtick(##5)  lwidth(thick) name(state`j', replace)
 	graph export ${exploratory}\cams_veslog_hails_`l'.png, as(png) width(2000) replace
 
 	local ++ j 
 }
+
+/* 
+"something" is breaking in DE, NC, and VA in recent years regarding the matching.
+
+We have really good coverage on VA, DE, MD, and NJ in terms of getting nearly all of the commercial landings to match.
+
+
+*/
 
 
 
