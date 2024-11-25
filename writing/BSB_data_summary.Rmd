@@ -28,23 +28,102 @@ Warnings: There is something funky going on with VA "status=PZERO" starting in 2
 \clearpage
 
 
+ <!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+ library("foreign")
+ library("here")
+ library("tidyverse")
+ library("scales")
+ library("knitr")
+ library("lubridate")
+ library("kableExtra")
+ library("haven")
+ library("mapview")
+ library("sf")
+here::i_am("writing/BSB_data_summary.Rmd")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+#############################################################################
+my_images<-here("images")
+
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+# Read in statistical areas
+stat_areas_location<-here("data_folder","external","shapefiles","Statistical_Areas_2010.shp")
+stat_areas <- st_read(dsn = stat_areas_location)
+
+#trim out some stat areas that I don't care about.
+stat_areas<-stat_areas %>%
+  dplyr::filter(Id>=460) %>% # Canada
+   dplyr::filter(Id<=711) %>% # SERO
+  dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
+
+# mapview(stat_areas)
+# ggplot(stat_areas) +
+#   geom_polygon(fill = "white", colour = "grey50") + 
+#   coord_quickmap()
+
+# ggplot(stat_areas) + 
+#   geom_sf() + 
+#   geom_sf_text(aes(label = Id), colour = "black") + 
+#   coord_quickmap()
+
+# 
+# ggplot() + 
+#   geom_sf(data=stat_areas)+ 
+#   geom_sf_label(aes(label = stat_areas$Id))
+
+```
+
+
+
+
+```{r main_overview, fig.show = "hold", out.width = "48%", fig.cap="VTR-Observer modeled heat map of black sea bass, summer flounder, scup, and loligo squid",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(here("data_folder","external","web_maps",c("SPP_335_QTYKEPT.gif","SPP_121_QTYKEPT.gif","SPP_329_QTYKEPT.gif","SPP_801_QTYKEPT.gif")))
+```
+
+
+
+
+
 # Regulations and Background
 
 ## A brief history
 
 The fishery is managed by the ASFMC and the MAFMC.  There is also a South Atlantic stock that is managed by SAFMC, but we will ignore it.
 
-  * Initial FMP in 1996 set quarterly quotas
+  * BSB was added to the Summer Flounder FMP in 1996 with Amendment 9.  Quarterly quotas for the entire stock were set.
+    * The MAFMC initially planned for state-level quotas in Amendment 9.  The Regional Director (Administrator) indicated these would not be approved, citing National Standard 7 (minimize costs and avoid unnecessary duplication). The rationale was that NMFS and the state of North Carolina would experience large enforcement and administrative costs. There would be a portion of fishing in NC that was managed by NERO under SF and another that was managed by SERO under Snapper/Grouper.  There was not enough detail about how the NERO quota would be implemented.
   * 2001/2002 Amendment 13 did annual quotas and state-by-state allocations to start in 2003/4 and that were managed by ASFMC.
+    * There were early closures in 1999 (Quarters 2,3,4), 2000 (2,3,4), and 2001 (all).
+    * Open seasons were getting shorter and shorter; Q3 of 2001 lasted 3 weeks.
+    * Landings in the North, either because the regulations are looser or because biomass is there.
+
   * 2004 -- Addendum 12 (ASFMC) allowed for transfer of commercial quota across states.  So did Add 19 in 2007.
   * Addendum 20 allowed for all kinds of quota to be transferred across states.
 
     * If the coastwide quota is *not* exceeded, state-specific overages are forgiven.
     * If the coastwide quota is exceeded, states with underages can contribute them to a pool that is then reallocated.
 
-  * 2021 -- Add 31 put in a new formula for commercial quota.  75% of the quota is allocated according to historical fishing. 25% is allocated inproportion to where the biomass is located (based on stock assessment).
+  * 2021 -- Add 31 put in a new formula for commercial quota.  75% of the quota is allocated according to historical fishing. 25% is allocated in proportion to where the biomass is located (based on stock assessment).
   
 There is quite a bit of fishing that occurs within state waters, so the VTR coverage isn't perfect.  It is particularly rough in NY, CT, RI, and MA (especially MA).
+
+The state-level quotas are managed based on the state of landing by ASFMC.  I think this might be introducing some weird incentives in the long-run game between states.
 
 
 ## Relevant current regulations
@@ -53,54 +132,74 @@ Three states have IFQ programs (MD, DE, and VA) that started in 2004. I don't kn
 
 Maryland [https://www.law.cornell.edu/regulations/maryland/COMAR-08-02-05-21]
 
-  * Need a commercial license
-  * Has up to 14 landing permits, which are issued to people. That person does not need to be aboard the vessel (Operators).
-  * State quota is allocated to the holders of these permits.
-  * 50 lb incidental (open access) limits 
-  * Must be sold to a federally permitted dealer.
-  * There are restrictions on the type of trawl (4 1/2" cod end, 18" or less roller rig)
-  * there are restrictions on pot/trap (2 1/2" circular opening, 2" square or 1 3/8 x 5 3/4" rectangular, plus 1 degradable panel or door 3 x 6)
+    * Need a commercial license
+    * Has up to 14 landing permits, which are issued to people. That person does not need to be aboard the vessel (Operators).
+    * State quota is allocated to the holders of these permits.
+    * 50 lb incidental (open access) limits 
+    * Must be sold to a federally permitted dealer.
+    * There are restrictions on the type of trawl (4 1/2" cod end, 18" or less roller rig)
+    * there are restrictions on pot/trap (2 1/2" circular opening, 2" square or 1 3/8 x 5 3/4" rectangular, plus 1 degradable panel or door 3 x 6)
   
 Virginia [https://mrc.virginia.gov/Regulations/fr950.shtm]
 
-  * Need a directed bsb permit and either a commercial fisherman license or a seafood landing license.
-  * Pots restrictions (same as MD)
-  * 40,000 lbs allocated to the "bycatch" fishery and everythign else is allocated to the quota fishery
-  * Quota allocated based on a person's history from July 1, 1997 to December 31, 2001.
-  * Bycatch fishery
-    * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
-    * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
+    * Need a directed bsb permit and either a commercial fisherman license or a seafood landing license.
+    * Pots restrictions (same as MD)
+    * 40,000 lbs allocated to the "bycatch" fishery and everythign else is allocated to the quota fishery
+    * Quota allocated based on a person's history from July 1, 1997 to December 31, 2001.
+    * Bycatch fishery
+      * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
+      * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
   
 
 Delaware [https://regulations.delaware.gov/AdminCode/title7/3000/3500/3501.shtml]
 
-  * A landing permit is required
-  * Up to 6 landing permits for pots (96% of the quota), plus up to 13 hook and line permits (4% of the quota).
-  * Firms with a pot permit must have a Federal BSB permit. 
-  * One transfer per year
-  * I don't see any restrictions on gear or possession, but I see black spaces so these could have been removed.
-  * I also don't see anything on the regulations page about initial quota allocations
-  * No provision for incidental or bycatch 
-  * Pots restrictions (same as MD)
+    * A landing permit is required
+    * Up to 6 landing permits for pots (96% of the quota), plus up to 13 hook and line permits (4% of the quota).
+    * Firms with a pot permit must have a Federal BSB permit. 
+    * One transfer per year
+    * I don't see any restrictions on gear or possession, but I see black spaces so these could have been removed.
+    * I also don't see anything on the regulations page about initial quota allocations
+    * No provision for incidental or bycatch 
+    * Pots restrictions (same as MD)
 
 
 North Carolina
 
-  * These change a bit, but in 2024, the regulations are 
-    * Trawls -- 5,000 lb possession limit
-    * Pot, Trap, Line -- 3,000 lb of black sea bass.
-  * Properly licensed vessel Captains employing trawls can possess landing limits for other states, but it is unlawful to offload those fish in North Carolina
+    * These change a bit, but in 2024, the regulations are 
+      * Trawls -- 5,000 lb possession limit
+      * Pot, Trap, Line -- 3,000 lb of black sea bass.
+    * Properly licensed vessel Captains employing trawls can possess landing limits for other states, but it is unlawful to offload those fish in North Carolina
 
 New Jersey
 
-  * There is a complicated set of options, but basically each bi-monthly season has a weekly landing limit. 
-  * It looks like there is a limited access program
-  * There is also a bycatch limit of 10% not to exceed 100 lbs. 
-  * 4 1/2" diamond or 4" squarecod end.
-  * Any commercial vessel landing black sea bass for sale must sell to a permitted New Jersey Black Sea Bass Dealer.
+    * There is a complicated set of options, but basically each bi-monthly season has daily trip limit and a number of landings limits.
+        * For example: In Jan and Feb 2024, a vessel could choose 4x 750lb trips/week; 2x 1,500lb trips/week, or 1x 3,000 lb trip/week.
+    * Vessels can get an "excess of daily limit" license if they are going to hold more than the possession limit and offload in another state.
+    * It looks like there is a limited access program
+    * There is also a bycatch limit of 10% not to exceed 100 lbs. 
+    * 4 1/2" diamond or 4" squarecod end.
+    * Any commercial vessel landing black sea bass for sale must sell to a permitted New Jersey Black Sea Bass Dealer.
 
 
-The "landing restrictions" seem to be doing two things. They are certainly limiting access, but they are also preventing out of state vessels from landing in your home state. I think this might have to do with how the landings are counted against the quota.
+Rhode Island
+
+
+Connecticut
+
+
+Massachusetts
+
+  * Limited Entry (not sure when)
+  * 12" minimum
+  * possession limit of 100lbs between Jan 1 and march 31
+  * Lots of complicated regs that start on July 1. Possession limits, Friday/Saturday out that depend on quota usage.
+  * Regs are different for Pot and "other gear"
+  * I think there might be an owner-operator requirement for pots, which was probably intended for the lobster fishery, but may apply here. I haven't looked too hard.
+  
+(https://casetext.com/regulation/code-of-massachusetts-regulations/department-322-cmr-division-of-marine-fisheries/title-322-cmr-700-permits/section-701-form-use-and-contents-of-permits)
+  
+
+The "landing restrictions" seem to be doing two things. They are certainly limiting access, but they are also preventing vessels from landing outside their home state.
 
 There are two populations managed by the ASFMC. The South stock is from Beaufort/Cape Hatteras, NC north to Hudson Canyon (Statistical Areas 621 and higher, plus statistical areas 614 and 615). The North stock is everything north of that (all the 5XX statistical areas, plus 611,612, 613, 616). 
 
@@ -119,6 +218,8 @@ There is a Summer Flounder Management Strategy Evaluation. In addition, S&T has 
 There have been allocation analysis for Scup [@GentnerConsultingGroup2012] and Summer Flounder [@Gentner2010;@Hicks2017; @Hicks2020]. The basic question is all is the optimal allocation between the commercial and recreational sectors. All have some sort of demand model, some model of production, and some valuation coming out of the recreational side.
 
 ## Black Sea Bass
+
+No length data for unclassified fish from 2020-2023.  The raw data says that this might be as much as 10% of landings, but I think there's some duplicate "unclassified" entries here.
 
 > Another source of uncertainty stemmed from the fact that no length information on
 individuals in the unclassified market category have been sampled since 2020. Calculating the catch at length
@@ -140,55 +241,54 @@ https://doi.org/10.5281/zenodo.10023533
 # Research Questions
 
 1.  Can we use information in prices to assign a market category to the unclassified fish?  
-  * Run a categorical model (ordered or un-ordered logit?) with price as a right hand side variable.  Then predict out of sample for the unclassified market category.
+
+    * Run a categorical model (ordered or un-ordered logit?) with price as a right hand side variable.  Then predict out of sample for the unclassified market category.
+    
+    * Estimate a latent class (finite mixture model) on the price of unclassified, where there are a moderate number of classes (say small and large).  A test of the model would be to see how well it does on the classes.
   
-  * Estimate a latent class (finite mixture model) on the price of unclassified, where there are a moderate number of classes (say small and large).  A test of the model would be to see how well it does on the classes.
-  
-  * There's approximately 5% of fish that are Unclassified, so the magnitude of the effect on the stock assessment enterprise is probably minimal. But it might illustrate areas where we can shift sampling. 
+    * There's approximately 5% of fish that are Unclassified, so the magnitude of the effect on the stock assessment enterprise is probably minimal. But it might illustrate areas where we can shift sampling. 
   
 2. Three states have implemented a catch share for Black Sea Bass. What has happened in these fisheries?
 
-3. Many of the states have enacted limited access for landing permits. They tend to be the southern states.  What are the welfare effects? Is this a good idea? What is the political economy?  What is the economic game at the ASFMC and what are the objectives of the individuals?
+    * Triple diff: pre-post/ treat-control, plus the gear treatments might vary?
+    * The quota markets might be thin. Does this mean we have to model quota usage in a dynamic setting? 
+  
+3. Many of the states have enacted limited access for landing permits. They tend to be the southern states.  What are the welfare effects? Is this a good idea? What is the political economy?  What is the economic game and strategic interactions at the ASFMC and what are the objectives of the individuals?  
     
     * Talk to Emily (Although Emily is moving off BSB) at GARFO.  MAFMC and ASMFC staff too?
     * What kind of information exists at the state level? Can we get any more info, especially from MA, RI, and CT about fishing effort?
     * How has the BSB fishery played out for the catch share states compared to the non-catch share states? Greg has been using the cost data together to put together profitability profiles. 
         * For firms without a federal permit, I don't know how to feel about that.
+    * Entangled in this might be a model of landing locations for firms. Do we try to look back to the 'pre state allocation' decisions?  This would be around 1999-2002. The aggregate quotas went in March 31, 2023.   
+    * Have the possession limits concentrated fishin effort in the nearshore (summer) months? Is this good or bad?  Are offshore northern waters basically inaccessible?
     
- <!---- 
- The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
- --->
-```{r global_options, include=FALSE}
-
- library("foreign")
- library("here")
- library("tidyverse")
- library("scales")
- library("knitr")
- library("lubridate")
- library("kableExtra")
-  library("haven")
-
-here::i_am("writing/BSB_data_summary.Rmd")
-
-#############################################################################
-#knitr options
-
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
-											dpi = 600)
-options(tinytex.verbose = TRUE)
-# options(knitr.table.format = "latex")
-#############################################################################
-my_images<-here("images")
-
-descriptive_images<-here("images","descriptive")
-exploratory_images<-here("images","exploratory")
-
-```
 
 
+# Things to Figure out
 
+1. Has commercial quota ever been transferred?
 
+1. When did each of the states do limited entry for black sea bass?  Importantly, when did they do 'landing permits' or restrictions?
+
+1. Did trip length shift in 2003. Did fish start traveling less (after catch)? 
+
+    * With just a landing restriction, I'd expect firms to travel less. But the elimination of quarterly TACs muddles things a bit.
+
+1. Data issues with DE. And With VA.
+
+1. Can you discard legal-sized fish?
+
+1. Do dealers coordinate among themselves or with vessels to control the pace of landings within a year.
+
+1. Endogenous treatment of the catch share?
+
+1. How joint is the catch of the four stocks?
+
+1. Use it or lose-it at the state level? I don't think so.
+
+1. How much does it cost to get a state permit?
+
+1. Add the state level allocation info.
 
 # Data
 
@@ -326,7 +426,7 @@ kbl(summ1, digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  
 
 
 ## by state
-Adding state  will results in too many observations because a vessel could bring fish caught on a single trip to multiple states 
+The number of observations is a little too high, because a vessel could bring fish caught on a single trip to multiple states. But this probably doesn't happen too much. 
 
 ```{r state_trip, eval=TRUE}
 
@@ -429,9 +529,11 @@ trip_length<-working_landings %>%
 kbl(tl_table , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average length (hours), and percentiles of the distribution") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
-
-
 ```
+
+At least on the Trip length metric, NC is different. They're taking 5 day trips instead of half day trips like in MD.  
+
+New York also shifted to 1/2 day trips in 2009. I suspect a possession limit change did this.  Possession limits make it difficult to go far offshore and shift effort inshore.
 
 
 ```{r state_trip_length, eval=TRUE}
@@ -453,9 +555,116 @@ kbl(tl_table2 , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), captio
 
 ```
 
+## Total landings by statistical area
+
+```{r statistical_areas, eval=TRUE}
+stat_area_summary<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES"))%>%
+  dplyr::filter(area>=500) %>% # In US
+  dplyr::filter(area<=711) %>%
+  group_by(area) %>%
+  summarize(landings=sum(lndlb/1000)) %>%
+  ungroup()%>%
+  mutate(total=sum(landings))%>%
+  mutate(pct=landings/total)%>%
+  select(-total)
+
+stat_area_recent<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES"))%>%
+  dplyr::filter(area>=500) %>% # In US
+  dplyr::filter(area<=711) %>%
+  dplyr::filter(year>=2019)%>%
+  group_by(area) %>%
+  summarize(landings2018_2023=sum(lndlb/1000)) 
+
+
+stat_area_summary<-stat_area_summary %>%
+  left_join(stat_area_recent, by=join_by(area==area))
+
+
+# just show the stat areas greater than 1.5%
+kbl(stat_area_summary  %>%
+  dplyr::filter(pct>=0.015) %>%
+  arrange(-landings) %>%
+  select(-pct)
+  
+  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Landings (thousands of pounds) over the full time series and recent 5 years, by statistical area") %>%
+kable_styling(full_width = T,latex_options = "hold_position") %>% 
+      row_spec(0,bold=FALSE) 
+
+```
+
+
+```{r map_stat_areas, eval=TRUE}
+stat_areas<-stat_areas %>%
+  left_join(stat_area_summary, by=join_by(Id==area))
+
+#mapview(stat_areas, zcol="pct",at = seq(0.025, .25, 0.025))
+```
+
+
+## State level landings by area
+
+```{r statistical_areas_states, eval=TRUE}
+stat_area_state_summary<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES"))%>%
+  dplyr::filter(area>=500) %>% # In US
+  dplyr::filter(area<=711) %>%
+  group_by(state,area) %>%
+  summarize(landings=sum(lndlb/1000)) %>%
+  group_by(state) %>%
+  mutate(total=sum(landings))%>%
+  mutate(pct=landings/total)%>%
+  select(-total) %>%
+    arrange(state, -landings)
+
+# Rebin anything less than 2.5% to the 999 area
+state_area_all_others <-stat_area_state_summary %>%
+  mutate(area=ifelse(pct<=.025, 999,area))%>% 
+  group_by(state,area) %>%
+  summarize(landings=sum(landings/1000)) %>%
+  group_by(state) %>%
+  mutate(total=sum(landings))%>%
+  mutate(pct=landings/total)%>%
+  select(-total) %>%
+    arrange(state, -landings)
 
 
 
+ggplot(state_area_all_others %>%mutate(area=as.factor(area))
+       , aes(fill=area, y=landings, x=state)) + 
+    geom_bar(position="stack", stat="identity")  
+
+
+```
+
+
+
+```{r stat_areas, fig.show = "hold", out.width = "75%", fig.cap="GARFO statistical Areas",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(here("data_folder","external","shapefiles","statisticalareas.jpg"))
+```
+
+
+```{r pies, eval=TRUE}
+
+state_area_all_others<-state_area_all_others %>%
+   mutate(area=as.factor(area)) %>%
+group_by(state) %>%
+  arrange(desc(area)) %>%
+  mutate(prop = landings / sum(landings) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop ) %>%
+  ungroup()
+
+
+ggplot(state_area_all_others, aes(x="", y=prop, fill=area)) +
+  facet_wrap(~state) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) + 
+  theme_void() + 
+  theme(legend.position="none") +
+  geom_text(aes(y = ypos, label = area), color = "white", size=3) 
+
+```
 
 
 ```{r sql_spot_checks, eval=FALSE}
@@ -468,6 +677,101 @@ select * from nefsc_garfo.trip_reports_document where docid in (
 
 select docid from nefsc_garfo.trip_reports_images where serial_num in ('215022331', '215000352','445789'));
 ```
+
+## Port switches
+
+The following table contains the Total number of active BSB permits and the number of permits that switched ports by year. In 1996, there were 516 active permits; 418 always landed BSB in the same port, 39 switched 1 time, 41 switched twice, 4 switched 3 times, ....
+
+A switch is defined when sequential BSB trips did not land in the same port.
+
+
+
+
+```{r port_switches_over_time, eval=TRUE}
+
+pounds<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES")) %>%
+  group_by(camsid) %>%
+  summarise_at(c("lndlb", "value"), sum, na.rm = TRUE)
+
+
+attrib<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES")) %>%
+  group_by(camsid, permit, hullid) %>%
+  summarise_at(c("state","port", "state", "dlr_date"), first) %>%
+  left_join(pounds, by=join_by(camsid==camsid)) %>%
+  group_by(permit, camsid)%>%
+  arrange(permit, dlr_date) %>%
+  mutate(statecd=floor(port/10000),
+         countycd=port %% 100) %>%
+  mutate(port2=(port %%10000-countycd)/100)
+  
+
+
+attrib<-attrib %>%
+  group_by(permit)%>%
+  mutate(port_diff = port - dplyr::lag(port))%>%
+  mutate(changed_port=ifelse(port_diff %in% c('0'),0,1))%>%
+   mutate(changed_port=ifelse(is.na(port_diff),NA,changed_port))
+
+port_switchers_yr <-attrib %>%
+  mutate(year=lubridate::year(dlr_date))%>%
+  group_by(permit, year) %>%
+  summarise(changed_port=sum(changed_port, na.rm=TRUE))%>%
+  mutate(changed_port=ifelse(changed_port>=10,10,changed_port))
+
+
+port_switcher_table<-table(port_switchers_yr$year, port_switchers_yr$changed_port)
+ 
+port_switcher_table<-cbind(rowSums(port_switcher_table),port_switcher_table)
+colnames(port_switcher_table)[1]<-"Total"
+
+
+# just show the stat areas greater than 1.5%
+kbl(port_switcher_table
+  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(port_switcher_table)-1)), caption =  "Number of permits that switched ports (truncated at 10)") %>%
+kable_styling(full_width = T,latex_options = "hold_position") %>% 
+      row_spec(0,bold=FALSE) 
+
+
+
+
+```
+
+
+
+```{r state_switches, eval=TRUE}
+state_switchers<-attrib %>%
+  group_by(permit)%>%
+  mutate(state_diff = statecd - dplyr::lag(statecd))%>%
+  mutate(changed_state=ifelse(state_diff %in% c('0'),0,1))%>%
+   mutate(changed_state=ifelse(is.na(state_diff),NA,changed_state))
+
+state_switchers_yr <-state_switchers %>%
+  mutate(year=lubridate::year(dlr_date))%>%
+  group_by(permit, year) %>%
+  summarise(changed_state=sum(changed_state, na.rm=TRUE))%>%
+  mutate(changed_state=ifelse(changed_state>=10,10,changed_state))
+
+
+
+
+state_switcher_table<-table(state_switchers_yr$year, state_switchers_yr$changed_state)
+ 
+state_switcher_table<-cbind(rowSums(state_switcher_table),state_switcher_table)
+colnames(state_switcher_table)[1]<-"Total"
+
+
+
+# just show the stat areas greater than 1.5%
+kbl(state_switcher_table
+  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(port_switcher_table)-1)), caption =  "Number of permits that switched ports (truncated at 10)") %>%
+kable_styling(full_width = T,latex_options = "hold_position") %>% 
+      row_spec(0,bold=FALSE) 
+
+
+```
+
 
 
 ## State level matching
@@ -584,8 +888,6 @@ knitr::include_graphics(file.path(exploratory_images,c("market_cats_RI.png", "fm
 knitr::include_graphics(file.path(exploratory_images,c("market_cats_MA.png", "fmarket_cats_MA.png")))
 ```
 
-
-
 # Vessels over time
 How many vessels do I have over time, in each state?  Stacked bar charts of landings in each state. I've dropped out the "unknown" permits and hullids. I ranked each vessel in each state by landings over the 1996-2024 time period. There's no tracking of ownership.  I think the colors within each panel are good (I don't think there is recycling). Colors don't carry over across panels.  Not all states have 25 permits/vessels (DE, MD) 
 
@@ -632,14 +934,6 @@ knitr::include_graphics(file.path(exploratory_images,c("permit_coastwide.png", "
 
 
 
-
-
-
-# Things to Figure out
-
-1. Has commercial quota ever been transferred?
-2. How do the states and ASMFC monitor the quota usage? Is has to be based on landed state, right?
-3. Data issues with DE. And With VA.
 
 <!---
 \newpage
