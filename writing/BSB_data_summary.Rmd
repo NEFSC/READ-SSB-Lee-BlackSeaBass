@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
     df_print: paged
+    fig_caption: yes
   pdf_document:
     keep_tex: yes
     fig_caption: yes
@@ -132,53 +133,53 @@ Three states have IFQ programs (MD, DE, and VA) that started in 2004. I don't kn
 
 Maryland [https://www.law.cornell.edu/regulations/maryland/COMAR-08-02-05-21]
 
-    * Need a commercial license
-    * Has up to 14 landing permits, which are issued to people. That person does not need to be aboard the vessel (Operators).
-    * State quota is allocated to the holders of these permits.
-    * 50 lb incidental (open access) limits 
-    * Must be sold to a federally permitted dealer.
-    * There are restrictions on the type of trawl (4 1/2" cod end, 18" or less roller rig)
-    * there are restrictions on pot/trap (2 1/2" circular opening, 2" square or 1 3/8 x 5 3/4" rectangular, plus 1 degradable panel or door 3 x 6)
+  * Need a commercial license
+  * Has up to 14 landing permits, which are issued to people. That person does not need to be aboard the vessel (Operators).
+  * State quota is allocated to the holders of these permits.
+  * 50 lb incidental (open access) limits 
+  * Must be sold to a federally permitted dealer.
+  * There are restrictions on the type of trawl (4 1/2" cod end, 18" or less roller rig)
+  * there are restrictions on pot/trap (2 1/2" circular opening, 2" square or 1 3/8 x 5 3/4" rectangular, plus 1 degradable panel or door 3 x 6)
   
 Virginia [https://mrc.virginia.gov/Regulations/fr950.shtm]
 
-    * Need a directed bsb permit and either a commercial fisherman license or a seafood landing license.
-    * Pots restrictions (same as MD)
-    * 40,000 lbs allocated to the "bycatch" fishery and everythign else is allocated to the quota fishery
-    * Quota allocated based on a person's history from July 1, 1997 to December 31, 2001.
-    * Bycatch fishery
-      * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
-      * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
+  * Need a directed bsb permit and either a commercial fisherman license or a seafood landing license.
+  * Pots restrictions (same as MD)
+  * 40,000 lbs allocated to the "bycatch" fishery and everythign else is allocated to the quota fishery
+  * Quota allocated based on a person's history from July 1, 1997 to December 31, 2001.
+  * Bycatch fishery
+    * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
+    * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
   
 
 Delaware [https://regulations.delaware.gov/AdminCode/title7/3000/3500/3501.shtml]
 
-    * A landing permit is required
-    * Up to 6 landing permits for pots (96% of the quota), plus up to 13 hook and line permits (4% of the quota).
-    * Firms with a pot permit must have a Federal BSB permit. 
-    * One transfer per year
-    * I don't see any restrictions on gear or possession, but I see black spaces so these could have been removed.
-    * I also don't see anything on the regulations page about initial quota allocations
-    * No provision for incidental or bycatch 
-    * Pots restrictions (same as MD)
+  * A landing permit is required
+  * Up to 6 landing permits for pots (96% of the quota), plus up to 13 hook and line permits (4% of the quota).
+  * Firms with a pot permit must have a Federal BSB permit. 
+  * One transfer per year
+  * I don't see any restrictions on gear or possession, but I see black spaces so these could have been removed.
+  * I also don't see anything on the regulations page about initial quota allocations
+  * No provision for incidental or bycatch 
+  * Pots restrictions (same as MD)
 
 
 North Carolina
 
-    * These change a bit, but in 2024, the regulations are 
-      * Trawls -- 5,000 lb possession limit
-      * Pot, Trap, Line -- 3,000 lb of black sea bass.
-    * Properly licensed vessel Captains employing trawls can possess landing limits for other states, but it is unlawful to offload those fish in North Carolina
+  * These change a bit, but in 2024, the regulations are 
+    * Trawls -- 5,000 lb possession limit
+    * Pot, Trap, Line -- 3,000 lb of black sea bass.
+  * Properly licensed vessel Captains employing trawls can possess landing limits for other states, but it is unlawful to offload those fish in North Carolina
 
 New Jersey
 
-    * There is a complicated set of options, but basically each bi-monthly season has daily trip limit and a number of landings limits.
-        * For example: In Jan and Feb 2024, a vessel could choose 4x 750lb trips/week; 2x 1,500lb trips/week, or 1x 3,000 lb trip/week.
-    * Vessels can get an "excess of daily limit" license if they are going to hold more than the possession limit and offload in another state.
-    * It looks like there is a limited access program
-    * There is also a bycatch limit of 10% not to exceed 100 lbs. 
-    * 4 1/2" diamond or 4" squarecod end.
-    * Any commercial vessel landing black sea bass for sale must sell to a permitted New Jersey Black Sea Bass Dealer.
+  * There is a complicated set of options, but basically each bi-monthly season has daily trip limit and a number of landings limits.
+      * For example: In Jan and Feb 2024, a vessel could choose 4x 750lb trips/week; 2x 1,500lb trips/week, or 1x 3,000 lb trip/week.
+  * Vessels can get an "excess of daily limit" license if they are going to hold more than the possession limit and offload in another state.
+  * It looks like there is a limited access program
+  * There is also a bycatch limit of 10% not to exceed 100 lbs. 
+  * 4 1/2" diamond or 4" squarecod end.
+  * Any commercial vessel landing black sea bass for sale must sell to a permitted New Jersey Black Sea Bass Dealer.
 
 
 Rhode Island
@@ -350,15 +351,53 @@ obs_by_year<-working_landings%>%
   group_by(year)  %>%
   summarise(all=n(),
             all_lbs=sum(lndlb/1000),
-            all_trips=n_distinct(camsid)) %>%
-  bind_rows(total)
+            all_trips=n_distinct(camsid))# %>%
+#  bind_rows(total)
 
 
-kbl(obs_by_year, digits=0,booktabs=T, align=c("l",rep("r", times=2)), caption =  "CAMS observations, thousands of pounds, and unique trips (camsids)year") %>%
-    kable_styling(full_width = T,latex_options = "hold_position") %>% 
-      row_spec(0,bold=FALSE)
+#kbl(obs_by_year, digits=0,booktabs=T, align=c("l",rep("r", times=2)), caption =  "CAMS observations, thousands of pounds, and unique trips (camsids)year") %>%
+#    kable_styling(full_width = T,latex_options = "hold_position") %>% 
+#     row_spec(0,bold=FALSE)
+```
+
+
+This figure shows all landings of bsb and all "trips" that landed bsb in CAMS.
+
+```{r all_trips_and_landings, eval=TRUE, fig.cap = paste("All landings and total trips")}
+
+
+# Value used to transform the data
+coeff <- 1
+PoundsColor <- rgb(0.2, 0.6, 0.9, 1)
+TripColor <- "#69b3a2"
+
+ggplot(obs_by_year, aes(x=year)) +
+  
+  geom_line( aes(y=all_lbs), color=PoundsColor, linewidth=2) + 
+  geom_line( aes(y=all_trips / coeff),color=TripColor, linewidth=2) + # Divide by 10 to get the same range than the temperature
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "Commerical Pounds",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="Trips")
+  ) +
+  theme(
+    axis.title.y = element_text(color = PoundsColor, size=13),
+    axis.title.y.right = element_text(color = TripColor, size=13)
+  ) 
+
+
+
+
+
+
 
 ```
+
+
 
 
 ```{r data_summary_trips, eval=TRUE}
@@ -378,10 +417,43 @@ obs_match<-working_landings%>%
   group_by(year) %>%
   summarise(match=n(),
             match_lbs=sum(lndlb/1000),
-            match_trips=n_distinct(camsid)) %>%
-  bind_rows(total)
+            match_trips=n_distinct(camsid)) #%>%
+#  bind_rows(total)
+```
 
-kbl(obs_match, digits=0,booktabs=T, align=c("l",rep("r", times=2)), caption =  "CAMS observations, thousands of pounds, and unique trips (camsids)year") %>%
+This figure shows just landings of bsb and "trip" where we have a good match between dealer and VTR.
+
+```{r matched_trips_and_landings, eval=TRUE, fig.cap = paste("cams matched landings and total trips")}
+# Value used to transform the data
+coeff <- 1
+PoundsColor <- rgb(0.2, 0.6, 0.9, 1)
+TripColor <- "#69b3a2"
+
+ggplot(obs_match, aes(x=year)) +
+  
+  geom_line( aes(y=match_lbs), color=PoundsColor, linewidth=2) + 
+  geom_line( aes(y=match_trips / coeff),color=TripColor, linewidth=2) + # Divide by 10 to get the same range than the temperature
+  
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "Commerical Pounds",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~.*coeff, name="Trips")
+  ) +
+  theme(
+    axis.title.y = element_text(color = PoundsColor, size=13),
+    axis.title.y.right = element_text(color = TripColor, size=13)
+  ) 
+
+
+
+```
+
+```{r data_summary_trips_table, eval=FALSE}
+
+kbl(obs_match, digits=0,booktabs=T, align=c("l",rep("r", times=2)), fig.cap =   "CAMS observations, thousands of pounds, and unique trips (camsids)year") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
@@ -408,21 +480,44 @@ summ1<-trip %>%
   group_by(year) %>%
   summarise(count=n(),
     avg_lndlb=mean(lndlb),
+            p10_lndlb = quantile(lndlb, probs = .10),
+
           p25_lndlb = quantile(lndlb, probs = .25),
-            p50_lndlb = quantile(lndlb, probs = .50),
+
+              p50_lndlb = quantile(lndlb, probs = .50),
             p60_lndlb = quantile(lndlb, probs = .60),
             p75_lndlb = quantile(lndlb, probs = .75),
             p90_lndlb = quantile(lndlb, probs = .90),
             p95_lndlb = quantile(lndlb, probs = .95),
             p99_lndlb = quantile(lndlb, probs = .99)
         )
+```
+
       
+```{r trip_level_table, eval=FALSE}
 
 kbl(summ1, digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average landings, and percentiles of the distribution") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
 ```
+
+```{r trip_level_graphs_pounds, eval=TRUE, fig.cap = paste("Trip level pounds and the 25th and 90th percentiles.I wonder what is driving the secular trend in increases in pounds per trip from about 2008 to present.")}
+
+ggplot(summ1)+
+aes(x=year, y=avg_lndlb, ymin=p25_lndlb, ymax=p90_lndlb) +
+  geom_line() + 
+   geom_ribbon(alpha=0.5)+
+  ylab("Pounds per trip")
+```
+
+```{r trips_bsb, eval=FALSE, fig.cap = paste("Trips with black sea bass")}
+ggplot(summ1)+
+aes(x=year, y=count) +
+  geom_line(color="grey",size=2) +
+  ylab("Trips")
+```
+
 
 
 ## by state
@@ -440,6 +535,8 @@ trip2<-working_landings %>%
 
 
 
+
+
 # Trip level summary statistics , by year
 summ2<-trip2 %>%
   group_by(state, year) %>%
@@ -453,12 +550,15 @@ summ2<-trip2 %>%
             p95_lndlb = quantile(lndlb, probs = .95),
             p99_lndlb = quantile(lndlb, probs = .99)
         )
-      
+```
+
+```{r state_trip_table2, eval=FALSE}
+
 kbl(summ2 %>%
       dplyr::filter(state %in% c("MA","RI","CT"))
     
     
-    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
+    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ2)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
@@ -466,7 +566,45 @@ kbl(summ2 %>%
 ```
 
 
-```{r state_trip2, eval=TRUE}
+```{r state_landings, eval=TRUE, fig.cap=paste("Average landings, with 25th and 90th percentiles. ")}
+
+ggplot(summ2)+
+aes(x=year, y=avg_lndlb, ymin=p25_lndlb, ymax=p90_lndlb) +
+  geom_line() + 
+   geom_ribbon(alpha=0.5)+
+  ylab("Pounds per trip")+
+    facet_wrap(~state)
+
+
+```
+
+
+```{r state_trips, eval=TRUE,fig.cap=paste("Trips by year. I let the scale vary across the state")}
+ggplot(summ2)+
+aes(x=year, y=count) +
+  geom_line(color="grey",linewidth=2) +
+  ylab("Trips")+ 
+    facet_wrap(~state, scale="free_y")
+
+```
+
+
+
+
+```{r state_trips_fixy, eval=TRUE,fig.cap=paste("Trips by year. I fixed the yscale to be constant across the states.")}
+ggplot(summ2)+
+aes(x=year, y=count) +
+  geom_line(color="grey",linewidth=2) +
+  ylab("Trips")+ 
+    facet_wrap(~state)
+
+```
+
+
+
+
+
+```{r state_trip2, eval=FALSE}
 
 
       
@@ -474,7 +612,7 @@ kbl(summ2 %>%
       dplyr::filter(state %in% c("NY","NJ", "DE"))
     
     
-    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
+    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ2)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
@@ -485,13 +623,13 @@ kbl(summ2 %>%
 
 
 
-```{r state_trip3, eval=TRUE}
+```{r state_trip3, eval=FALSE}
 
 kbl(summ2 %>%
       dplyr::filter(state %in% c("MD", "VA", "NC"))
     
     
-    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
+    , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ2)-1)), caption =  "Trips, average landings, and percentiles of the distribution, grouped by state") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
@@ -524,16 +662,33 @@ trip_length<-working_landings %>%
             p95_trip_hours = quantile(trip_hours, probs = .95),
             p99_trip_hours = quantile(trip_hours, probs = .99)
   )
-    
-  
-kbl(tl_table , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average length (hours), and percentiles of the distribution") %>%
+```
+      
+      
+ 
+```{r trip_length_graphs, eval=TRUE}
+
+ggplot(tl_table)+
+aes(x=year, y=avg_trip_hours, ymin=p25_trip_hours, ymax=p90_trip_hours) +
+  geom_line() + 
+   geom_ribbon(alpha=0.5)+
+  ylab("Trip length (hours)")
+
+
+```
+ 
+      
+```{r trip_length_table, eval=FALSE}
+kbl(tl_table , digits=0,booktabs=T, align=c("l",rep("r",ncol(tl_table)-1)), caption =  "Trips, average length (hours), and percentiles of the distribution") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 ```
 
 At least on the Trip length metric, NC is different. They're taking 5 day trips instead of half day trips like in MD.  
 
-New York also shifted to 1/2 day trips in 2009. I suspect a possession limit change did this.  Possession limits make it difficult to go far offshore and shift effort inshore.
+New York also shifted to 1/2 day trips in 2009. I suspect a possession limit change did this.  Possession limits make it difficult to go far offshore and shift effort inshore.  But it looks like the 'menu' of trips/possesions have had an effect later in the time series in NY.
+
+I'm a little suspicious of the DE 90th percentile in recent years.
 
 
 ```{r state_trip_length, eval=TRUE}
@@ -549,11 +704,29 @@ New York also shifted to 1/2 day trips in 2009. I suspect a possession limit cha
             p95_trip_hours = quantile(trip_hours, probs = .95),
             p99_trip_hours = quantile(trip_hours, probs = .99)
   )
-kbl(tl_table2 , digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Trips, average length (hours), and percentiles of the distribution, grouped by state") %>%
+```
+```{r state_trip_length_table, eval=FALSE}
+
+kbl(tl_table2 , digits=0,booktabs=T, align=c("l",rep("r",ncol(tl_table2)-1)), caption =  "Trips, average length (hours), and percentiles of the distribution, grouped by state") %>%
     kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
 ```
+
+```{r state_trip_lengthgraph, eval=TRUE, fig.cap=paste("Average Trip length by state, with 25th and 90th percentiles. The different kinds of fleets is interesting to see here. For a couple states (CT, RI, and MA), we don't have a great match rate, likely because of trips by state-only vessels. The state-only vessels are likely to be taking very short trips.")}
+
+ggplot(tl_table2)+
+aes(x=year, y=avg_trip_hours, ymin=p25_trip_hours, ymax=p90_trip_hours) +
+  geom_line() + 
+   geom_ribbon(alpha=0.5)+
+  ylab("Pounds per trip")+
+    facet_wrap(~state)
+
+
+```
+
+
+
 
 ## Total landings by statistical area
 
@@ -588,7 +761,7 @@ kbl(stat_area_summary  %>%
   arrange(-landings) %>%
   select(-pct)
   
-  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(summ1)-1)), caption =  "Landings (thousands of pounds) over the full time series and recent 5 years, by statistical area") %>%
+  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(stat_area_summary)-1)), caption =  "Landings (thousands of pounds) over the full time series and recent 5 years, by statistical area") %>%
 kable_styling(full_width = T,latex_options = "hold_position") %>% 
       row_spec(0,bold=FALSE) 
 
@@ -601,6 +774,79 @@ stat_areas<-stat_areas %>%
 
 #mapview(stat_areas, zcol="pct",at = seq(0.025, .25, 0.025))
 ```
+
+
+
+```{r stat_area_500syearly, eval=TRUE, fig.cap=paste("annual matched landings from the 500s, areas with minimal landings excluded")}
+
+stat_area_yearly<-working_landings %>%
+  dplyr::filter(status %in% c("MATCH","DLR_ORPHAN_SPECIES"))%>%
+  dplyr::filter(area>=500) %>% # In US
+  dplyr::filter(area<=711) %>%
+  group_by(area, year) %>%
+  summarize(landings=sum(lndlb/1000))%>%
+  ungroup()%>%
+  arrange(area, year)
+
+
+balanced.panel <- stat_area_yearly %>%  
+  complete(nesting(area), year = full_seq(year, period = 1))
+
+balanced.panel<-balanced.panel %>%
+    dplyr::filter(!area %in%c(511,512,513,543,542,561,515,534,562)) 
+
+ggplot(balanced.panel %>% dplyr::filter(area<600))+
+  geom_line() + 
+  aes(x=year, y=landings) +
+    ylab("Landed Pounds (000s)")+ 
+    facet_wrap(~area)
+
+
+
+```
+```{r stat_area_500syearlyFree, eval=TRUE, fig.cap=paste("annual matched landings from the 500s, areas with minimal landings excluded, Yscale free")}
+
+
+ggplot(balanced.panel %>% dplyr::filter(area<600))+
+  geom_line() + 
+  aes(x=year, y=landings) +
+    ylab("Landed Pounds (000s)")+ 
+    facet_wrap(~area, scale="free_y")
+
+
+
+```
+
+
+
+```{r stat_area_600syearly, eval=TRUE, fig.cap=paste("annual matched landings from the 600s, areas with minimal landings excluded")}
+balanced.panel<-balanced.panel %>%
+    dplyr::filter(!area %in%c(624,627,629,633,634,635,637,638,639,640,650)) 
+
+
+ggplot(balanced.panel %>% dplyr::filter(area>=600 & area<700))+
+  geom_line() + 
+  aes(x=year, y=landings) +
+    ylab("Landed Pounds (000s)")+ 
+    facet_wrap(~area)
+
+```
+
+```{r stat_area_600syearlyFree, eval=TRUE, fig.cap=paste("annual matched landings from the 600s, areas with minimal landings excluded. Yscale free")}
+balanced.panel<-balanced.panel %>%
+    dplyr::filter(!area %in%c(624,627,629,633,634,635,637,638,639,640,650)) 
+
+
+ggplot(balanced.panel %>% dplyr::filter(area>=600 & area<700))+
+  geom_line() + 
+  aes(x=year, y=landings) +
+    ylab("Landed Pounds (000s)")+ 
+    facet_wrap(~area, scale="free_y")
+
+```
+
+
+
 
 
 ## State level landings by area
