@@ -4,26 +4,88 @@ author: "Min-Yang Lee"
 date: "`r format(Sys.time(), '%B %d, %Y')`" 
 documentclass: article
 csl: "../ajae_mod.csl"
-keywords: "Catch Shares, Quota Prices, Fisheries Economics"
+abstract: "The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  Gaps in the data can arise when categories of certain fish simply are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. The size of individual fish is a characteristic than determines the price of fish; larger specimens nearly always receive higher prices than smaller ones. I use the Black Sea Bass fishery in the Northeast United States to illustrate my approach to using economic data to inform stock assessments.  There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. I estimate a hedonic model to confirm that individual size impacts fish prices: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. Then I estimate a multinomial logit that explains market category as a function of prices and other attributes.  I use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing me to construct a price-informed length structure of commercial removals. "
+keywords: "Hedonic Prices, Age structure, Stock assessment"
 output:
-  word_document: null
   pdf_document: 
     includes:
       in_header: "../preamble-latex.tex"
     keep_tex: yes
     pandoc_args: --pdf-engine=pdflatex
     number_sections: true
+  word_document: null
   html_document: null
 fontsize: 12pt
 bibliography: "../../library.bib"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+ <!---- 
+Summary and Housekeeping
+
+This is a data summary document. I ran the files ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+
+I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
+
+Warnings: There is something funky going on with VA "status=PZERO" starting in 2021.  There is also something funky going on with Delaware landings, but there are no hullids/permit numbers so I don't think this will throw anything off at the vessel level.
+
+--->
+
+```{r global_options, include=FALSE}
+
+ library("foreign")
+ library("here")
+ library("tidyverse")
+ library("scales")
+ library("knitr")
+ library("lubridate")
+ library("kableExtra")
+ library("haven")
+ library("mapview")
+ library("sf")
+here::i_am("writing/BSB_data_summary.Rmd")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+#############################################################################
+my_images<-here("images")
+
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+# Read in statistical areas
+stat_areas_location<-here("data_folder","external","shapefiles","Statistical_Areas_2010.shp")
+stat_areas <- st_read(dsn = stat_areas_location)
+
+#trim out some stat areas that I don't care about.
+stat_areas<-stat_areas %>%
+  dplyr::filter(Id>=460) %>% # Canada
+   dplyr::filter(Id<=711) %>% # SERO
+  dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
+
 ```
 
-## Abstract
+# Introduction
 
-The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  Gaps in the data can arise when categories of certain fish simply are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. The size of individual fish is a characteristic than determines the price of fish; larger specimens nearly always receive higher prices than smaller ones. 
 
-I use the Black Sea Bass fishery in the Northeast United States to illustrate my approach to using economic data to inform stock assessments.  There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. I estimate a hedonic model to confirm that individual size impacts fish prices: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. Then I estimate a multinomial logit that explains market category as a function of prices and other attributes.  I use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing me to construct a price-informed length structure of commercial removals.  
+
+
+
+# Regulations and Background
+
+<!--- Include the next 2 child documents.   --->
+```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=TRUE}
+```
+
+
+
+
