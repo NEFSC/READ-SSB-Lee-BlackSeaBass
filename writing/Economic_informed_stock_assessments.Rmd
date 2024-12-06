@@ -7,14 +7,14 @@ csl: "../ajae_mod.csl"
 abstract: "The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  Gaps in the data can arise when categories of certain fish simply are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. The size of individual fish is a characteristic than determines the price of fish; larger specimens nearly always receive higher prices than smaller ones. I use the Black Sea Bass fishery in the Northeast United States to illustrate my approach to using economic data to inform stock assessments.  There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. I estimate a hedonic model to confirm that individual size impacts fish prices: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. Then I estimate a multinomial logit that explains market category as a function of prices and other attributes.  I use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing me to construct a price-informed length structure of commercial removals. "
 keywords: "Hedonic Prices, Age structure, Stock assessment"
 output:
+  html_document: null
+  word_document: null
   pdf_document: 
     includes:
       in_header: "../preamble-latex.tex"
     keep_tex: yes
     pandoc_args: --pdf-engine=pdflatex
     number_sections: true
-  word_document: null
-  html_document: null
 fontsize: 12pt
 bibliography: "../../library.bib"
 ---
@@ -87,5 +87,27 @@ stat_areas<-stat_areas %>%
 ```
 
 
+# Stock assessment
+
+The age-structure of commercial landings is a crucial input to the stock assessment. Samplers are measure the length of commercially landed fish and are deployed to cover different market categories.
+
+Gaps in the data can arise when categories of certain fish  are not sampled.  
+
+When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. 
+
+There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  Extra Small and PeeWee are aggregated into Small.  Mixed is aggregated into Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured.
+
+Semester is Jan -June and July -Dec.
+
+Gear doesn't matter for landed lengths, but yes for discards.
 
 
+```{r borrowed_lengths, fig.show = "hold", out.width = "48%", fig.cap="Borrowed Lengths in Black Sea Bass",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg")))
+```
+
+Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
+
+The underlying data is taken from **STOCKEFF*iciency, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
+
+Kiersten thinks the research question has specific and general applicability. She also thought of the idea that we could use economic info in the future when market categories aren't collected. 
