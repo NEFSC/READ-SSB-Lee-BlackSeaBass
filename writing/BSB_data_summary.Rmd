@@ -122,16 +122,23 @@ knitr::include_graphics(here("data_folder","external","web_maps",c("SPP_335_QTYK
 2. Three states have implemented a catch share for Black Sea Bass. What has happened in these fisheries?
 
     * Triple diff: pre-post/ treat-control, plus the gear treatments might vary?
-    * The quota markets might be thin. Does this mean we have to model quota usage in a dynamic setting? 
+      * Prices -- probably not possible, SUTVA unlikely since they all produce BSB.
+      * Season length is more likely, but what does this mean when some states are managed by bi-weekly in-season adjustments?
+    * The Three catch share states have very similar regulations: IFQ, minimum mesh/vent, and minimum size.
+    * The other states seem to also have similar regulations: Limited access, mesh/vent, minimum sizes, and day/week possession limits.
+      * What do we "need" to say anything interesting?  We have 1996-2002 as "pre" data.
+      * How do I "add" things to a choice set?  
+          * Is it enough to 'flag' 
+    * The quota markets are thin -- it looks like 6-30 permits/people. Does this mean we have to model quota usage in a dynamic setting?
   
-3. Many of the states have enacted limited access for landing permits. They tend to be the southern states.  What are the welfare effects? Is this a good idea? What is the political economy?  What is the economic game and strategic interactions at the ASFMC and what are the objectives of the individuals?  
+3. All of the states have limited access black sea bass. These limits make it hard for vessels from other states to land.  What are the welfare effects? Is this a good idea? What is the political economy?  What is the economic game and strategic interactions at the ASFMC and what are the objectives of the individuals?
     
     * Talk to Emily K (Although Emily is moving off BSB) at GARFO.  MAFMC and ASMFC staff too?
     * What kind of information exists at the state level? Can we get any more info, especially from MA, RI, and CT about fishing effort?
     * How has the BSB fishery played out for the catch share states compared to the non-catch share states? Greg has been using the cost data together to put together profitability profiles. 
         * For firms without a federal permit, I don't know how to feel about that.
     * Entangled in this might be a model of landing locations for firms. Do we try to look back to the 'pre state allocation' decisions?  This would be around 1999-2002. The aggregate quotas went in March 31, 2023.   
-    * Have the possession limits concentrated fishin effort in the nearshore (summer) months? Is this good or bad?  Are offshore northern waters basically inaccessible?
+    * Have the possession limits concentrated fishing effort in the nearshore (summer) months? Is this good or bad?  Are offshore northern waters basically inaccessible?
     
 
 # Things to Figure out
@@ -157,6 +164,10 @@ knitr::include_graphics(here("data_folder","external","web_maps",c("SPP_335_QTYK
 1. Use it or lose-it at the state level? I don't think so.
 
 1. How much does it cost to get a state permit?
+  * Varies by state.
+  * Commercial permits for Residents are usually in the 100-300 per year range. This might cover all species or endorsements might be required at an additional fee in the 20-100 per year range.
+  * Commercial permits for non-residents are usually 300-500 per year, endorsements again extra.
+  * Transferring in a state LA permit will be tricky. 
 
 1. Add the state level allocation info.
 
@@ -845,7 +856,7 @@ port_switcher_table<-cbind(rowSums(port_switcher_table),port_switcher_table)
 colnames(port_switcher_table)[1]<-"Total"
 
 
-# just show the stat areas greater than 1.5%
+# Port switches in a year, top coded at 10%
 kbl(port_switcher_table
   , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(port_switcher_table)-1)), caption =  "Number of permits that switched ports (truncated at 10)") %>%
 kable_styling(full_width = T,latex_options = "hold_position") %>% 
@@ -894,6 +905,10 @@ kable_styling(full_width = T,latex_options = "hold_position") %>%
 
 ## State level matching
 
+I feel pretty confident about being able to model the behavior of all BSB participants in DE, MD, NJ, and VA. This is 3 catch-share fisheries and 1 regulated limited-access fishery.  NC is a little uncertain.  If we can get something out of the state-level reports -- they might have dates or total trips at the vessel level?  We know that the non VTR trips would have had to be in state waters.
+
+I feel pretty confident about being able to model the behavior of *federally* permitted fishing vessels.  However, in NY, RI, CT, and MA a very large fraction of the landings are not matchable to VTRs.  If we need to say something about the NY, RI, CT, and MA fishery based on the federally permitted vessels, we might be able to pull some statistics based on Coast Guard vessel data (https://www.fisheries.noaa.gov/foss/f?p=215:4:8375418615201:::::) and make some sort of claim based on length, hp, age, or tonnage.  Matching everything is hopeless. And there are still some hullid's that do not show up in this database, I think because the "hullid" is actually a state identifier that does not show up in the coast guard db. 
+
 The proportion of good matches landings in Delaware, Maryland, New Jersey, and Virginia are very high.  Matches for North Carolina are moderate, I wouldn't be surprised if this is a boundary issue with the south Atlantic.  New York, Rhode Island, and Connecticut are moderate and getting worse. Massachusetts is really bad.  There is a data error with VA that is making the last couple years look bad, but the data people at GARFO have tracked that down to: 
 
 The issue is related to the underlying data and processing of state Warehouse records at ACCSP.  Some state partners upload state landings to the ACCSP Warehouse on an annual basis.  ACCSP performs a matching routine on those uploads that cross references them to Federal dealer landings in SAFIS.  If the match is successful, those Warehouse records are not ingested into SAFIS and therefore not ingested into CFDERS.
@@ -909,9 +924,6 @@ For the entire region, it looks like have matches for about 2/3rds of the black 
 knitr::include_graphics(file.path(exploratory_images,c("cams_veslog_hails.png","state_cams_veslog_hails.png")))
 ```
 
-I feel pretty confident about being able to model the behavior of all BSB participants in DE*, MD, NJ, and VA. This is 3 catch-share fisheries and 1 regulated limited-access fishery.  NC is a little uncertain. 
-
-I feel pretty confident about being able to model the behavior of *federally* permitted fishing vessels.  However, in NY, RI, CT, and MA a very large fraction of the landings are not matchable to VTRs.  If we need to say something about the NY, RI, CT, and MA fishery based on the federally permitted vessels, we might be able to pull some statistics based on Coast Guard vessel data (https://www.fisheries.noaa.gov/foss/f?p=215:4:8375418615201:::::) and make some sort of claim based on length, hp, age, or tonnage.  Matching everything is hopeless. And there are still some hullid's that do not show up in this database, I think because the "hullid" is actually a state identifier that does not show up in the coast guard db. 
 
 ## Gears
 
@@ -922,8 +934,9 @@ knitr::include_graphics(file.path(exploratory_images,c("gears_by_year.png", "fge
 ```
 
 
-
 ## Prices
+
+If I *need* a model of prices in order to get my main model to work, I can do that. But I don't want to have to do it. 
 
 Prices basically make sense and increase with size. There are definitely tendencies to have prices that in $0.05 and $0.25 increments, which causes the histograms to look really jagged.
 

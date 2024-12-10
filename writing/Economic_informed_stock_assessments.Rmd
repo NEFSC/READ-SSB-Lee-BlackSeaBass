@@ -77,7 +77,29 @@ stat_areas<-stat_areas %>%
 # Introduction
 
 
+# Summary: Research Question, Motivation, Extensions, and Potential Problems
 
+## Research Question
+
+Can the information contained in prices be used to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category?
+
+## Motivation
+
+Landed weights must be converted into landed numbers at age for stock assessments. When no fish in a market category are measured, a length distribution must be borrowed for the fish in the Unmeasured market categories.  Prices are a piece of information that can be used to do this. For Black Sea bass, the unclassified market category was not measured for 3 years. 
+
+## Extensions
+
+Can we use the methods to other fisheries? If it works well, can port sampling effort be re-deployed away from categories that are hard to get?
+
+
+
+## Potential Problems
+
+* State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers.  If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported. 
+
+* Price Separation: Prices need to vary by market category. If they there isn't any variation in prices across market categories, then it won't work. Prices don't need to have a particular relationship, and that relationship can probably change from year to year (or period-to-period) 
+
+* What if it's a dealer idiosycracy?
 
 
 # Regulations and Background
@@ -110,4 +132,3 @@ Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` illustrates the probl
 
 The underlying data is taken from **STOCKEFF*iciency, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
 
-Kiersten thinks the research question has specific and general applicability. She also thought of the idea that we could use economic info in the future when market categories aren't collected. 
