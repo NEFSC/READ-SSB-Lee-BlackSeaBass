@@ -40,11 +40,11 @@ Virginia [https://mrc.virginia.gov/Regulations/fr950.shtm]
 
   * Need a directed bsb permit and either a commercial fisherman license or a seafood landing license.
   * Pots restrictions (same as MD)
-  * 40,000 lbs allocated to the "bycatch" fishery and everythign else is allocated to the quota fishery
+  * 40,000 lbs allocated to the "bycatch" fishery and everything else is allocated to the quota fishery
   * Quota allocated based on a person's history from July 1, 1997 to December 31, 2001.
   * Bycatch fishery
-    * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
-    * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
+  * 200lbs plus the NC legal limit, reduced to 100lbs plus the limit when the bycatch fishery hits 75% or
+  * 1,500 lbs as long as that is less than 10% of the weight of SF, scup, longfin squid, and mackerel.
   
 
 Delaware [https://regulations.delaware.gov/AdminCode/title7/3000/3500/3501.shtml]
@@ -79,23 +79,45 @@ New Jersey
 
 Rhode Island
 
+  * Limited entry (This is one of the "Unlimited Finfish" endorsements.)  No new licenses, but they can people can enter as others exit. It's probably quite difficult to get a license.
+  * https://dem.ri.gov/programs/marine-fisheries/fishamnd.php
+  * There some sort of "Aggregate" program for SF and BSB.  Land up to 7x the daily limit, probably 1 x per week?
+  * Exemption certificates?
+  * Jan 1, the commercial limit was 500lbs/week. Then 750lbs on March1. and 1,500 on April 1. June 9, it was 150lb/day and then July 1 was 50lb/day.
+  * Non-resident landing permits -- Available to non-residents only if the landing is charged to the quota of the State in which the vessel making the landing is registered or documented; or, if the State where the vessel making the landing is registered or documented allows Rhode Island residents to land against its quota for that species; or, if the Department pursuant to a fisheries management plan determines there to be excess harvesting capacity in the Rhode Island commercial quota for that species.
 
 Connecticut
-
+  
+  * possession limits. winter limits are 2 week periods and then this adjusts during the year
+  * Limited access starting at least in 2003.  Zero possession without a Limited Access permit.
+  * I didn't see anything about a non-resident landing limit
 
 Massachusetts
 
   * Limited Entry (not sure when)
   * 12" minimum
-                                      * possession limit of 100lbs between Jan 1 and march 31
-                                      * Lots of complicated regs that start on July 1. Possession limits, Friday/Saturday out that depend on quota usage.
-                                      * Regs are different for Pot and "other gear"
-                                      * I think there might be an owner-operator requirement for pots, which was probably intended for the lobster fishery, but may apply here. I haven't looked too hard.
+  * possession limit of 100lbs between Jan 1 and march 31
+  * Lots of complicated regs that start on July 1. Possession limits, Friday/Saturday out that depend on quota usage.
+  * Regs are different for Pot and "other gear"
+  * I think there might be an owner-operator requirement for pots, which was probably intended for the lobster fishery, but may apply here. I haven't looked too hard.
+  * Endorsement transfers 
+    * Seller  must have been fished for 2 of the most recent five years.  
+    * Buyer must document experience, or be to an immediate family member, or be transferred with accompanying federal permits for fluke and black sea bass.
+    * Must involve sale or transfer of fishing-related business assets
   
 (https://casetext.com/regulation/code-of-massachusetts-regulations/department-322-cmr-division-of-marine-fisheries/title-322-cmr-700-permits/section-701-form-use-and-contents-of-permits)
+and (https://casetext.com/regulation/code-of-massachusetts-regulations/department-322-cmr-division-of-marine-fisheries/title-322-cmr-700-permits/section-706-limited-entry-permits)
   
+New York
 
-The "landing restrictions" seem to be doing two things. They are certainly limiting access, but they are also preventing vessels from landing outside their home state.
+  * Limited Entry
+  * Trip limits that decline as projected landings approach total quota.
+  * There is a multi-state possession limit provision. not sure if it's used for bsb or just sf.
+  
+  
+### Takeaways
+
+The "landing restrictions" seem to be doing two things. They are certainly limiting access, but they are also preventing vessels from landing outside their home state.  This is "good" for states that are limited-access with trip-limits. It's probably "bad" for states that are IFQ.  Who is benefitting? Who is not? 
 
 There are two populations managed by the ASFMC. The South stock is from Beaufort/Cape Hatteras, NC north to Hudson Canyon (Statistical Areas 621 and higher, plus statistical areas 614 and 615). The North stock is everything north of that (all the 5XX statistical areas, plus 611,612, 613, 616). 
 
