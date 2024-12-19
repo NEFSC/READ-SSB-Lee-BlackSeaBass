@@ -1,0 +1,181 @@
+---
+title: 'Strategic Interactions by States'
+author: 
+  - Min-Yang Lee, NOAA Fisheries
+  - Anna Birkenbach, University of Delaware
+date: "`r format(Sys.time(), '%B %d, %Y')`" 
+documentclass: article
+csl: "../ajae_mod.csl"
+abstract: ""
+output:
+  word_document: null
+  html_document: null
+  pdf_document: 
+    includes:
+      in_header: "../preamble-latex.tex"
+    keep_tex: yes
+    pandoc_args: --pdf-engine=pdflatex
+    number_sections: true
+fontsize: 12pt
+bibliography: "../../library.bib"
+---
+
+
+ <!---- 
+Summary and Housekeeping
+
+This is a data summary document. I ran the files ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+
+I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
+
+Warnings: There is something funky going on with VA "status=PZERO" starting in 2021.  There is also something funky going on with Delaware landings, but there are no hullids/permit numbers so I don't think this will throw anything off at the vessel level.
+
+--->
+
+```{r global_options, include=FALSE}
+
+ library("foreign")
+ library("here")
+ library("tidyverse")
+ library("scales")
+ library("knitr")
+ library("lubridate")
+ library("kableExtra")
+ library("haven")
+ library("mapview")
+ library("sf")
+here::i_am("writing/BSB_data_summary.Rmd")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+#############################################################################
+my_images<-here("images")
+
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+```
+
+```{r readin_stat_areas, eval=FALSE}
+
+
+# Read in statistical areas
+stat_areas_location<-here("data_folder","external","shapefiles","Statistical_Areas_2010.shp")
+stat_areas <- st_read(dsn = stat_areas_location)
+
+#trim out some stat areas that I don't care about.
+stat_areas<-stat_areas %>%
+  dplyr::filter(Id>=460) %>% # Canada
+   dplyr::filter(Id<=711) %>% # SERO
+  dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
+
+```
+
+# Summary: Research Question, Motivation, Extensions, and Potential Problems
+
+## Research Questions
+
+What are the economic and biological implications of the strategic interaction between states in the Black Sea Bass fishery? [Not a great question yet, too vague]
+
+## Motivation
+
+Since 2003, the commercial black sea bass quota has been allocated to individual states by the ASMFC.  The allocation formula was changed in 2021: the historical fishery receives three times the weight as the current spatial distribution of biomass in the allocation rule. Quota charges are based on the state in which the fish was landed and done through the dealer reporting systems. 
+
+There are at least a few opportunities for strategic interaction.
+
+1. NMFS, under MSA, will close the entire fishery when the quota is projected to be reached.  This could mean that the costs of 'defecting' behavior by one state could be felt other states, especially because there is a sequentiality within a fishing year. The 2nd level regulator (ASMFC) needs to set up a system where this doesn't happen.
+2. Fishing firms and managers in a state want to limit access. This is good for conservation and management relative to open access. Is this good or bad for buyers and downstream customers?  There's probably more of a bilateral bargaining game for BSB than there is for other species that can flow.
+  * Fish buyers cannot "compete" for additional landings from out of state very easily.  They could offer higher prices, but it will be hard for them to pull in substantial amounts of landings from other states.
+  * Fish sellers (fishing vessels) have very few dealers to sell to.
+  * Did the market "dis-integrate" (uncouple) after the state-level quotas?
+3. If the allocation formula is revised again (for history), do states have an incentive to be loose on their own quota monitoring?
+  * Does this add a bit of "use-it-or-lose it" to the states? Maybe. But i don't know if it trickles down to the vessels.
+4. State overages are forgiven if the commercial quota is not exceeded, do individual states have an incentive to be a bit 'loose' with their regulations when the aggregate quota is not likely to bind and a bit more 'strict' when the aggregate quota is likely to bind? Does repeated interaction make this less likely?  Does the fact that there are multiple species being managed, so each state has many interactions, matter? 
+5. What will the "northern" states do in 10 or 30 years a biomass continues to move north? Do the Southern states eventually have an incentive to hit-it all before it's gone?  It is complicated by the fact that there is SAFMC/SERO stock?
+
+
+
+Commercial quota can be transferred across states.
+
+* Addendum 20 allowed for all kinds of quota to be transferred across states and put in a default formula.
+* In years when the commercial quota is not exceeded, then state-overages are forgiven.
+* In years when the commercial quota is exceeded, then there is a default method of allocating underages. States can also negotiate among themselves for individual transfers OR a different allocation plan can be unanimously agreed to by the states with overages.
+
+
+# Methods, Identification Strategy, and Pitfalls
+
+## Pitfalls
+
+# Related
+
+* Game theory and Fisheries
+  * International or Transboundary Stocks
+  * Moving stocks
+
+* The ASFMC and individual states can only indirectly regulate fishing in federal waters.  For example, states can set a minimum size limit. This is pretty easy to enforce. They can set a daily landing limit (in their state). This is also easy to enforce, but they need some cooperation from neighboring states to ensure that vessels don't land in two states.  They can require firms to use specific gear in state waters (easy to enforce) and require fish landed in their state to be caught using specific gears (harder to enforce).
+
+* @Barrett2024 illustrates the differences between "customary law" and "Nash Equilibrium" in a model of Exclusive Economic Zone declaration.  Under customary law, declaration of an EEZ is only effective if a large enough number of other states agree to it and adopt it. Under Nash Equilibrium, an EEZ arises if it's deviation from an EEZ policy is worse.  He models the ocean as a "line" between two countries along which fish are distributed.
+  * Uniformly on a subset of the line "near" the homeport (independent inshore fisheries)
+  * Uniformly along a subset of the at the "center" (offshore fisheries)
+  * Uniformly along the entire line (highly migratory species)
+
+A fleet can fish anywhere inside it's country's EEZ or it can travel to a part of the line that is not another country's EEZ.
+
+@Barrett2024 cites @Herrera2016 *de facto* (non-binding) marine reserves that can develop when fishing is patchy. The @Herrera2016 model has a habitat line. With a small number of countries, an "Economic reserve" can develop because it's not profitable to harvest in certain areas. These seem to arise at the boundaries, although I don't understand why.
+
+There is also a model of Distant-waters fishing in a regional sea.  If coastal states could cooperate by excluding Distant waters *and* simultaneously allows each other access, then they would jointly bet better off.  The @Barrett2024 line feels like a good theoretical jumping off point for the costs of state restrictions.  What happens if 1 state does a 'only local vessels can land here' restriction? What if multiple states do so simultaneously?  Is it interesting if they did it without thinking?  Did someone think it?
+
+
+# Bilateral bargaining in the output market? (wrong title)
+
+Consider this an extension of the area- and port- choice problem.
+
+I've been thinking about this in 2 dimensions, but a "line" is probably fine.
+
+Zero transportation costs and a perfectly competitive fillet market for Black Sea Bass.
+
+Costs of production in the ocean vary. There's idiosyncratic variation (patchiness).
+
+Dealers compete for landings by offering a price. Fishing vessels bring in their catch.
+
+Since there is no heterogeneity on the demand side and all dealers are 'the same', they offer the same price. Fish caught exclusively from the good patches and landed exclusively in areas that are closest to the good patches.  As the good patches "move" north, the catch follows directly.  This is basically a gravity model. 
+
+If we add in costs of transportation and a central demand location, the the fishing locations are driven by downstream economics.  A dealer in port $i$ can offer $p-cD_i$, where $D_i$ is the distance from the port $i$ to the central demand location and $c$ is the cost of transporting fish over land.  Dealers closer to the central demand location can offer higher prices than dealers that are farther away from the central demand location. Without any more heterogeneity or constraints, we will get all the fishing right next to the central location.
+
+If there is congestion (or serial depletion), then we get a set concentric rings around the central demand location.  As good patches "move" north, the concentric rings get distorted.
+
+If there are two demand locations, then we have 2 sets concentric rings. There's some "boundary" line, where firms would be indifferent about going to either port.  As good patches move north the boundary line shifts and the fishing and landings areas start to move north.
+
+
+Fishing firms and managers in a state want to limit access. This is good for conservation and management relative to open access. Is this good or bad for buyers and downstream customers?  There's probably more of a bilateral bargaining game for BSB than there is for other species that can flow.
+  * Fish buyers cannot "compete" for landings from out of state very easily.  They could offer higher prices, it will be hard for them to really pull in landings from other states.
+  * Fish sellers (fishing vessels) have very few dealers to sell to.
+  * Did the market "dis-integrate" after the state-level quotas?
+
+
+
+
+
+
+
+
+# Deep Background 
+
+<!--- Include the next 2 child documents.   --->
+```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=FALSE}
+```
+
+
+
+
+\newpage
+
+# References
+<div id="refs"></div>
