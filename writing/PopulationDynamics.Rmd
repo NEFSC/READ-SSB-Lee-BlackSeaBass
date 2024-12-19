@@ -1,0 +1,21 @@
+## Assessments
+
+Research Track Assessment in 2023 (4)? 
+
+Management Tracks in 2024 and scheduled for 2025. The 2025 one is to bring in results of the research track
+
+Lots of surveys
+
+## Movement
+
+Fish move inshore in the spring and offshore in the fall/winter.
+
+VAST used to construct spatially delineated estimates of encounter and abundance. 
+
+The Spring index is tracking north and East over the entire 1990-2022 time series. The trend might have started around 2000, not 1990, it's a little tricky to tell from the image.
+
+```{r Hansell_Curti_Fig6, fig.show = "hold", out.width = "48%", fig.cap="North and South Center of Mass",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(file.path(my_images, "background",c("2023_BSB_UNIT_WP_Hansell_Curti2023_VAST_Fig6.jpg")))
+```
+
+The Fall index pattern is not as obvious. It might have trended north and east from 1990-2005 and then been constant after that. Or it might still be trending north, just that the 2000-2005 time period was a very rapid movement. But the current Fall Center of mass really seems to be more northerly than it was in the 1990s. 
