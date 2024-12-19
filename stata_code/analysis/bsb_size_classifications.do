@@ -1,4 +1,4 @@
-global in_string 2024_11_07
+global in_string 2024_12_13
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
@@ -152,6 +152,9 @@ fmm 2: regress priceR ib(freq).mygear ib(freq).mygrade ib(freq).mys QJumbo QLarg
 
 regress price i.year i.month ibn.mym ib(5).mygear ib(2).mygrade ib(10).mys c.total##c.total if keep==1 & year>=2018 & price>.15, noc
 est store uw
+
+
+gen weighting=round(lndlb*1000)
 
 regress priceR i.year i.month ibn.mym ib(5).mygear ib(2).mygrade ib(10).mys c.total##c.total if keep==1 & year>=2018 & price>.15 [fweight=weighting], noc
 est store weighted
