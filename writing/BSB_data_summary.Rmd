@@ -44,6 +44,7 @@ Warnings: There is something funky going on with VA "status=PZERO" starting in 2
  library("haven")
  library("mapview")
  library("sf")
+ library("viridis")
 here::i_am("writing/BSB_data_summary.Rmd")
 
 #############################################################################
@@ -55,7 +56,7 @@ options(tinytex.verbose = TRUE)
 # options(knitr.table.format = "latex")
 options(scipen=999)
 
-
+lbs_per_mt<-2204.62
 #############################################################################
 my_images<-here("images")
 
@@ -74,19 +75,6 @@ stat_areas<-stat_areas %>%
   dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
 
 # mapview(stat_areas)
-# ggplot(stat_areas) +
-#   geom_polygon(fill = "white", colour = "grey50") + 
-#   coord_quickmap()
-
-# ggplot(stat_areas) + 
-#   geom_sf() + 
-#   geom_sf_text(aes(label = Id), colour = "black") + 
-#   coord_quickmap()
-
-# 
-# ggplot() + 
-#   geom_sf(data=stat_areas)+ 
-#   geom_sf_label(aes(label = stat_areas$Id))
 
 ```
 
@@ -243,6 +231,48 @@ obs_by_year<-working_landings%>%
 #     row_spec(0,bold=FALSE)
 ```
 
+Most of the locations without a match are status=PZERO. I think it's reasonable to deduce that those trips are in state waters, within 3 nautical miles of land.  The good location column is just a quick check that lon is not na. 
+```{r matchOS, eval=TRUE}
+
+
+matching1<-working_landings%>%
+  ungroup() %>%
+  mutate(good_location=!is.na(lon_dd)) %>%
+  group_by(status,good_location)%>%
+  summarise(land=sum(lndlb, na.rm=TRUE))
+
+
+
+matching<-working_landings%>%
+  ungroup() %>%
+  mutate(MATCH_OS=case_when(
+            status=="MATCH" ~ "MATCH_OS",
+            status=="DLR_OPRHAN_SPECIES" ~ "MATCH_OS",
+            .default="NOT"),
+         good_location=!is.na(lon_dd)) %>%
+  group_by(MATCH_OS,good_location)%>%
+  summarise(land_mt=sum(lndlb/lbs_per_mt, na.rm=TRUE))
+
+
+kbl(matching, digits=1,booktabs=T, align=c("l",rep('r',times=2)), caption =  "Good locations, all years combined") %>%
+    #column_spec(5:8, width = "2cm")
+    kable_styling(full_width = F) %>% 
+      row_spec(0,bold=FALSE) 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 This figure shows all landings of bsb and all "trips" that landed bsb in CAMS.
 
@@ -270,7 +300,7 @@ ggplot(obs_by_year, aes(x=year)) +
   theme(
     axis.title.y = element_text(color = PoundsColor, size=13),
     axis.title.y.right = element_text(color = TripColor, size=13)
-  ) 
+  )
 
 
 
@@ -762,7 +792,9 @@ state_area_all_others <-stat_area_state_summary %>%
 
 ggplot(state_area_all_others %>%mutate(area=as.factor(area))
        , aes(fill=area, y=landings, x=state)) + 
-    geom_bar(position="stack", stat="identity")  
+    geom_bar(position="stack", stat="identity")  + 
+    scale_fill_viridis(discrete=TRUE)
+
 
 
 ```
@@ -791,7 +823,8 @@ ggplot(state_area_all_others, aes(x="", y=prop, fill=area)) +
   coord_polar("y", start=0) + 
   theme_void() + 
   theme(legend.position="none") +
-  geom_text(aes(y = ypos, label = area), color = "white", size=3) 
+  geom_text(aes(y = ypos, label = area), color = "white", size=3) + 
+  scale_fill_viridis(discrete=TRUE)
 
 ```
 
@@ -809,9 +842,7 @@ select docid from nefsc_garfo.trip_reports_images where serial_num in ('21502233
 
 ## Port switches
 
-The following table contains the Total number of active BSB permits and the number of permits that switched ports by year. In 1996, there were 516 active permits; 418 always landed BSB in the same port, 39 switched 1 time, 41 switched twice, 4 switched 3 times, ....
-
-A switch is defined when sequential BSB trips did not land in the same port.
+The following bar chart is the frequency count of permits that switch ports within a year. A switch is defined when sequential BSB trips did not land in the same port. This is top-coded at 5 switches.
 
 
 
@@ -836,7 +867,6 @@ attrib<-working_landings %>%
   mutate(port2=(port %%10000-countycd)/100)
   
 
-
 attrib<-attrib %>%
   group_by(permit)%>%
   mutate(port_diff = port - dplyr::lag(port))%>%
@@ -847,59 +877,62 @@ port_switchers_yr <-attrib %>%
   mutate(year=lubridate::year(dlr_date))%>%
   group_by(permit, year) %>%
   summarise(changed_port=sum(changed_port, na.rm=TRUE))%>%
-  mutate(changed_port=ifelse(changed_port>=10,10,changed_port))
+  mutate(changed_port=ifelse(changed_port>=5,5,changed_port))%>%
+  group_by(year, changed_port) %>%
+  summarise(count=n())%>%
+  mutate(changed_port=factor(changed_port, level=5:0)) %>%
+  ungroup()
 
 
-port_switcher_table<-table(port_switchers_yr$year, port_switchers_yr$changed_port)
- 
-port_switcher_table<-cbind(rowSums(port_switcher_table),port_switcher_table)
-colnames(port_switcher_table)[1]<-"Total"
-
-
-# Port switches in a year, top coded at 10%
-kbl(port_switcher_table
-  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(port_switcher_table)-1)), caption =  "Number of permits that switched ports (truncated at 10)") %>%
-kable_styling(full_width = T,latex_options = "hold_position") %>% 
-      row_spec(0,bold=FALSE) 
-
-
+ggplot(port_switchers_yr
+       , aes(fill=changed_port, y=count, x=year)) + 
+    geom_bar(position="stack", stat="identity") + 
+  scale_fill_viridis(discrete=TRUE) 
 
 
 ```
 
+## State switches
+
+The following bar chart is the frequency count of permits that switch states within a year. A switch is defined when sequential BSB trips did not land in the same state. This is top-coded at 5 switches.
 
 
 ```{r state_switches, eval=TRUE}
 state_switchers<-attrib %>%
   group_by(permit)%>%
-  mutate(state_diff = statecd - dplyr::lag(statecd))%>%
+  mutate(state_diff = statecd - dplyr::lag(statecd,1))%>%
   mutate(changed_state=ifelse(state_diff %in% c('0'),0,1))%>%
    mutate(changed_state=ifelse(is.na(state_diff),NA,changed_state))
+
+state_switchers2<-state_switchers %>%
+#  group_by(permit)%>%
+  dplyr::filter(changed_state == 1 | dplyr::lead(changed_state,1)==1) 
+
+
 
 state_switchers_yr <-state_switchers %>%
   mutate(year=lubridate::year(dlr_date))%>%
   group_by(permit, year) %>%
   summarise(changed_state=sum(changed_state, na.rm=TRUE))%>%
-  mutate(changed_state=ifelse(changed_state>=10,10,changed_state))
+  mutate(changed_state=ifelse(changed_state>=5,5,changed_state))%>%
+  group_by(year, changed_state) %>%
+  summarise(count=n())%>%
+  mutate(changed_state=factor(changed_state, level=5:0)) %>%
+  ungroup()
 
 
-
-
-state_switcher_table<-table(state_switchers_yr$year, state_switchers_yr$changed_state)
- 
-state_switcher_table<-cbind(rowSums(state_switcher_table),state_switcher_table)
-colnames(state_switcher_table)[1]<-"Total"
-
-
-
-# just show the stat areas greater than 1.5%
-kbl(state_switcher_table
-  , format.args = list(big.mark = ","), digits=0,booktabs=T, align=c("l",rep("r",ncol(port_switcher_table)-1)), caption =  "Number of permits that switched ports (truncated at 10)") %>%
-kable_styling(full_width = T,latex_options = "hold_position") %>% 
-      row_spec(0,bold=FALSE) 
-
+ggplot(state_switchers_yr
+       , aes(fill=changed_state, y=count, x=year)) + 
+    geom_bar(position="stack", stat="identity")  + 
+  scale_fill_viridis(discrete=TRUE) 
 
 ```
+
+## Movement over time
+
+One descriptive thing is to look at the locations fished by state. A quick and dirty way is just to landings-weight the VTR points. and compute a center of mass based on that. A slightly more accurate would be to do some sort of contour plot.
+
+
 
 
 
@@ -1061,9 +1094,119 @@ knitr::include_graphics(file.path(exploratory_images,c("permit_MA.png", "hullid_
 knitr::include_graphics(file.path(exploratory_images,c("permit_coastwide.png", "hullid_coastwide.png")))
 ```
 
-# Trips
+# Locations
 
 
+```{r function_def, eval=FALSE}
+  kde2d.weighted <- function (x, y, w, h, n = 25, lims = c(range(x), range(y))) {
+  nx <- length(x)
+  if (length(y) != nx) 
+    stop("data vectors must be the same length")
+  if (length(w) != nx & length(w) != 1)
+    stop("weight vectors must be 1 or length of data")
+  gx <- seq(lims[1], lims[2], length = n) # gridpoints x
+  gy <- seq(lims[3], lims[4], length = n) # gridpoints y
+  if (missing(h)) 
+    h <- c(bandwidth.nrd(x), bandwidth.nrd(y));
+  if (missing(w)) 
+    w <- numeric(nx)+1;
+  h <- h/4
+  ax <- outer(gx, x, "-")/h[1] # distance of each point to each grid point in x-direction
+  ay <- outer(gy, y, "-")/h[2] # distance of each point to each grid point in y-direction
+  z <- (matrix(rep(w,n), nrow=n, ncol=nx, byrow=TRUE)*matrix(dnorm(ax), n, nx)) %*% t(matrix(dnorm(ay), n, nx))/(sum(w) * h[1] * h[2]) # z is the density
+  return(list(x = gx, y = gy, z = z))
+}
+
+```
+
+# Weighted Fishery location
+
+Here are the annual centers of fishing for the landings that have a valid location. Refer back to the "match" figures
+
+```{r plot_weighted_mean}
+working_landings3<-working_landings %>%
+  dplyr::filter(!is.na(lon_dd)) %>%
+  dplyr::filter(!is.na(lat_dd)) %>%
+  mutate(wlon=lndlb*lon_dd,
+         wlat=lndlb*lat_dd) %>%
+  group_by(state, year)%>%
+  summarise(tl=sum(lndlb, na.rm=TRUE),
+            lon=sum(wlon)/tl,
+            lat=sum(wlat)/tl) %>%
+    mutate(time_period=case_when(
+  year >=2004 & year<=2009 ~ "2004-2009",
+  year >=2010  & year<=2019 ~ "2010-2019",
+  year >=2020 ~ "2020+",
+  .default = "pre")
+  ) %>%
+arrange(state,year)
+
+ggplot(working_landings3 %>%dplyr::filter(year>=2000)  %>%dplyr::arrange(state,year) 
+       , aes(y=lat, x=lon, label=year, color=time_period)) +
+geom_path()  +
+ geom_text(size=2)+
+    facet_wrap(~state)+  
+  #theme(legend.position = "none")+
+  scale_fill_viridis(discrete=TRUE)
+
+
+
+    
+
+
+
+
+```
+
+```{r contour_plotting,eval=FALSE}
+
+working_landings4<-working_landings %>%
+  dplyr::filter(!is.na(lon_dd)) %>%
+  dplyr::filter(!is.na(lat_dd)) %>%
+  dplyr::select(c(state, year, lat_dd, lon_dd, lndlb)) %>%
+  group_split(state,year)
+
+
+dfdens<-list()
+
+
+for(i in 1:length(working_landings4)){
+  
+  input<-working_landings4[[i]]
+
+# You need to do this for each state and for some years. this is probably some sort of split and lapply, right? 
+  dens <- kde2d.weighted(input$lon_dd, input$lat_dd, input$lndlb, n=50)
+  dfdens[[i]] <- data.frame(expand.grid(x=dens$x, y=dens$y), z=as.vector(dens$z))
+  dfdens[[i]]$state<-input$state[1]
+  dfdens[[i]]$year<-input$year[1]
+
+}
+
+dfdens<-bind_rows(dfdens) 
+
+dfdens2<-dfdens %>%
+  dplyr::filter(state=="DE")
+
+for(i in 1998:2024) {
+  i
+working<-dfdens2 %>%
+  dplyr::filter(year==2000)
+
+ggplot(working) +
+    #geom_point() +
+    geom_contour(aes(x=x, y=y, z=z))
+}
+
+```
+
+
+
+
+
+# Biological 
+
+```{r, child=here("writing", c("PopulationDynamics.Rmd")),  eval=TRUE}
+```
 
 
 <!---
