@@ -1,5 +1,5 @@
 /* state patterns of landings */
-global in_string 2024_12_13
+global in_string 2024_12_20
 
 use  "${data_main}\commercial\weekly_landings_${in_string}.dta", replace
 
