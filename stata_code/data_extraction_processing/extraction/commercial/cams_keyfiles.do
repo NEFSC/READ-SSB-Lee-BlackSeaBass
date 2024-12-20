@@ -5,7 +5,9 @@ jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  
 
 
 local sql "select * from cams_garfo.CFG_ITIS" ; 
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
+
 duplicates drop;
 destring, replace;
 compress;
@@ -21,7 +23,8 @@ local sql "select * from CAMS_GARFO.CFG_PORT" ;
 
 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";
@@ -34,7 +37,8 @@ local sql "select * from NEFSC_GARFO.PERMIT_DEALER" ;
 
 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";
@@ -50,7 +54,8 @@ local sql "select * from CFDBS.SPECIES_ITIS_NE" ;
 
 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";
@@ -65,7 +70,8 @@ local sql "select * from cams_garfo.CFG_MASTER_GEAR" ;
 
 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";
@@ -75,7 +81,8 @@ save  $data_main/commercial/cams_master_gear_keyfile_$vintage_string.dta, replac
 
 local sql "select * from cams_garfo.cfg_NEGEAR" ; 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";
@@ -88,7 +95,8 @@ save  $data_main/commercial/cams_negear_keyfile_$vintage_string.dta, replace;
 
 local sql "select * from cams_garfo.cfg_vlgear" ; 
 clear;
-jdbc load, exec("`sql'") case(lower);
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
 destring, replace;
 compress;
 notes: "`sql'";

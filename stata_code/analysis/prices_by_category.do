@@ -1,3 +1,4 @@
+global vintage_string 2024_12_20
 
 use "${data_main}\commercial\daily_landings_category_${vintage_string}.dta", replace
 keep if _merge==3
