@@ -78,6 +78,10 @@ foreach l of local landfiles{;
 notes: Joins of CAMS_LAND to CAMS_SUBTRIP must be done on CAMSID and subtrip;
 capture destring docid dlrid dlr_stid permit dlr_cflic port bhc subtrip dlr_rptid dlr_utilcd dlr_source dlr_toncl fzone vtr_catchid vtr_dlrid itis_tsn dlr_catch_source dlr_grade dlr_disp rec nemarea area negear sectid, replace;
 compress;
+notes: "`sql'";
+
+notes: Joins of CAMS_LAND to CAMS_SUBTRIP must be done on CAMSID and subtrip ;
+
 save $data_main/commercial/cams_land_$vintage_string.dta, replace;
 
 
@@ -87,8 +91,10 @@ foreach l of local st{;
 	append using $data_main/commercial/`l'	;
 };
 destring, replace;
-compress
-notes: Joins of CAMS_LAND to CAMS_SUBTRIP must be done on CAMSID and subtrip;
+compress;
+
+notes: "`sql'";
+notes: Joins of CAMS_SUBTRIP to CAMS_LAND must be done on CAMSID and subtrip ;
 save $data_main/commercial/cams_subtrip_$vintage_string.dta, replace;
 
 
