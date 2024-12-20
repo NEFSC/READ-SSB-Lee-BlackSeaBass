@@ -132,3 +132,46 @@ Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` illustrates the probl
 
 The underlying data is taken from **STOCKEFF*iciency, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
 
+
+# Held assumptions
+
+1. Fish are caught before they are sold.
+2. Fishing firms catch a vector of size classes. For black sea bass, there are 5 classes (Jumbo, Large, Medium/Market, and Small) 3. Firms can imperfectly adjust their output vector.The goal is always to maximize profits. 
+  - Larger fish may be available at certain times of the year.
+  - Larger fish may be available at certain parts of the ocean, which is correlated with state or trip length.
+  - Larger fish may be available to certain kinds of gear.
+  - Larger fish may be available during certain seasons, or during certain years.
+4. Fish in the "Unclassified" or "Mixed" category are a combination of sizes, there isn't actually an "unclassified" category.
+5. The definition of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state).
+
+# Methods
+
+## Do prices vary by size? 
+
+We first estimate a hedonic model in which the price per pound is a function of the transaction level attributes, including  market category, gear, and time of year. There is plenty of literature: @Larkin1999, @Larkin1999a, and @McConnell2000 are early examples.  @Kristofersson2004, @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in a hierarchical linear model. @Gobillon2017 examine buyer- and seller- effects. 
+
+The motivating concern is that independent variables in the "size" that are correlated with size could be impacting prices
+  
+2. Estimate a categorical model (ordered or un-ordered logit or something related) with price as an explanatory variable.  
+  - Validate the model with a k-fold cross validation. 
+  - Predict out of sample for the unclassified market category.
+    
+3.  Estimate a latent class (finite mixture model) on the price of unclassified, where there are a moderate number of classes (say small and large).  
+  - Validate the model with a k-fold cross-validation.
+  - Bonus validation: Validate the model by predicting categories for known small and large. 
+  - Predict the class membership of the unclassified.  
+  
+4. Using the results of (1) or (2) reconstruct a new length distribution of the landed black sea bass.  
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
