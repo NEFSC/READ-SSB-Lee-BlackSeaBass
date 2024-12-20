@@ -26,6 +26,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
+notes: Joins of CAMS_LAND to CAMS_SUBTRIP must be done on CAMSID and subtrip
 
 save $data_main/commercial/cams_land_$vintage_string.dta, replace;
 
@@ -44,6 +45,7 @@ destring, replace;
 compress;
 
 notes: "`sql'";
+notes: Joins of CAMS_SUBTRIP to CAMS_LAND must be done on CAMSID and subtrip
 save $data_main/commercial/cams_subtrip_$vintage_string.dta, replace;
 
 
