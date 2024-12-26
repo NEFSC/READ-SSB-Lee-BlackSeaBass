@@ -26,6 +26,10 @@ encode market_desc, gen(mym) label(market_category)
 
 
 
+replace grade_desc="LIVE" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+
+label def grade_category 2 "LIVE" 1 "ROUND" 3 "UNGRADED" 
+
 regress price i.year i.month i.mym
 
 /* */
