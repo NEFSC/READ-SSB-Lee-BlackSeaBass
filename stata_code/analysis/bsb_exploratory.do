@@ -8,8 +8,18 @@ format dlr_date %td
 
 gen dateq=qofd(dlr_date)
 format dateq %tq
+gen day=day(dlr_date)
 
-collapse (sum) value lndlb livlb, by(camsid hullid negear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month)
+gen questionable_status=0
+replace questionable_status=1 if status=="PZERO" & state=="VA" & inlist(dlr_cflic,"2147","1148") & year>=2021
+/* I will handle DE using this code, although I don't think it's right. */
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & price==0
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & port==80999
+
+
+
+collapse (sum) value lndlb livlb, by(camsid hullid negear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month questionable_status)
+
 
 
 gen price=value/lndlb
@@ -297,6 +307,32 @@ graph bar (asis) frac, over(mym) asyvars stack  over(year, label(angle(45)))
 graph export ${exploratory}\fmarket_cats_over_time.png, as(png) width(2000) replace
 
 restore
+
+
+
+
+/* Just look at 2020-2023 to get a sense of how much questionable landings there might be from DE and VA.*/
+preserve
+collapse (sum) lndlb value, by(mym questionable_status)
+keep if year>=2020 & year<=2023
+
+
+bysort mym: egen tl=total(lndlb)
+gen frac=lndlb/tl
+
+
+graph bar (asis) lndlb, over(questionable_status) asyvars stack over(mym, label(angle(45))) ytitle("landings 000s pounds")
+graph export ${exploratory}\questionable2020.png, as(png) width(2000) replace
+
+
+graph bar (asis) frac, over(questionable_status) asyvars stack over(mym, label(angle(45))) ytitle("fraction")
+graph export ${exploratory}\fquestionable2020.png, as(png) width(2000) replace
+
+pause
+restore
+
+
+
 
 
 
