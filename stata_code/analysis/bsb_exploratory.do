@@ -253,6 +253,8 @@ tab tc tunc
 
 
 
+replace lndlb=lndlb/1000
+
 
 /* what's the distrinbution within a year*/
 preserve
@@ -265,7 +267,7 @@ gen frac=lndlb/tl
 
 /* there are a bit more landings of unclassified in summer (may-sept/oct) */
 graph bar (asis) lndlb, over(mym) asyvars stack over(month)
-graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) replace
+graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) replace ytitle("landings 000s pounds")
 
 graph bar (asis) lndlb, over(mym) asyvars stack over(month)
 graph export ${exploratory}\fmarket_cats_within_year.png, as(png) width(2000) replace
@@ -286,7 +288,7 @@ gen frac=lndlb/tl
 Lots more Jumbos and Larges in latter part of the time series.  Landings spike in 2017.  Pretty big drop in 2009.
 And a bit of an uptick in Unclassifieds in 2019-2023
 */
-graph bar (asis) lndlb, over(mym) asyvars stack over(year, label(angle(45)))
+graph bar (asis) lndlb, over(mym) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
 
 graph export ${exploratory}\market_cats_over_time.png, as(png) width(2000) replace
 
@@ -309,7 +311,7 @@ gen frac=lndlb/tl
 /* Proportionally more unclassifieds in CT, DE, MA, and NY
 I droppped out a few random states.
 */
-graph bar (asis) lndlb, over(mym) asyvars stack over(state, label(angle(45)))
+graph bar (asis) lndlb, over(mym) asyvars stack over(state, label(angle(45))) ytitle("landings 000s pounds")
 graph export ${exploratory}\market_cats_by_state.png, as(png) width(2000) replace
 
 graph bar (asis) frac, over(mym) asyvars stack  over(state, label(angle(45)))
@@ -389,7 +391,7 @@ gen frac=lndlb/tyls
 /* Proportionally more unclassifieds in CT, DE, MA, and NY
 I droppped out a few random states.
 */
-graph bar (asis) lndlb, over(mygear_string) asyvars stack over(year, label(angle(45)))
+graph bar (asis) lndlb, over(mygear_string) asyvars stack over(year, label(angle(45)))  ytitle("landings 000s pounds")
 graph export ${exploratory}\gears_by_year.png, as(png) width(2000) replace
 
 graph bar (asis) frac, over(mygear_string) asyvars stack over(year, label(angle(45)))
@@ -406,9 +408,9 @@ drop if inlist(state, "CN","FL","ME", "NH","PA","SC")
 
 bysort state: egen tl=total(lndlb)
 gen frac=lndlb/tl
-gen price=value/lndlb
+gen price=value/lndlb*1000
 
-gen priceR=valueR/lndlb
+gen priceR=valueR/lndlb*1000
 
 
 levelsof state, local(states)
@@ -436,9 +438,9 @@ levelsof mym, local(sizes)
 collapse (sum) lndlb value valueR, by(state mym year)
 encode state, gen(mystate)
 
-gen price=value/lndlb
+gen price=value/lndlb*1000
 
-gen priceR=valueR/lndlb
+gen priceR=valueR/lndlb*1000
 
 
 foreach l of local sizes{
