@@ -276,8 +276,8 @@ gen frac=lndlb/tl
 
 
 /* there are a bit more landings of unclassified in summer (may-sept/oct) */
-graph bar (asis) lndlb, over(mym) asyvars stack over(month) replace ytitle("landings 000s pounds")
-graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) 
+graph bar (asis) lndlb, over(mym) asyvars stack over(month)  ytitle("landings 000s pounds")
+graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000)  replace
 
 graph bar (asis) frac, over(mym) asyvars stack over(month)
 graph export ${exploratory}\fmarket_cats_within_year.png, as(png) width(2000) replace
@@ -327,8 +327,9 @@ restore
 
 /* Just look at 2020-2023 to get a sense of how much questionable landings there might be from DE and VA.*/
 preserve
-collapse (sum) lndlb value, by(mym questionable_status)
 keep if year>=2020 & year<=2023
+
+collapse (sum) lndlb value, by(mym questionable_status)
 
 
 bysort mym: egen tl=total(lndlb)
@@ -342,7 +343,6 @@ graph export ${exploratory}\questionable2020.png, as(png) width(2000) replace
 graph bar (asis) frac, over(questionable_status) asyvars stack over(mym, label(angle(45))) ytitle("fraction")
 graph export ${exploratory}\fquestionable2020.png, as(png) width(2000) replace
 
-pause
 restore
 
 
