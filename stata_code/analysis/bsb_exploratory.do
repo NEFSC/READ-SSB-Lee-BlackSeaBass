@@ -306,6 +306,20 @@ graph export ${exploratory}\market_cats_over_time.png, as(png) width(2000) repla
 graph bar (asis) frac, over(mym) asyvars stack  over(year, label(angle(45)))
 graph export ${exploratory}\fmarket_cats_over_time.png, as(png) width(2000) replace
 
+
+
+
+/* Just look at 2018 to present, which covers the 2020-2023 no Unclassified years
+*/
+
+keep if year>=2018
+graph bar (asis) lndlb, over(mym) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
+
+graph export ${exploratory}\market_cats_over_2018.png, as(png) width(2000) replace
+
+
+graph bar (asis) frac, over(mym) asyvars stack  over(year, label(angle(45)))
+graph export ${exploratory}\fmarket_cats_over_2018.png, as(png) width(2000) replace
 restore
 
 
