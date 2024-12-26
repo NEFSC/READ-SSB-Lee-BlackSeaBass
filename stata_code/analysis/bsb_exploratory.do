@@ -279,7 +279,7 @@ gen frac=lndlb/tl
 graph bar (asis) lndlb, over(mym) asyvars stack over(month)
 graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) replace ytitle("landings 000s pounds")
 
-graph bar (asis) lndlb, over(mym) asyvars stack over(month)
+graph bar (asis) frac, over(mym) asyvars stack over(month)
 graph export ${exploratory}\fmarket_cats_within_year.png, as(png) width(2000) replace
 
 restore
