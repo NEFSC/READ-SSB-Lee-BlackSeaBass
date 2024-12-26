@@ -17,16 +17,20 @@ gen day=day(dlr_date)
 /* there's some suspect records from VA and DE in 2021 to present. Someone is cleaning these up, but I'm not sure who
 I will handle the VA using this code
 */
-drop if status=="PZERO" & state=="VA" & inlist(dlr_cflic,"2147","1148") & year>=2021
+
+
+
+gen questionable_status=0
+replace questionable_status=1 if status=="PZERO" & state=="VA" & inlist(dlr_cflic,"2147","1148") & year>=2021
 /* I will handle DE using this code, although I don't think it's right. */
-drop if status=="PZERO" & state=="DE" & day==1 & price==0
-drop if status=="PZERO" & state=="DE" & day==1 & port==80999
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & price==0
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & port==80999
+
+drop if questionable_status==1
 
 /*
 I  need to be careful/concerned about a state-level 'dump' of data that has a made-up price.
 PZEROS that are single transactions are not a problem. 
-
-
 
  */
 drop if lndlb==0 
