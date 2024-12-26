@@ -276,8 +276,8 @@ gen frac=lndlb/tl
 
 
 /* there are a bit more landings of unclassified in summer (may-sept/oct) */
-graph bar (asis) lndlb, over(mym) asyvars stack over(month)
-graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) replace ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(mym) asyvars stack over(month) replace ytitle("landings 000s pounds")
+graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000) 
 
 graph bar (asis) frac, over(mym) asyvars stack over(month)
 graph export ${exploratory}\fmarket_cats_within_year.png, as(png) width(2000) replace
