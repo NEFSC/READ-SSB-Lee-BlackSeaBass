@@ -7,23 +7,34 @@ format dlr_date %td
 gen dateq=qofd(dlr_date)
 format dateq %tq
 
-collapse (sum) value lndlb livlb, by(camsid hullid negear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month)
+
+/* how much of the CAMS landings are matched to a trip for black sea bass */
+gen s2=status=="MATCH"
+replace s2=1 if status=="DLR_ORPHAN_SPECIES"
+
+gen day=day(dlr_date)
+/**********************************************************************************************************************/
+/* there's some suspect records from VA and DE in 2021 to present. Someone is cleaning these up, but I'm not sure who
+I will handle the VA using this code
+*/
 
 
-gen price=value/lndlb
 
+gen questionable_status=0
+replace questionable_status=1 if status=="PZERO" & state=="VA" & inlist(dlr_cflic,"2147","1148") & year>=2021
+/* I will handle DE using this code, although I don't think it's right. */
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & price==0
+replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & port==80999
 
+drop if questionable_status==1
 
+/*
+I  need to be careful/concerned about a state-level 'dump' of data that has a made-up price.
+PZEROS that are single transactions are not a problem. 
 
+ */
+drop if lndlb==0 
 
-/* merge deflators _merge=1 has been the current month */ 
-merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2024 & month>=9 if _merge==1
-drop if _merge==1
-drop _merge
-
-gen priceR_CPI=price/fCPIAUCSL_2023Q1
-notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
 
 
 /* merge gearcodes */
@@ -63,20 +74,52 @@ replace mygear="Unknown" if inlist(negear,999)
 
 replace mygear="Misc" if inlist(mygear,"Dredge","Unknown", "Seine")
 
-/* rebin Mixed or unsized to unclassified 
-rebin pee wee to extra small */ 
+
+
+
+/* rebin Mixed or unsized to unclassified*/ 
 
 replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
 replace market_code="UN" if market_code=="MX"
 
 
-replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
-replace market_code="ES" if market_code=="PW"
+/* bin Extra Small and PeeWee into Small */
+replace market_code="SQ" if inlist(market_code,"PW", "ES")
+replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
+
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
+
+
+gen price=value/lndlb
+
+
+
+
+
+/* merge deflators _merge=1 has been the current month */ 
+merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
+assert year==2024 & month>=9 if _merge==1
+drop if _merge==1
+drop _merge
+
+gen priceR_CPI=price/fCPIAUCSL_2023Q1
+notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
+
 
 label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
 
 encode market_desc, gen(mym) label(market_category) 
-encode grade_desc, gen(mygrade)
+
+
+replace grade_desc="LIVE" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+
+label def grade_category 2 "LIVE" 1 "ROUND" 3 "UNGRADED" 
+
+
+encode grade_desc, gen(mygrade) label(grade_category) 
 encode state, gen(mys)
 rename mygear mygear_string
 encode mygear_string, gen(mygear)

@@ -18,28 +18,6 @@ replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & port=
 
 
 
-collapse (sum) value lndlb livlb, by(camsid hullid negear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month questionable_status)
-
-
-
-gen price=value/lndlb
-
-
-
-
-
-/* merge deflators _merge=1 has been the current month */ 
-merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2024 & month>=9 if _merge==1
-drop if _merge==1
-drop _merge
-
-gen priceR_CPI=price/fCPIAUCSL_2023Q1
-notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
-
-gen valueR_CPI=value/fCPIAUCSL_2023Q1
-
-notes valueR_CPI: real value in 2023Q1 CPIU adjusted dollars
 
 /* merge gearcodes */
 merge m:1 negear using "${data_main}\commercial\cams_gears_${in_string}.dta", keep(1 3)
@@ -78,22 +56,42 @@ replace mygear="Unknown" if inlist(negear,999)
 
 replace mygear="Misc" if inlist(mygear,"Dredge","Unknown", "Seine")
 
-/* rebin Mixed or unsized to unclassified 
-rebin pee wee to extra small */ 
+
+
+
+/* rebin Mixed or unsized to unclassified*/ 
 
 replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
 replace market_code="UN" if market_code=="MX"
 
-replace market_desc="MEDIUM" if market_desc=="MEDIUM OR SELECT"
+
+/* bin Extra Small and PeeWee into Small */
+replace market_code="SQ" if inlist(market_code,"PW", "ES")
+replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
+
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
+
+
+gen price=value/lndlb
 
 
 
 
-/* the PEE WEE (RATS) looks a little odd. */
-replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
-replace market_code="ES" if market_code=="PW"
 
-label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED" 7 "PEE WEE (RATS)"
+/* merge deflators _merge=1 has been the current month */ 
+merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
+assert year==2024 & month>=9 if _merge==1
+drop if _merge==1
+drop _merge
+
+gen priceR_CPI=price/fCPIAUCSL_2023Q1
+notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
+
+
+label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
 
 encode market_desc, gen(mym) label(market_category) 
 
