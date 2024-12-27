@@ -178,6 +178,64 @@ local logical_subset keep==1 & year>=2018 & price>.15
 
 
 
+
+
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+/* make a table of average lbs and std dev */
+collect clear
+
+collect create summary_means, replace
+sort year mym
+collect: by year mym: summ weighting
+collect dims
+collect style cell, nformat(%5.1f)
+collect layout (year[2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (mym)
+
+collect export $my_results/FS_avg_lbs.md, replace
+collect export $my_results/FS_avg_lbs.tex, replace tableonly
+
+/* And a table of number of obs */
+collect style cell, nformat(%8.0gc)
+
+collect layout (year[2018 2019 2020 2021 2022 2023 2024]) (mym) (result[N])
+
+collect export $my_results/FS_transactions.md, replace
+collect export $my_results/FS_transactions.tex, replace tableonly
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+
+/**********************************************************************************************************************/
+/********************Same tables, but just on the data that I will estimate on******************************************/
+/* make a table of average lbs and std dev */
+collect clear
+
+collect create trimmed_sample, replace
+collect: by year mym: summ weighting
+collect dims
+collect style cell, nformat(%5.1f)
+collect layout (year[2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (mym)
+
+collect export $my_results/EST_avg_lbs.md, replace
+collect export $my_results/EST_avg_lbs.tex, replace tableonly
+
+/* And a table of number of obs */
+collect style cell, nformat(%8.0gc)
+
+collect layout (year[2018 2019 2020 2021 2022 2023 2024]) (mym) (result[N])
+collect export $my_results/EST_transactions.md, replace
+collect export $my_results/EST_transactions.tex, replace tableonly
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+
+
+
+
+
+
+
 /* simple hedonic regression */
 
 regress price i.year i.month ibn.mym ib(5).mygear ib(2).mygrade ib(10).mys c.total##c.total if keep==1 & year>=2018 & price>.15, noc
