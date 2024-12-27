@@ -88,8 +88,15 @@ replace market_code="SQ" if inlist(market_code,"PW", "ES")
 replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
 
 
+
+
+/* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
+do these camsids really correspond to a single "trip" or are they just state aggregated data?
+*/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
+/************************** Is this the right collapse?********************************************* */
+
 collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
 
 
@@ -156,6 +163,10 @@ replace keep=0 if price>=15
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
 label var total "Total"
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
 /* what do I want to estimate on? */
 /* Nominal prices that are between $0.15 and $15lb.
 North Carolina to Mass
@@ -164,14 +175,10 @@ North Carolina to Mass
 local logical_subset keep==1 & year>=2018 & price>.15
 
 
-/* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
 do these camsids really correspond to a single "trip" or are they just state aggregated data?
 */
 
 
-/*
-fmm 2: regress priceR ib(freq).mygear ib(freq).mygrade ib(freq).mys QJumbo QLarge QMedium QSmall if mym==6, emopts(iterate(40))
-*/
 
 /* simple hedonic regression */
 
@@ -196,3 +203,6 @@ browse if year>=2019 & mym>=5
 
 
 
+/*
+fmm 2: regress priceR ib(freq).mygear ib(freq).mygrade ib(freq).mys QJumbo QLarge QMedium QSmall if mym==6, emopts(iterate(40))
+*/
