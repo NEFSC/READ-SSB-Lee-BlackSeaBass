@@ -131,8 +131,11 @@ encode mygear_string, gen(mygear)
 
 replace lndlb=lndlb/1000
 label var lndlb "landings 000s"
+clonevar weighting=lndlb
 
 
+replace lndlb=lndlb/1000
+label var lndlb "landings 000s"
 
 
 /*  market level quantity supplied */
@@ -152,6 +155,12 @@ replace keep=0 if price>=15
 
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
+/* what do I want to estimate on? */
+/* Nominal prices that are between $0.15 and $15lb.
+North Carolina to Mass
+
+*/
+local logical_subset keep==1 & year>=2018 & price>.15
 
 
 /* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
