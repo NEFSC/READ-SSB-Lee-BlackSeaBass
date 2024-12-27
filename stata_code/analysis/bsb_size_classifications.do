@@ -175,8 +175,6 @@ North Carolina to Mass
 local logical_subset keep==1 & year>=2018 & price>.15
 
 
-do these camsids really correspond to a single "trip" or are they just state aggregated data?
-*/
 
 
 
