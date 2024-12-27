@@ -336,14 +336,170 @@ collect export $my_results/hedonic_tableNomB.tex, replace tableonly
 
 
 
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+/* the classification regression*/
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+
 
 /* first multinomial logit spec */
-mlogit mym priceR i.month ib(5).mygear i.year ib(10).mys if mym<=4 & year>=2018
+mlogit mym priceR i.month ib(5).mygear i.year ib(10).mys if mym<=4 & `logical_subset', rrr
 predict pr*
 
-browse if year>=2019 & mym>=5
+est store class1
 
-/* I have 9000 obs where price=0. 90% are 100lbs or less. But there are a handful of 9,000+ landings*/
+
+collect create classification, replace
+est restore class1
+
+collect get _r_b _r_se e(N), tag(model[(Mlogit)])
+
+
+
+
+
+collect dims
+collect style showbase off
+collect style cell, nformat(%5.3f)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+collect style row stack, spacer delimiter(" x ")
+collect layout (colname#result ) (coleq)
+
+collect style header result[r2_p N], level(label)
+collect label levels result r2_p "R-squared", modify
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect preview
+
+
+
+collect layout (colname[priceR_CPI mygear month]#result) (coleq) 
+
+/*
+collect layout (result[r2_p N])
+collect style cell result[N], nformat(%12.0fc)
+*/
+collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
+collect export $my_results/mlogitA.tex, replace tableonly
+
+
+collect layout (colname[mys year]#result) (coleq) 
+
+/*
+collect layout (result[r2_p N])
+collect style cell result[N], nformat(%12.0fc)
+*/
+collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
+collect export $my_results/mlogitB.tex, replace tableonly
+
+
+
+
+
+
+mlogit mym price i.month ib(5).mygear i.year ib(10).mys if mym<=4 & `logical_subset', rrr
+est store class2
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+/* Use nominal instead of real prices */
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+
+
+collect create classification2, replace
+est restore class2
+
+collect get _r_b _r_se e(N), tag(model[(Mlogit)])
+
+
+
+
+
+collect dims
+collect style showbase off
+collect style cell, nformat(%5.3f)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+collect style row stack, spacer delimiter(" x ")
+collect layout (colname#result ) (coleq)
+
+collect style header result[r2_p N], level(label)
+collect label levels result r2_p "R-squared", modify
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect preview
+
+
+
+collect layout (colname[price mygear month]#result) (coleq) 
+
+
+
+
+
+collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
+collect export $my_results/mlogitNomA.tex, replace tableonly
+
+
+collect layout (colname[mys year]#result) (coleq) 
+
+/*
+collect layout (result[r2_p N])
+collect style cell result[N], nformat(%12.0fc)
+*/
+collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
+collect export $my_results/mlogitNomB.tex, replace tableonly
+
+
+
+
+
+/* this is a little tricky to in interpret compared to the multinomial logit, so I'll flip it so the ordering is
+Small, Medium, Large, Jumbo */
+gen order=4-mym
+
+
+ologit order price i.month ib(5).mygear i.year ib(10).mys if mym<=4 & `logical_subset', or
+est store ologit_nominal
+
+ologit order priceR i.month ib(5).mygear i.year ib(10).mys if mym<=4 & `logical_subset', or
+est store ologitR
+
+
+
+collect create classification3, replace
+
+est restore ologit_nominal
+collect get _r_b _r_se e(N), tag(model[(ologitN)])
+
+est restore ologitR
+collect get _r_b _r_se e(N), tag(model[(ologitR)])
+
+
+collect dims
+collect style showbase all
+collect style cell, nformat(%5.3f)
+collect style cell result[N], nformat(%12.0fc)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+
+collect layout (colname#result) (model)
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect title "Ordered Logistic \label{Ologit}"
+collect preview
+
+collect export $my_results/OrderedLogit.tex, replace tableonly
+
+
+
+
 
 
 
@@ -353,3 +509,12 @@ browse if year>=2019 & mym>=5
 /*
 fmm 2: regress priceR ib(freq).mygear ib(freq).mygrade ib(freq).mys QJumbo QLarge QMedium QSmall if mym==6, emopts(iterate(40))
 */
+
+
+
+
+/* I have 9000 obs where price=0. 90% are 100lbs or less. But there are a handful of 9,000+ landings*/
+
+browse if year>=2019 & mym>=5
+
+
