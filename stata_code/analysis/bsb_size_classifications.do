@@ -237,14 +237,105 @@ collect export $my_results/EST_transactions.tex, replace tableonly
 
 
 /* simple hedonic regression */
+collect create hedonic, replace
 
-regress price i.year i.month ibn.mym ib(5).mygear ib(2).mygrade ib(10).mys c.total##c.total if keep==1 & year>=2018 & price>.15, noc
+regress priceR  ibn.mym ib(5).mygear ib(1).mygrade ib(10).mys c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+collect get _r_b _r_se e(N), tag(model[Weighted])
+est store weighted
+
+regress priceR  ibn.mym ib(5).mygear ib(1).mygrade ib(10).mys c.total##c.total i.year i.month if `logical_subset', noc
+collect get _r_b _r_se e(N), tag(model[Unweighted])
 est store uw
 
-gen weighting=round(lndlb*1000)
 
-regress priceR i.year i.month ibn.mym ib(5).mygear ib(2).mygrade ib(10).mys c.total##c.total if keep==1 & year>=2018 & price>.15 [fweight=weighting], noc
-est store weighted
+
+
+collect dims
+collect style showbase all
+collect style cell, nformat(%5.3f)
+collect style cell result[N], nformat(%12.0fc)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+
+collect style cell colname[total#total], nformat(%7.5f)
+collect style row stack, spacer delimiter(" x ")
+collect layout (colname#result result[r2 N]) (model)
+collect style header result[r2 N], level(label)
+collect label levels result r2 "R-squared", modify
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTable}"
+collect preview
+
+/* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
+collect export $my_results/hedonic_table.md, replace
+collect export $my_results/hedonic_table.tex, replace tableonly
+
+/* split the regression into two tables */
+collect layout (colname[mym mygear mygrade total total#total]#result result[r2 N]) (model)
+collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTableA}"
+collect export $my_results/hedonic_tableA.tex, replace tableonly
+
+collect layout (colname[mys year month]#result) (model)
+collect style showbase off
+collect title "Unweighted and Weighted Hedonic Real Price Regression (2018-2024) \label{HedonicTableB}"
+collect export $my_results/hedonic_tableB.tex, replace tableonly
+
+
+
+
+
+/* simple hedonic regression */
+collect create hedonicNominal, replace
+
+
+regress price  ibn.mym ib(5).mygear ib(1).mygrade ib(10).mys c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+collect get _r_b _r_se e(N), tag(model[Weighted])
+est store NomW
+
+regress price  ibn.mym ib(5).mygear ib(1).mygrade ib(10).mys c.total##c.total i.year i.month if `logical_subset', noc
+collect get _r_b _r_se e(N), tag(model[Unweighted])
+est store NomU
+
+
+collect dims
+collect style showbase all
+collect style cell, nformat(%5.3f)
+collect style cell result[N], nformat(%12.0fc)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+
+collect style cell colname[total#total], nformat(%7.5f)
+collect style row stack, spacer delimiter(" x ")
+collect layout (colname#result result[r2 N]) (model)
+collect style header result[r2 N], level(label)
+collect label levels result r2 "R-squared", modify
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2018-2024) \label{HedonicTableNom}"
+collect preview
+
+/* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
+collect export $my_results/hedonic_tableNom.md, replace
+collect export $my_results/hedonic_tableNom.tex, replace tableonly
+
+/* split the regression into two tables */
+collect layout (colname[mym mygear mygrade total total#total]#result result[r2 N]) (model)
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024) \label{HedonicTableNomA}"
+collect export $my_results/hedonic_tableNomA.tex, replace tableonly
+
+collect layout (colname[mys year month]#result) (model)
+collect style showbase off
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024) \label{HedonicTableNomB}"
+collect export $my_results/hedonic_tableNomB.tex, replace tableonly
+
+
+
+
+
+
 
 /* first multinomial logit spec */
 mlogit mym priceR i.month ib(5).mygear i.year ib(10).mys if mym<=4 & year>=2018
