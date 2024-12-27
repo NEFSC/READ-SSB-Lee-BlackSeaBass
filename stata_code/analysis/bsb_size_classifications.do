@@ -129,14 +129,14 @@ encode state, gen(mys)
 rename mygear mygear_string
 encode mygear_string, gen(mygear)
 
-replace lndlb=lndlb/1000
-label var lndlb "landings 000s"
 clonevar weighting=lndlb
 
 
 replace lndlb=lndlb/1000
 label var lndlb "landings 000s"
 
+label var year "Year"
+label var month "Month"
 
 /*  market level quantity supplied */
 xi, prefix(_S) noomit i.mym*lndlb
@@ -155,6 +155,7 @@ replace keep=0 if price>=15
 
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
+label var total "Total"
 /* what do I want to estimate on? */
 /* Nominal prices that are between $0.15 and $15lb.
 North Carolina to Mass
