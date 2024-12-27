@@ -995,6 +995,15 @@ Over time, there has been more "Large" and "Jumbo."
 knitr::include_graphics(file.path(exploratory_images,c("market_cats_over_time.png", "fmarket_cats_over_time.png")))
 
 ```
+
+Just 2018 to present
+```{r Sizes_over_2018, fig.show = "hold", out.width = "48%", fig.cap="Market Category 2018-2024, All States",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(file.path(exploratory_images,c("market_cats_over_2018.png", "fmarket_cats_over_2018.png")))
+
+```
+
+
+
 CT in 2007, although about 20% is still unclassified.
 
 DE in 2001, although the unclassifieds come back in 2022 and 2023.
@@ -1051,6 +1060,18 @@ knitr::include_graphics(file.path(exploratory_images,c("market_cats_RI.png", "fm
 ```{r Sizes_MA, fig.show = "hold", out.width = "48%", fig.cap="Market Category over time",  fig.align = "center", echo=FALSE}
 knitr::include_graphics(file.path(exploratory_images,c("market_cats_MA.png", "fmarket_cats_MA.png")))
 ```
+
+
+## Questionable data
+
+There's some landings that look like aggregates and duplicates. I'm 
+```{r Questionables , fig.show = "hold", out.width = "48%", fig.cap="Questionable landings 2020-2024",  fig.align = "center", echo=FALSE}
+knitr::include_graphics(file.path(exploratory_images,c("questionable2020.png", "fquestionable2020.png")))
+```
+
+
+
+
 
 # Vessels over time
 How many vessels do I have over time, in each state?  Stacked bar charts of landings in each state. I've dropped out the "unknown" permits and hullids. I ranked each vessel in each state by landings over the 1996-2024 time period. There's no tracking of ownership.  I think the colors within each panel are good (I don't think there is recycling). Colors don't carry over across panels.  Not all states have 25 permits/vessels (DE, MD) 
