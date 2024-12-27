@@ -15,20 +15,31 @@ replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
 replace market_code="UN" if market_code=="MX"
 
 
-replace market_desc="EXTRA SMALL" if market_desc=="PEE WEE (RATS)"
-replace market_code="ES" if market_code=="PW"
+/* bin Extra Small and PeeWee into Small */
+replace market_code="SQ" if inlist(market_code,"PW", "ES")
+replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
 
-/* this is a silly regression because I have collapsed things to the day already */
 
-label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
+
+replace market_desc=proper(market_desc)
+replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
+
+label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
 encode market_desc, gen(mym) label(market_category) 
 
 
+replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
 
-replace grade_desc="LIVE" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace grade_desc="Round" if grade_desc=="UNGRADED"
 
-label def grade_category 2 "LIVE" 1 "ROUND" 3 "UNGRADED" 
+replace grade_desc=proper(grade_desc)
+label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
+
+
+
+encode grade_desc, gen(mygrade) label(grade_category) 
+
 
 regress price i.year i.month i.mym
 

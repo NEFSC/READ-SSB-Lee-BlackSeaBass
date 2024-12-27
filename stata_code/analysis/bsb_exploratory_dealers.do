@@ -84,15 +84,20 @@ drop _merge
 gen priceR_CPI=price/fCPIAUCSL_2023Q1
 notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
 
+replace market_desc=proper(market_desc)
+replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
 
-label def market_category 1 "JUMBO" 2 "LARGE" 3 "MEDIUM OR SELECT" 4 "SMALL" 5 "EXTRA SMALL" 6 "UNCLASSIFIED"
+label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
 encode market_desc, gen(mym) label(market_category) 
 
 
-replace grade_desc="LIVE" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
 
-label def grade_category 2 "LIVE" 1 "ROUND" 3 "UNGRADED" 
+replace grade_desc="Round" if grade_desc=="UNGRADED"
+
+replace grade_desc=proper(grade_desc)
+label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
 
 
 encode grade_desc, gen(mygrade) label(grade_category) 
