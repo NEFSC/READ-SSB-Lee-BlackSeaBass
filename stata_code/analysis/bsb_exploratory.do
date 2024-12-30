@@ -514,7 +514,6 @@ graph export ${exploratory}\fgears_by_year.png, as(png) width(2000) replace
 restore
 
 
-pause
 
 
 /* time series of prices by state */
@@ -548,25 +547,27 @@ foreach l of local state_names{
 }
 
 
-levelsof market_desc, local(sizes)
+
 
 collapse (sum) lndlb value valueR, by(state market_desc year)
 
-gen price=value/(lndlb*1000)
 
+
+gen price=value/(lndlb*1000)
 gen priceR=valueR/(lndlb*1000)
 
+levelsof market_desc, local(sizes)
 
 foreach l of local sizes{
 	preserve
 		keep if market_desc==`l'
-		
+		local f0: label market_category `l'
 		tsset state year
 
-		xtline price, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'") legend(rows(2))
+		xtline price, overlay xlabel(1995(5)2025) xmtick(##5) title("`f0'") legend(rows(2))
 		graph export ${exploratory}\price_overstate_`l'.png, as(png) width(2000) replace
 		
-		xtline priceR, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'") legend(rows(2))
+		xtline priceR, overlay xlabel(1995(5)2025) xmtick(##5) title("`f0'") legend(rows(2))
 		graph export ${exploratory}\priceR_overstate_`l'.png, as(png) width(2000) replace
 
 
