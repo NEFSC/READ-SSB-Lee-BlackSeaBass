@@ -1,3 +1,5 @@
+Landings per Transaction by year and Market Category \label{FSavglbs}
+
 |             | Jumbo | Large | Medium | Small | Unclassified |
 |-------------|-------|-------|--------|-------|--------------|
 | 2018        |       |       |        |       |              |
