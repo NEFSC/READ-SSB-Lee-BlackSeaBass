@@ -66,13 +66,58 @@ replace market_code="UN" if market_code=="MX"
 
 
 /* bin Extra Small and PeeWee into Small */
-replace market_code="SQ" if inlist(market_code,"PW", "ES")
-replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
+replace market_code="SQ" if inlist(market_code,"PW")
+replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)")
+
+replace market_desc=proper(market_desc)
+replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
+label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
+
+rename market_desc market_desc_string
+encode market_desc_string, gen(market_desc) label(market_category) 
 
 
+
+/* encode grade */
+replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace grade_desc="Round" if grade_desc=="UNGRADED"
+replace grade_desc=proper(grade_desc)
+label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
+encode grade_desc, gen(mygrade) label(grade_category) 
+drop grade_desc
+rename mygrade grade_desc
+
+
+rename state state_string
+
+label def state_fips  09 "CT" 10 "DE" 12 "FL" 23 "ME" 24 "MD" 25 "MA" 33 "NH" 34 "NJ" 36 "NY" 37 "NC" 42 "PA" 44 "RI" 45 "SC" 50 "VT" 51 "VA" 99 "CN"
+encode state_string, gen(state) label(state_fips)
+
+
+/* encode gear */
+rename mygear mygear_string
+encode mygear_string, gen(mygear)
+
+/* F&R for all mygrade to grade_desc */
+
+
+
+/* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
+do these camsids really correspond to a single "trip" or are they just state aggregated data?
+*/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
+/************************** Is this the right collapse?************
+
+1. I need to move anything data processing code on the "by()" to a point before the collapse .
+
+
+
+
+
+********************************* */
+
+collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month area status questionable_status)
 
 
 gen price=value/lndlb
@@ -88,74 +133,92 @@ drop if _merge==1
 drop _merge
 
 gen priceR_CPI=price/fCPIAUCSL_2023Q1
+gen valueR_CPI=value/fCPIAUCSL_2023Q1
+
+
 notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
+notes valueR_CPI: Value in 2023Q1 CPIU adjusted dollars
 
-replace market_desc=proper(market_desc)
-replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
-
-label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
-
-encode market_desc, gen(mym) label(market_category) 
+clonevar weighting=lndlb
 
 
-replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace lndlb=lndlb/1000
+label var lndlb "landings 000s"
 
-replace grade_desc="Round" if grade_desc=="UNGRADED"
+label var year "Year"
+label var month "Month"
 
-replace grade_desc=proper(grade_desc)
-label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
+/*  market level quantity supplied */
+xi, prefix(_S) noomit i.market_desc*lndlb
+bysort dlr_date: egen QJumbo=total(_SmarXlndlb_1)
+bysort dlr_date: egen QLarge=total(_SmarXlndlb_2)
+bysort dlr_date: egen QMedium=total(_SmarXlndlb_3)
+bysort dlr_date: egen QSmall=total(_SmarXlndlb_4)
+bysort dlr_date: egen QXSmall=total(_SmarXlndlb_5)
+
+bysort dlr_date: egen QUnc=total(_SmarXlndlb_6)
+
+gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc  + _Smarket_de_5*QXSmall
+
+/* this is not right unclassified never gets filled in.*/ 
+gen largerQ=0
+replace largerQ=0 if market_desc==1
+replace largerQ=QJumbo+largerQ if market_desc==2
+replace largerQ=QLarge+largerQ if market_desc==3
+replace largerQ=QMedium+largerQ if inlist(market_desc,4,6)
+replace largerQ=QSmall+largerQ if inlist(market_desc,5) 
+ 
+
+gen smallerQ=0
+replace smallerQ=0 if inlist(market_desc,5) 
+replace smallerQ=smallerQ+ QXSmall if inlist(market_desc,4,6) 
+replace smallerQ=QSmall+smallerQ if market_desc==3
+replace smallerQ=QMedium+smallerQ if market_desc==2
+replace smallerQ=QLarge+smallerQ if market_desc==1
 
 
-encode grade_desc, gen(mygrade) label(grade_category) 
-encode state, gen(mys)
-rename mygear mygear_string
-encode mygear_string, gen(mygear)
+drop _Smarket_de*
 
 gen keep=1
 
 /* drop small time market codes, states, grades, market descriptions */
-replace keep=0 if inlist(market_code, "ES","MX", "PW")
-replace keep=0 if inlist(state, "CN","FL","ME", "NH","PA","SC")
+replace keep=0 if inlist(state, 99,12,23,33,42,45) /* no canada, florida, maine, nh, pa, sc*/
 replace keep=0 if price>=15
 
 
 
-drop if price>=15
-
-
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
-replace total=total/1000
+label var total "Total"
 
 /*******************************Investigate Prices ********************************************/
 /* there are definitely more common prices at the $1, $0.50, $0.25, and even $0.05 per pound */
 hist price if price<=10, width(.05) xlabel(0(1)10) xmtick(##2)
 
-
-levelsof market_desc, local(sizes)
+decode market_desc, gen(market_string)
+levelsof market_string, local(sizes)
 	local j=1
 
 foreach l of local sizes{
-	hist price if market_desc=="`l'" & price<=10, width(.25) xlabel(0(1)8) xmtick(##2) title("`l'") name(p`j', replace)
-	hist price if market_desc=="`l'" & price<=10 [fweight=lndlb], width(.25) xlabel(0(1)8) xmtick(##2) title("`l' (weighted)") name(wp`j', replace)
+	hist price if market_string=="`l'" & price<=10, width(.25) xlabel(0(1)8) xmtick(##2) title("`l'") name(p`j', replace)
+	hist price if market_string=="`l'" & price<=10 [fweight=weighting], width(.25) xlabel(0(1)8) xmtick(##2) title("`l' (weighted)") name(wp`j', replace)
 
 	local ++ j 
 }
 
-graph combine p2 p3 p4 p5 p1 p6, name(price_hist, replace)
+graph combine p1 p2 p3 p4 p5 p6, name(price_hist, replace)
 graph export ${exploratory}\price_histograms.png, as(png) width(2000) replace
-graph combine wp2 wp3 wp4 wp5 wp1 wp6, name(wprice_hist, replace)
+graph combine wp1 wp2 wp3 wp4 wp5 wp6, name(wprice_hist, replace)
 graph export ${exploratory}\wprice_histograms.png, as(png) width(2000) replace
 
 
 
-graph box price if price<=10,  nooutside over(mygrade, label(labsize(vsmall) angle(45))) over(mym, label(labsize(tiny) angle(45))) name(price_box)
-vioplot price if price<=10, over(market_desc) name(price_vio)
-
-gen mygrade_short="R" if mygrade==1
-replace mygrade_short="L" if mygrade==2
-replace mygrade_short="U" if mygrade==3
-vioplot price if price<=10, over(mygrade_short) over(mym)
+*graph box price if price<=10,  nooutside over(mygrade, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(price_box)
+*vioplot price if price<=10, over(market_desc) name(price_vio)
+gen mygrade_short="R" if grade_desc==1
+replace mygrade_short="L" if grade_desc==2
+replace mygrade_short="U" if grade_desc==3
+vioplot price if price<=10, over(mygrade_short) over(market_desc)
 
 graph export ${exploratory}\vio_grades.png, as(png) width(2000) replace
 
@@ -168,25 +231,25 @@ The Unclassifieds make more sense they certainly seem to be a mix of Large, Medi
 ****************************************/
 
 levelsof year, local(yearlist)
-sort year mym
+sort year market_desc
 foreach y of local yearlist{
 
-	graph box price if price<=10 & year==`y'& mygrade<=2 & mym~=5, nooutside over(mygrade, label(labsize(vsmall) angle(45))) over(mym, label(labsize(tiny) angle(45))) name(price_box`y') title("`y' ")
+	graph box price if price<=10 & year==`y'& market_desc~=5, nooutside over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(price_box`y') title("`y' ")
 	graph export ${exploratory}\price_box`y'.png, as(png) width(2000) replace
 
-	graph box price if price<=10 & year==`y'& mygrade<=2 & mym~=5  [fweight=lndlb], nooutside  over(mygrade, label(labsize(vsmall) angle(45))) over(mym, label(labsize(tiny) angle(45))) name(Wprice_box`y') title("`y' ")
+	graph box price if price<=10 & year==`y'& market_desc~=5  [fweight=weighting], nooutside  over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(Wprice_box`y') title("`y' ")
 	graph export ${exploratory}\Wprice_box`y'.png, as(png) width(2000) replace
 
 }
-
+graph drop _all
 /* but there is very little extra small */
 preserve
-collapse (sum) lndlb livlb, by(mym)
+collapse (sum) lndlb livlb, by(market_desc)
 browse
 egen t=total(lndlb)
 gen frac=lnd/t
 gsort - frac
-list mym frac
+list market_desc frac
 restore
 
 
@@ -210,7 +273,7 @@ Whatever I do, I will need to figure out how to appropriately handle observation
 
 */
 centile lndlb, centile(5 10 25 50 75 90 95)
-bysort mym: centile lndlb, centile(5 10 25 50 75 90 95)
+bysort market_desc: centile lndlb, centile(5 10 25 50 75 90 95)
 
 
 bysort camsid: egen tl=total(lndlb)
@@ -219,7 +282,7 @@ bysort camsid: gen first=_n==1
 centile tl if first==1, centile(5 10 25 50 75 90 95)
 
 preserve
-gen large_trip =tl>=50
+gen large_trip =tl>=.050
 
 collapse (sum)lndlb, by(large_trip)
 egen t=total(lndlb)
@@ -250,11 +313,11 @@ tab numobs if first==1
 
 /* does a vessel bring in both graded and ungraded fish on 1 trip?*/
 
-gen unc=mym==7
+gen unc=market_desc==6
 bysort camsid: egen tunc=total(unc)
 replace tunc=1 if tunc>=1
 
-gen class=mym<7
+gen class=market_desc<6
 bysort camsid: egen tc=total(class)
 
 replace tc=1 if tc>=1
@@ -265,23 +328,27 @@ tab tc tunc
 
 
 
-replace lndlb=lndlb/1000
+
+
+
+decode state, gen(state_string)
+decode mygear, gen(mygear_string)
 
 
 /* what's the distrinbution within a year*/
 preserve
 
-collapse (sum) lndlb value, by(month mym )
+collapse (sum) lndlb value, by(month market_desc )
 
 bysort month: egen tl=total(lndlb)
 gen frac=lndlb/tl
 
 
 /* there are a bit more landings of unclassified in summer (may-sept/oct) */
-graph bar (asis) lndlb, over(mym) asyvars stack over(month)  ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(market_desc) asyvars stack over(month)  ytitle("landings 000s pounds")
 graph export ${exploratory}\market_cats_within_year.png, as(png) width(2000)  replace
 
-graph bar (asis) frac, over(mym) asyvars stack over(month)
+graph bar (asis) frac, over(market_desc) asyvars stack over(month)
 graph export ${exploratory}\fmarket_cats_within_year.png, as(png) width(2000) replace
 
 restore
@@ -290,7 +357,7 @@ restore
 /* what's the over time?*/
 
 preserve
-collapse (sum) lndlb value, by(year mym )
+collapse (sum) lndlb value, by(year market_desc )
 
 bysort year: egen tl=total(lndlb)
 gen frac=lndlb/tl
@@ -300,12 +367,12 @@ gen frac=lndlb/tl
 Lots more Jumbos and Larges in latter part of the time series.  Landings spike in 2017.  Pretty big drop in 2009.
 And a bit of an uptick in Unclassifieds in 2019-2023
 */
-graph bar (asis) lndlb, over(mym) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(market_desc) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
 
 graph export ${exploratory}\market_cats_over_time.png, as(png) width(2000) replace
 
 
-graph bar (asis) frac, over(mym) asyvars stack  over(year, label(angle(45)))
+graph bar (asis) frac, over(market_desc) asyvars stack  over(year, label(angle(45)))
 graph export ${exploratory}\fmarket_cats_over_time.png, as(png) width(2000) replace
 
 
@@ -315,12 +382,12 @@ graph export ${exploratory}\fmarket_cats_over_time.png, as(png) width(2000) repl
 */
 
 keep if year>=2018
-graph bar (asis) lndlb, over(mym) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(market_desc) asyvars stack over(year, label(angle(45))) ytitle("landings 000s pounds")
 
 graph export ${exploratory}\market_cats_over_2018.png, as(png) width(2000) replace
 
 
-graph bar (asis) frac, over(mym) asyvars stack  over(year, label(angle(45)))
+graph bar (asis) frac, over(market_desc) asyvars stack  over(year, label(angle(45)))
 graph export ${exploratory}\fmarket_cats_over_2018.png, as(png) width(2000) replace
 restore
 
@@ -331,42 +398,39 @@ restore
 preserve
 keep if year>=2020 & year<=2023
 
-collapse (sum) lndlb value, by(mym questionable_status)
+collapse (sum) lndlb value, by(market_desc questionable_status)
 
 
-bysort mym: egen tl=total(lndlb)
+bysort market_desc: egen tl=total(lndlb)
 gen frac=lndlb/tl
 
 
-graph bar (asis) lndlb, over(questionable_status) asyvars stack over(mym, label(angle(45))) ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(questionable_status) asyvars stack over(market_desc, label(angle(45))) ytitle("landings 000s pounds")
 graph export ${exploratory}\questionable2020.png, as(png) width(2000) replace
 
 
-graph bar (asis) frac, over(questionable_status) asyvars stack over(mym, label(angle(45))) ytitle("fraction")
+graph bar (asis) frac, over(questionable_status) asyvars stack over(market_desc, label(angle(45))) ytitle("fraction")
 graph export ${exploratory}\fquestionable2020.png, as(png) width(2000) replace
 
 restore
 
 
 
-
-
-
 preserve
-collapse (sum) lndlb value, by(state mym )
-drop if inlist(state, "CN","FL","ME", "NH","PA","SC")
+collapse (sum) lndlb value, by(state_string market_desc )
+drop if inlist(state_string, "CN","FL","ME", "NH","PA","SC")
 
-bysort state: egen tl=total(lndlb)
+bysort state_string: egen tl=total(lndlb)
 gen frac=lndlb/tl
 
 
 /* Proportionally more unclassifieds in CT, DE, MA, and NY
 I droppped out a few random states.
 */
-graph bar (asis) lndlb, over(mym) asyvars stack over(state, label(angle(45))) ytitle("landings 000s pounds")
+graph bar (asis) lndlb, over(market_desc) asyvars stack over(state_string, label(angle(45))) ytitle("landings 000s pounds")
 graph export ${exploratory}\market_cats_by_state.png, as(png) width(2000) replace
 
-graph bar (asis) frac, over(mym) asyvars stack  over(state, label(angle(45)))
+graph bar (asis) frac, over(market_desc) asyvars stack  over(state_string, label(angle(45)))
 graph export ${exploratory}\fmarket_cats_by_state.png, as(png) width(2000) replace
 
 restore
@@ -375,10 +439,9 @@ restore
 
 
 
-
 preserve
-collapse (sum) lndlb value, by(year state mym )
-drop if inlist(state, "CN","FL","ME", "NH","PA","SC")
+collapse (sum) lndlb value, by(year state_string market_desc )
+drop if inlist(state_string, "CN","FL","ME", "NH","PA","SC")
 
 bysort year: egen tyl=total(lndlb)
 gen fracy=lndlb/tyl
@@ -389,15 +452,15 @@ gen frac=lndlb/tyls
 
 
 
-levelsof state, local(states)
+levelsof state_string, local(states)
 	local j=1
 
 foreach l of local states{
 
-	graph bar (asis) frac if state=="`l'", over(mym) asyvars stack over(year, label(angle(45)))  title("Size composition in State `l'")  name(Fstate`j', replace)
+	graph bar (asis) frac if state_string=="`l'", over(market_desc) asyvars stack over(year, label(angle(45)))  title("Size composition in State `l'")  name(Fstate`j', replace)
 	graph export ${exploratory}\market_cats_`l'.png, as(png) width(2000) replace
 
-	graph bar (asis) lndlb if state=="`l'", over(mym) asyvars stack over(year, label(angle(45))) title("Size composition in State `l'") name(Lstate`j', replace)
+	graph bar (asis) lndlb if state_string=="`l'", over(market_desc) asyvars stack over(year, label(angle(45))) title("Size composition in State `l'") name(Lstate`j', replace)
 	graph export ${exploratory}\fmarket_cats_`l'.png, as(png) width(2000) replace
 
 	local ++ j 
@@ -427,9 +490,8 @@ restore
 
 
 
-
-
 preserve
+
 collapse (sum) lndlb value, by(year mygear_string )
 
 bysort year: egen tyl=total(lndlb)
@@ -452,32 +514,33 @@ graph export ${exploratory}\fgears_by_year.png, as(png) width(2000) replace
 restore
 
 
+pause
 
 
 /* time series of prices by state */
-collapse (sum) lndlb value valueR, by(state mym year)
-drop if inlist(state, "CN","FL","ME", "NH","PA","SC")
+collapse (sum) lndlb value valueR, by(state_string state market_desc year)
+drop if inlist(state_string, "CN","FL","ME", "NH","PA","SC")
 
-bysort state: egen tl=total(lndlb)
+bysort state_string: egen tl=total(lndlb)
 gen frac=lndlb/tl
-gen price=value/lndlb*1000
+gen price=value/(lndlb*1000)
 
-gen priceR=valueR/lndlb*1000
-
-
-levelsof state, local(states)
+gen priceR=valueR/(lndlb*1000)
 
 
+levelsof state_string, local(state_names)
 
-foreach l of local states{
+
+
+foreach l of local state_names{
 	preserve
-		keep if state=="`l'"
-		tsset mym year
+		keep if state_string=="`l'"
+		tsset market_desc year
 
-		xtline price if inlist(mym,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
+		xtline price if inlist(market_desc,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
 		graph export ${exploratory}\price_overtime_`l'.png, as(png) width(2000) replace
 		
-		xtline priceR if inlist(mym,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
+		xtline priceR if inlist(market_desc,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
 		graph export ${exploratory}\priceR_overtime_`l'.png, as(png) width(2000) replace
 
 
@@ -485,21 +548,20 @@ foreach l of local states{
 }
 
 
-levelsof mym, local(sizes)
+levelsof market_desc, local(sizes)
 
-collapse (sum) lndlb value valueR, by(state mym year)
-encode state, gen(mystate)
+collapse (sum) lndlb value valueR, by(state market_desc year)
 
-gen price=value/lndlb*1000
+gen price=value/(lndlb*1000)
 
-gen priceR=valueR/lndlb*1000
+gen priceR=valueR/(lndlb*1000)
 
 
 foreach l of local sizes{
 	preserve
-		keep if mym==`l'
+		keep if market_desc==`l'
 		
-		tsset mystate year
+		tsset state year
 
 		xtline price, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'") legend(rows(2))
 		graph export ${exploratory}\price_overstate_`l'.png, as(png) width(2000) replace

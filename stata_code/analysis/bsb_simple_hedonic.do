@@ -87,10 +87,51 @@ replace market_code="UN" if market_code=="MX"
 replace market_code="SQ" if inlist(market_code,"PW", "ES")
 replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
 
+replace market_desc=proper(market_desc)
+replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
+label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
+rename market_desc market_desc_string
+encode market_desc_string, gen(market_desc) label(market_category) 
+
+replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace grade_desc="Round" if grade_desc=="UNGRADED"
+replace grade_desc=proper(grade_desc)
+label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
+encode grade_desc, gen(mygrade) label(grade_category) 
+drop grade_desc
+rename mygrade grade_desc
+
+
+rename state state_string
+
+label def state_fips  09 "CT" 10 "DE" 12 "FL" 23 "ME" 24 "MD" 25 "MA" 33 "NH" 34 "NJ" 36 "NY" 37 "NC" 42 "PA" 44 "RI" 45 "SC" 50 "VT" 51 "VA" 99 "CN"
+encode state_string, gen(state) label(state_fips)
+
+
+/* encode gear */
+rename mygear mygear_string
+encode mygear_string, gen(mygear)
+
+
+
+
+/* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
+do these camsids really correspond to a single "trip" or are they just state aggregated data?
+*/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
+/************************** Is this the right collapse?************
+
+1. I need to move anything data processing code on the "by()" to a point before the collapse .
+
+
+
+
+
+********************************* */
+
+collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month area status)
 
 
 gen price=value/lndlb
@@ -108,36 +149,48 @@ drop _merge
 gen priceR_CPI=price/fCPIAUCSL_2023Q1
 notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
 
-replace market_desc=proper(market_desc)
-replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
-
-label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
-
-encode market_desc, gen(mym) label(market_category) 
+clonevar weighting=lndlb
 
 
-replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
+replace lndlb=lndlb/1000
+label var lndlb "landings 000s"
 
-replace grade_desc="Round" if grade_desc=="UNGRADED"
+label var year "Year"
+label var month "Month"
 
-replace grade_desc=proper(grade_desc)
-label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
+/*  market level quantity supplied */
+xi, prefix(_S) noomit i.market_desc*lndlb
+bysort dlr_date: egen QJumbo=total(_SmarXlndlb_1)
+bysort dlr_date: egen QLarge=total(_SmarXlndlb_2)
+bysort dlr_date: egen QMedium=total(_SmarXlndlb_3)
+bysort dlr_date: egen QSmall=total(_SmarXlndlb_4)
+bysort dlr_date: egen QUnc=total(_SmarXlndlb_6)
+
+gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc
+
+gen largerQ=0
+replace largerQ=0 if market_desc==1
+replace largerQ=QJumbo+largerQ if market_desc==2
+replace largerQ=QLarge+largerQ if market_desc==3
+replace largerQ=QMedium+largerQ if inlist(market_desc,4,6) 
+
+gen smallerQ=0
+replace smallerQ=0 if inlist(market_desc,4,6) 
+replace smallerQ=QSmall+smallerQ if market_desc==3
+replace smallerQ=QMedium+smallerQ if market_desc==2
+replace smallerQ=QLarge+smallerQ if market_desc==1
 
 
-encode grade_desc, gen(mygrade) label(grade_category) 
-encode state, gen(mys)
-rename mygear mygear_string
-encode mygear_string, gen(mygear)
+drop _Smarket_de*
 
 gen keep=1
 
 /* drop small time market codes, states, grades, market descriptions */
-replace keep=0 if inlist(market_code, "ES","MX", "PW")
-replace keep=0 if inlist(state, "CN","FL","ME", "NH","PA","SC")
+replace keep=0 if inlist(state, 99,12,23,33,42,45) /* no canada, florida, maine, nh, pa, sc*/
 
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
-replace total=total/1000
+label var total "Total"
 
 
 
@@ -154,35 +207,24 @@ restore
 
 keep if keep==1
 
-
-
-regress priceR i.year i.month ibn.mym ib(freq).mygear ib(freq).mygrade ib(freq).mys c.total##c.total, noc
+regress priceR i.year i.month ibn.market_desc ib(freq).mygear ib(freq).grade_desc ib(34).state c.total##c.total, noc
 est store ols
-regress priceR i.year i.month ibn.mym ib(freq).mygear ib(freq).mygrade ib(freq).mys c.total##c.total [fweight=lndlb], noc
+regress priceR i.year i.month ibn.market_desc ib(freq).mygear ib(freq).grade_desc ib(34).state c.total##c.total [fweight=weighting], noc
 est store weightedOLS
 
-reghdfe priceR i.year i.month ibn.mym ib(freq).mygear ib(freq).mygrade c.total##c.total, cluster(dlr_date) absorb(hullid)
+reghdfe priceR i.year i.month ibn.market_desc ib(freq).mygear ib(freq).grade_desc c.total##c.total, cluster(dlr_date) absorb(hullid)
 est store hullFEs
-reghdfe priceR i.year i.month ibn.mym ib(freq).mygear ib(freq).mygrade c.total##c.total [fweight=lndlb], cluster(dlr_date) absorb(hullid)
+reghdfe priceR i.year i.month ibn.market_desc ib(freq).mygear ib(freq).grade_desc c.total##c.total [fweight=weighting], cluster(dlr_date) absorb(hullid)
 est store weighted_hullFEs
 
 
 
-/*  market level quantity supplied */
-xi, prefix(_S) noomit i.mym*lndlb
-bysort dlr_date: egen QJumbo=total(_SmymXlndlb_1)
-bysort dlr_date: egen QLarge=total(_SmymXlndlb_2)
-bysort dlr_date: egen QMedium=total(_SmymXlndlb_3)
-bysort dlr_date: egen QSmall=total(_SmymXlndlb_4)
-drop _Smym*
-
-
 
 /*  market level quantity supplied */
-xi, prefix(_G) noomit i.mygrade*lndlb
-bysort dlr_date: egen QLive=total(_GmygXlndlb_1)
-bysort dlr_date: egen QRound=total(_GmygXlndlb_2)
-drop _Gmyg*
+xi, prefix(_G) noomit i.grade_desc*lndlb
+bysort dlr_date: egen QLive=total(_GgraXlndlb_1)
+bysort dlr_date: egen QRound=total(_GgraXlndlb_2)
+drop _Ggra*
 
 
 
@@ -197,13 +239,6 @@ bysort dlr_date: egen QTrawl=total(_GRmygXlndlb_5)
 
 drop _GRmy*
 
-
-
-foreach var of varlist Q*{
-	replace `var'=`var'/1000
-}
-
-
 foreach var of varlist Q*{
 	egen m`var'=mean(`var')
 	replace `var'=`var'-m`var'
@@ -211,29 +246,28 @@ foreach var of varlist Q*{
 }
 
 
-
 /*
 /* takes a long ass time 
-mixed priceR ibn.mym#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.year i.mys, noc || dlr_date: QJumbo QLarge QMedium QSmall, emonly emiterate(2000)
+mixed priceR ibn.market_desc#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.year i.state, noc || dlr_date: QJumbo QLarge QMedium QSmall, emonly emiterate(2000)
 */
 preserve
 
 keep if year>=2021
-
-constraint define 1 _b[3.mym#c.QJumbo]=_b[2bn.mym#c.QLarge]
-constraint define 2 _b[4.mym#c.QJumbo]=_b[2bn.mym#c.QMedium]
-constraint define 3 _b[7.mym#c.QJumbo]=_b[2bn.mym#c.QSmall]
-constraint define 4 _b[4.mym#c.QLarge]=_b[3.mym#c.QMedium]
-constraint define 5 _b[7.mym#c.QLarge]=_b[3.mym#c.QSmall]
-constraint define 6 _b[7.mym#c.QMedium]=_b[4.mym#c.QSmall]
+/* not quite right, need to recheck the market_desc codes */
+constraint define 1 _b[3.market_desc#c.QJumbo]=_b[2bn.market_desc#c.QLarge]
+constraint define 2 _b[4.market_desc#c.QJumbo]=_b[2bn.market_desc#c.QMedium]
+constraint define 3 _b[7.market_desc#c.QJumbo]=_b[2bn.market_desc#c.QSmall]
+constraint define 4 _b[4.market_desc#c.QLarge]=_b[3.market_desc#c.QMedium]
+constraint define 5 _b[7.market_desc#c.QLarge]=_b[3.market_desc#c.QSmall]
+constraint define 6 _b[7.market_desc#c.QMedium]=_b[4.market_desc#c.QSmall]
 
 /* this converges, but I get wrong signs on alot of the inverse demand effects */
 
-mixed priceR ibn.mym#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.mys i.month, noc constraint(1 2 3 4 5 6) || dlr_date: QJumbo QLarge QMedium QSmall, 
+mixed priceR ibn.market_desc#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.state i.month, noc constraint(1 2 3 4 5 6) || dlr_date: QJumbo QLarge QMedium QSmall, 
 
 est store model2
 
-mixed priceR ibn.mym#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.mys i.month ib(freq).mygear ib(freq).mygrade , noc constraint(1 2 3 4 5 6) || dlr_date: QJumbo QLarge QMedium QSmall, emonly emiterate(100)
+mixed priceR ibn.market_desc#(c.QJumbo c.QLarge c.QMedium c.QSmall) i.state i.month ib(freq).mygear ib(freq).grade_desc , noc constraint(1 2 3 4 5 6) || dlr_date: QJumbo QLarge QMedium QSmall, emonly emiterate(100)
 est store model1
 
 restore

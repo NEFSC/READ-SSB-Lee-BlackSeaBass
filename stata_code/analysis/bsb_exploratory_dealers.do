@@ -63,51 +63,39 @@ replace market_code="UN" if market_code=="MX"
 replace market_code="SQ" if inlist(market_code,"PW", "ES")
 replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL")
 
-
-/**********************************************************************************************************************/
-/**********************************************************************************************************************/
-collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date market_code grade_code dlrid state grade_desc market_desc dateq year month area status)
-
-
-gen price=value/lndlb
-
-
-
-
-
-/* merge deflators _merge=1 has been the current month */ 
-merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2024 & month>=9 if _merge==1
-drop if _merge==1
-drop _merge
-
-gen priceR_CPI=price/fCPIAUCSL_2023Q1
-notes priceR_CPI: real price in 2023Q1 CPIU adjusted dollars
-
 replace market_desc=proper(market_desc)
 replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
-
 label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
-encode market_desc, gen(mym) label(market_category) 
+rename market_desc market_desc_string
+encode market_desc_string, gen(market_desc) label(market_category) 
 
 
+
+/* encode grade */
 replace grade_desc="Live" if grade_desc=="LIVE (MOLLUSCS SHELL ON)"
-
 replace grade_desc="Round" if grade_desc=="UNGRADED"
-
 replace grade_desc=proper(grade_desc)
 label def grade_category 2 "Live" 1 "Round" 3 "Ungraded" 
-
-
 encode grade_desc, gen(mygrade) label(grade_category) 
-encode state, gen(mys)
+drop grade_desc
+rename mygrade grade_desc
+
+
+rename state state_string
+
+label def state_fips  09 "CT" 10 "DE" 12 "FL" 23 "ME" 24 "MD" 25 "MA" 33 "NH" 34 "NJ" 36 "NY" 37 "NC" 42 "PA" 44 "RI" 45 "SC" 50 "VT" 51 "VA" 99 "CN"
+encode state_string, gen(state) label(state_fips)
+
+
+/* encode gear */
 rename mygear mygear_string
 encode mygear_string, gen(mygear)
 
 
 
-collapse (sum) lndlb, by(dlrid year mym)
+collapse (sum) lndlb, by(dlrid year market_desc)
+rename market_desc mym
 
 
 
