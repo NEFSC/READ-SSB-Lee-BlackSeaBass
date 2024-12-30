@@ -1,3 +1,5 @@
+Number of Observations by year and Market Category \label{FStransactions}
+
 |      | Jumbo  | Large  | Medium | Small | Unclassified |
 |------|--------|--------|--------|-------|--------------|
 | 2018 | 15,357 | 13,830 | 9,220  | 3,653 | 2,374        |

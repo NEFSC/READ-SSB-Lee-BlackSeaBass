@@ -1,3 +1,5 @@
+Landings per Transaction by year and Market Category, Estimation Sample \label{ESTavglbs}
+
 |             | Jumbo | Large | Medium | Small | Unclassified |
 |-------------|-------|-------|--------|-------|--------------|
 | 2018        |       |       |        |       |              |
