@@ -127,12 +127,6 @@ do these camsids really correspond to a single "trip" or are they just state agg
 /**********************************************************************************************************************/
 /************************** Is this the right collapse?************
 
-1. I need to move anything data processing code on the "by()" to a point before the collapse .
-
-
-
-
-
 ********************************* */
 
 collapse (sum) value lndlb livlb, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month area status)
