@@ -497,6 +497,84 @@ collect export $my_results/mlogitNomB.tex, replace tableonly
 
 
 
+
+
+
+
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+/* Use centered, nominal prices */
+/**********************************************************************************************************************/
+/**********************************************************************************************************************/
+
+
+egen tl=total(weighting*_est_class2)
+egen tv=total(value*_est_class2)
+gen mean_price=tv/tl
+gen price_centered=price-mean_price
+
+mlogit market_desc price_centered ib(1).month ibn.mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
+est store class3
+
+
+collect create classification3, replace
+est restore class3
+
+collect get _r_b _r_se e(N), tag(model[(Mlogit)])
+
+
+
+
+
+collect dims
+collect style showbase off
+collect style cell, nformat(%5.3f)
+collect style cell border_block, border(right, pattern(nil))
+collect style cell result[_r_se], sformat("(%s)")
+collect style header result, level(hide)
+collect style column, extraspace(1)
+collect style row stack, spacer delimiter(" x ")
+collect layout (colname#result ) (coleq)
+
+collect style header result[r2_p N], level(label)
+collect label levels result r2_p "R-squared", modify
+collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
+collect preview
+
+collect layout (colname[price_centered mygear month _cons o._cons]#result) (coleq) 
+
+
+
+
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitNomACentered}"
+collect export $my_results/mlogitNomA_centered.tex, replace tableonly
+
+
+collect layout (colname[state year]#result) (coleq) 
+
+/*
+collect layout (result[r2_p N])
+collect style cell result[N], nformat(%12.0fc)
+*/
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitNomBCentered}"
+collect export $my_results/mlogitNomB_centered.tex, replace tableonly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* I'll flip the order of market categories, so the ordering is
 Small, Medium, Large, Jumbo.  Combined with setting the base to "small" in the mixed logit, this shoudl help interpretation.
 
