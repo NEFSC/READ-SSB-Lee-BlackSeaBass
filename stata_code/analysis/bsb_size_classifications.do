@@ -385,8 +385,8 @@ the constant terms is the price of small.
 /* the classification regression*/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-/* first multinomial logit spec */
-mlogit market_desc price ib(1).month ib(5).mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(4)
+/* first multinomial logit spec with real prices */
+mlogit market_desc priceR_CPI ib(1).month ibn.mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
 predict pr*
 
 est store class1
@@ -424,17 +424,17 @@ collect layout (colname[priceR_CPI mygear month _cons o._cons]#result) (coleq)
 collect layout (result[r2_p N])
 collect style cell result[N], nformat(%12.0fc)
 */
-collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
 collect export $my_results/mlogitA.tex, replace tableonly
 
 
-collect layout (colname[state year]#result) (coleq) 
+collect layout (colname[state year _cons o._cons]#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
 collect style cell result[N], nformat(%12.0fc)
 */
-collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
 collect export $my_results/mlogitB.tex, replace tableonly
 
 
@@ -444,11 +444,10 @@ collect export $my_results/mlogitB.tex, replace tableonly
 
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-/* Use nominal instead of real prices */
+/* Use nominal prices */
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-
-mlogit market_desc priceR ib(1).month ib(5).mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(4)
+mlogit market_desc price ib(1).month ibn.mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
 est store class2
 
 
@@ -481,7 +480,7 @@ collect layout (colname[price mygear month _cons o._cons]#result) (coleq)
 
 
 
-collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitNomA}"
 collect export $my_results/mlogitNomA.tex, replace tableonly
 
 
@@ -491,7 +490,7 @@ collect layout (colname[state year]#result) (coleq)
 collect layout (result[r2_p N])
 collect style cell result[N], nformat(%12.0fc)
 */
-collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
+collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitNomB}"
 collect export $my_results/mlogitNomB.tex, replace tableonly
 
 
@@ -499,7 +498,14 @@ collect export $my_results/mlogitNomB.tex, replace tableonly
 
 
 /* I'll flip the order of market categories, so the ordering is
-Small, Medium, Large, Jumbo.  Combined with setting the base to "small" in the mixed logit, this shoudl help interpretation */
+Small, Medium, Large, Jumbo.  Combined with setting the base to "small" in the mixed logit, this shoudl help interpretation.
+
+I'm less happy about the ordered logit. 
+1. I want to set the base category in the multinomial to something in the "middle" (Large).  This makes the coefficients easier to interpret.2
+2. This makes it hard to compare the ordered logit coefficients to the multinomial coefficients
+3. It's more restrictive, which would be good if I had fewer data points. But I'm not 100% sold on the advantages, give the number of observations.
+
+*/
 gen order=4-market_desc
 
 ologit order price ib(1).month ib(5).mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', or
