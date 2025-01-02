@@ -458,10 +458,10 @@ levelsof state_string, local(states)
 foreach l of local states{
 
 	graph bar (asis) frac if state_string=="`l'", over(market_desc) asyvars stack over(year, label(angle(45)))  title("Size composition in State `l'")  name(Fstate`j', replace)
-	graph export ${exploratory}\market_cats_`l'.png, as(png) width(2000) replace
+	graph export ${exploratory}\fmarket_cats_`l'.png, as(png) width(2000) replace
 
 	graph bar (asis) lndlb if state_string=="`l'", over(market_desc) asyvars stack over(year, label(angle(45))) title("Size composition in State `l'") name(Lstate`j', replace)
-	graph export ${exploratory}\fmarket_cats_`l'.png, as(png) width(2000) replace
+	graph export ${exploratory}\market_cats_`l'.png, as(png) width(2000) replace
 
 	local ++ j 
 }
