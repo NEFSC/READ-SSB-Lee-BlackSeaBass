@@ -1,3 +1,6 @@
+/* code to do some data explorations on DE */
+/*before you can run this, you must run the data extraction wrappers
+*/
 
 graph drop _all
 global in_string 2024_12_20

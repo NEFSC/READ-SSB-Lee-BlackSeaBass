@@ -1,4 +1,6 @@
+/* this was used to inform some of my data cleaning, so I'm not going to replace all the datacleaning steps. 
 
+This code is exploratory and makes some figures and tables. */
 graph drop _all
 global in_string 2024_12_20
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
