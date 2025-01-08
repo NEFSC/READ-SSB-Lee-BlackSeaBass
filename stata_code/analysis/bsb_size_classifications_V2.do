@@ -267,6 +267,26 @@ collect style cell result[N], nformat(%12.0fc)
 collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitB}"
 
 
+
+
+
+
+/* a very simple model */
+local logical_subset keep==1 & year>=2018 & price>.15
+
+mlogit market_desc price if market_desc<=4  & `logical_subset' & year>=2018, baseoutcome(4) 
+
+est store super_simple
+
+
+mlogit market_desc price if market_desc<=4  & `logical_subset' & year>=2018 [fweight=weighting] , baseoutcome(4) 
+est store simple_weighted
+
+
+
+
+
+
 /*
 
 
@@ -286,7 +306,7 @@ collect title "Multinomial Logistic Regression to Predict the Market Category\la
 		drop fold
 	}
 
-*/
+
 
 keep if keep==1 & year==2022 & price>.15
 
@@ -300,4 +320,4 @@ forvalues i=1/`folds'{
 	mlogit market_desc price ib(1).month ib(5).mygear i.stockarea i3.mystatus [fweight=weighting] if fold!=`i', baseoutcome(2) 
 	est store fold`i'
 }
-
+*/
