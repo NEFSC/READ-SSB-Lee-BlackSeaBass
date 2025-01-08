@@ -144,7 +144,7 @@ replace stockarea=2 if inlist(area,616)
 replace stockarea=2 if area<=613 
 
 assert stockarea>=1
-
+label values stockarea stockunit
 
 
 /* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
@@ -174,6 +174,9 @@ notes valueR_CPI: real value in thousands of 2023Q1 CPIU adjusted dollars
 
 label var year "Year"
 label var month "Month"
+
+gen semester=1 if month<=6
+replace semester=2 if month>=7
 
 save  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 
