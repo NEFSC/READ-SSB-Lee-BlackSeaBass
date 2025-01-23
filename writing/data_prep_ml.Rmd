@@ -1,0 +1,268 @@
+---
+title: "Black Sea Data prep for machine learning classification"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+---
+
+# Summary and Housekeeping
+
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("haven")
+library("scales")
+
+# load tidyverse and related
+library("tidymodels")
+
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("conflicted")
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+
+here::i_am("writing/data_prep_ml.Rmd")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+vintage_string<-list.files(here("data_folder","raw","commercial"), pattern=glob2rx("landings_all*.dta"))
+vintage_string<-gsub("landings_all_","",vintage_string)
+vintage_string<-gsub(".dta","",vintage_string)
+vintage_string<-max(vintage_string)
+```
+
+
+Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
+
+1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
+2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
+3. I do some tidying-up (converting datetime variables to date variables)
+4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
+
+5. There is a little data dropping
+  1. landed pounds=0
+  2. Some landings from VA and DE that look like aggregates. 
+6. I do some binning of gears, loosely into
+  1. Line or Hand gear
+  2. Trawls
+  3. Gillnets
+  4. Pot and Trap
+  5. Misc=Dredge, Seine, and Unknown.
+  
+7.  I do some binning of market categories
+  1. Unclassified and "Mixed or Unsized" are combined
+  2. Small, Extra Small, and Pee Wee (Rats) are combined
+  3. Medium and "Medium or Select" are combined.
+8.  Ungraded is combined with Round
+9. I construct a stockunit indicator
+  1. south is 621 and greater, plus 614 and 615 
+  2. North is 613 and smaller, plus 616
+10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
+11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
+are in both real and nominal dollars per landed pound. 
+
+```{r load_in_data, include=FALSE}
+cleaned_landings<-haven::read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
+#cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
+
+```
+
+I am not sure that this  group_by ...summarize statement is a good one.
+
+ 1. Should I disaggregate to "area" instead of stockarea?  
+ 2. What do I do about missing values for columns, particularly value and price.
+
+
+Additionally, I think some extra columns from CAMS_LAND might be good candidate predictors. 
+
+
+```{r filter_mimic_mlogit_dataclean, include=FALSE}
+# this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
+cleaned_landings<-cleaned_landings %>%
+  group_by(camsid,hullid, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
+  summarise(value=sum(value),
+            valueR_CPI=sum(valueR_CPI),
+           lndlb=sum(lndlb),
+           livlb=sum(livlb),
+           weighting=sum(weighting)
+  ) %>%
+  ungroup()
+# compute prices and real prices
+cleaned_landings<-cleaned_landings %>%
+  mutate(price=value/lndlb,
+         priceR_CPI=valueR_CPI/lndlb,
+         month=lubridate::month(dlr_date))
+
+# total landings
+cleaned_landings<-cleaned_landings %>%
+  group_by(dlr_date) %>%
+  mutate(total=sum(lndlb)) %>%
+    ungroup()
+
+
+#semester
+cleaned_landings<-cleaned_landings %>%
+  mutate(semester=case_when(
+      month<=6  ~ 1,
+      month>=7  ~ 2,
+      .default=0)
+      ) %>%
+  select(-month)
+
+#Use the variable labels to convert to factors 
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(market_desc=haven::as_factor(market_desc, levels="label"),
+         mygear=haven::as_factor(mygear, levels="label"),
+         state=haven::as_factor(state, levels="label"),
+         grade_desc=haven::as_factor(grade_desc, levels="label"),
+         stockarea=haven::as_factor(stockarea, levels="label")
+         )
+
+# flag observations to keep
+
+cleaned_landings<-cleaned_landings %>%
+    mutate(keep = case_when(state =="CN"  ~ 0,
+                           state =="FL"  ~ 0, 
+                           state =="ME"  ~ 0,
+                           state =="NH"  ~ 0,
+                           state =="PA"  ~ 0,
+                           state =="SC"  ~ 0,
+                           .default=1))%>% 
+  mutate(keep=case_when(price>=15 ~0, 
+                        .default=keep))
+
+#Factor the cams status column
+cleaned_landings<-cleaned_landings %>%
+  mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
+  )
+
+
+```
+
+
+
+<!---
+
+
+
+
+/* these egens are daily sums. I'm not sure how to put them into the data prep step and then collapse (first might work) , so I will put them after */
+/*  market level quantity supplied */
+xi, prefix(_S) noomit i.market_desc*lndlb
+bysort dlr_date: egen QJumbo=total(_SmarXlndlb_1)
+bysort dlr_date: egen QLarge=total(_SmarXlndlb_2)
+bysort dlr_date: egen QMedium=total(_SmarXlndlb_3)
+bysort dlr_date: egen QSmall=total(_SmarXlndlb_4)
+bysort dlr_date: egen QUnc=total(_SmarXlndlb_6)
+
+gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc
+
+gen largerQ=0
+replace largerQ=0 if market_desc==1
+replace largerQ=QJumbo+largerQ if market_desc==2
+replace largerQ=QLarge+largerQ if market_desc==3
+replace largerQ=QMedium+largerQ if inlist(market_desc,4,6) 
+
+gen smallerQ=0
+replace smallerQ=0 if inlist(market_desc,4,6) 
+replace smallerQ=QSmall+smallerQ if market_desc==3
+replace smallerQ=QMedium+smallerQ if market_desc==2
+replace smallerQ=QLarge+smallerQ if market_desc==1
+drop _Smarket_de*
+mdesc largerQ smallerQ 
+
+
+--->
+
+```{r final_tidyup, include=FALSE}
+
+# what do I want to estimate on? 
+# Nominal prices that are above $0.15 per pound
+# North Carolina to Mass
+
+estimation_dataset<-cleaned_landings %>%
+   mutate(keep = case_when(year<2018~ 0,
+                           price<0.15 ~ 0,
+                           market_desc=="Unclassified" ~ 0,
+                           .default=keep)
+          ) 
+# deal with factors
+estimation_dataset<-estimation_dataset %>%
+   mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
+  dplyr::filter(keep==1) %>%
+    mutate(year=factor(year)) %>%
+    mutate(semester=factor(semester)) %>%
+  mutate(market_desc=fct_drop(market_desc),
+        year=fct_drop(year),
+        state=fct_drop(state)) %>%
+  mutate(state=fct_relevel(state,c("RI","CT", "DE", "MD", "MA", "NJ", "NY", "NC","VA")))
+readr::write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+
+```
+
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}

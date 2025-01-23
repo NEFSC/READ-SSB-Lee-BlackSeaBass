@@ -1,0 +1,390 @@
+---
+title: "Black Sea Bass: A multinomial logit"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+---
+
+# Summary and Housekeeping
+
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+
+# load tidyverse and related
+library("tidymodels")
+
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("conflicted")
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+
+here::i_am("writing/estimate_multinomial.Rmd")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+```
+
+
+Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
+
+1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
+2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
+3. I do some tidying-up (converting datetime variables to date variables)
+4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
+
+5. There is a little data dropping
+  1. landed pounds=0
+  2. Some landings from VA and DE that look like aggregates. 
+6. I do some binning of gears, loosely into
+  1. Line or Hand gear
+  2. Trawls
+  3. Gillnets
+  4. Pot and Trap
+  5. Misc=Dredge, Seine, and Unknown.
+  
+7.  I do some binning of market categories
+  1. Unclassified and "Mixed or Unsized" are combined
+  2. Small, Extra Small, and Pee Wee (Rats) are combined
+  3. Medium and "Medium or Select" are combined.
+8.  Ungraded is combined with Round
+9. I construct a stockunit indicator
+  1. south is 621 and greater, plus 614 and 615 
+  2. North is 613 and smaller, plus 616
+10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
+11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
+are in both real and nominal dollars per landed pound. 
+
+```{r load_in_data, include=FALSE}
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+```
+
+
+
+
+
+```{r estimate_multinom, include=FALSE}
+
+#The estimation in R and stata is generally the same to at least 2 decimal places.  
+# Multinomial logit with 4 categories (base=small) 
+
+
+########################################################################
+# Unweighted
+# and 1 RHS variable (price). Unweighted. 
+########################################################################
+multi1<-multinom(market_desc ~ price, data=estimation_dataset)
+summary(multi1)
+# Multinomial logit with just a constant.
+multi0<-multinom(market_desc ~ 1, data=estimation_dataset, abstol=1e-8, reltol=1e-8)
+summary(multi0)
+
+# Multinomial logit with price (continuous) and year, state (factors)  
+multi4<-multinom(market_desc ~ price + year + state + semester + stockarea, data=estimation_dataset, abstol=1e-8, reltol=1e-8)
+summary(multi4)
+
+
+
+
+########################################################################
+#Weighted
+########################################################################
+# 1 RHS variable (price). weighted. This does not match stata exactly. I fiddled with the algorithm in stata
+multi1W<-multinom(market_desc ~ price, weights=weighting, data=estimation_dataset, abstol=1e-8, reltol=1e-8)
+summary(multi1W)
+# Multinomial logit with 4 categories (base=small) on a constant.
+multi0W<-multinom(market_desc ~ 1, weights=weighting, data=estimation_dataset, abstol=1e-8, reltol=1e-8)
+summary(multi0W)
+
+# Multinomial logit with price (continuous) and year, state (factors)  
+multi4<-multinom(market_desc ~ price + year + state + semester + stockarea, weights=weighting, data=estimation_dataset, abstol=1e-8, reltol=1e-8)
+summary(multi4)
+
+# (nnet or perhaps mlogit -- nnet will be more amenable to my data set up, which doesn't have case-specific variables.)
+```
+
+
+```{r predicted_probabilities, include=FALSE}
+
+nd<-estimation_dataset %>%
+dplyr::select(c(price, year, state, semester, stockarea, weighting))
+
+mypredictions<-predict(multi4, type="probs", newdata=nd)
+
+
+#Out of sample dataset, the "keep" variable
+oos_dataset<-cleaned_landings %>%
+   mutate(keep = case_when(year<2018~ 0,
+                           price<0.15 ~ 0,
+                          # market_desc=="Unclassified" ~0,
+                           .default=keep))
+
+# deal with factors
+oos_dataset<-oos_dataset %>%
+   mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
+  dplyr::filter(keep==1) %>%
+  dplyr::filter(market_desc=="Unclassified") %>%
+    mutate(year=factor(year)) %>%
+    mutate(semester=factor(semester)) %>%
+  mutate(market_desc=fct_drop(market_desc),
+        year=fct_drop(year),
+        state=fct_drop(state)) %>%
+  mutate(state=fct_relevel(state,c("RI","CT", "DE", "MD", "MA", "NJ", "NY", "NC","VA")))
+
+oos_predictions<-predict(multi4, type="probs", newdata=oos_dataset)
+
+oos_predictions<-as.data.frame(oos_predictions)
+
+oos_dataset<-cbind(oos_dataset,oos_predictions)
+
+```
+
+```{r simple_ml, include=FALSE}
+
+###################################################
+# Inspired by R code for "Big Data: New Tricks for Econometrics
+# Journal of Economic Perspectives 28(2), 3-28            
+# http://pubs.aeaweb.org/doi/pdfplus/10.1257/jep.28.2.3
+# Hal R. Varian
+
+# recoded into a tidymodels setup
+
+###################################################
+
+
+ # for reproducibility
+ set.seed(45687)
+ 
+
+
+
+ # remove obs with missing data, and select a few predictors
+ estimation_dataset2<-estimation_dataset %>%
+ #  dplyr::select(c(market_desc,price,year,state, weighting, stockarea, semester)) %>%
+    mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
+    )
+
+ # need to construc the "case weights" variable here.
+ 
+ 
+set.seed(4847482)
+
+data_split <- initial_split(data=estimation_dataset2, prop=0.8) 
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+nrow(train_data)
+nrow(test_data)
+
+```
+
+
+
+
+```{r, recipe}
+
+# Use a recipe on the training data. 
+
+#############################
+# Handle factor variables 
+#############################
+
+# assign roles to predictors, outcome, groups, and weights
+BSB.Classification.Recipe <- recipe(data_split)%>%
+  update_role(market_desc, new_role = "outcome")%>%
+  update_role(ID, new_role = "ID variable") %>%
+  update_role(!tidyselect::matches(c("Depressed","ID"), ignore.case=TRUE), new_role = "predictor") #%>%
+#   update_role(tidyselect::matches(c("HHIncomeMid"), ignore.case=TRUE), new_role = "predictor") # ID matches too many things
+
+
+# You can't center the factor variables
+# rescale and recenter 
+BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
+#  step_impute_knn(all_predictors()) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors())
+```
+
+
+
+
+```{r define a model}
+
+
+ranger_model<-rand_forest(mode="classification", 
+                     engine="ranger",
+                     trees = 500, min_n=5, mtry=3) 
+case_weights_allowed(ranger_model)
+
+cf_model<-rand_forest(mode="classification", 
+                     engine="partykit",
+                     trees = 500, min_n=5, mtry=3) 
+case_weights_allowed(cf_model)
+
+```
+
+The workflow is the combination of data processing and model statement
+
+```{r define_workflow}
+# Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
+
+BSB.Ranger.Workflow <-
+  workflow() %>%
+#  add_case_weights(fweight)%>% 
+  add_model(ranger_model) %>% 
+  add_recipe(BSB.Classification.Recipe)
+
+
+BSB.cf.Workflow <-
+  workflow() %>%
+#  add_case_weights(fweight)%>% 
+  add_model(cf_model) %>% 
+  add_recipe(BSB.Classification.Recipe)
+
+```
+
+
+
+
+```{r fit_model}
+set.seed(234)
+# Fit the model on the entire training dataset. This of course, is not the best 
+# thing to do.  There's 2 parameters that we should search over mtry and min_n
+# to find the best model. But this is *a* model.
+
+rf_fit <- 
+  BSB.Ranger.Workflow %>% 
+  fit(data = train_data)
+# Should probably predict out of sample here, but not 
+
+```
+
+
+
+
+We will do 6 fold cross validation over the mtry set of parameters. We'll hold
+min_n and trees constant. The number of trees isn't the most important thing.
+
+```{r hyper_parameter_tuning}
+
+
+set.seed(95895)
+# split the training data into 6 folds
+myfolds<-rsample::vfold_cv(train_data, v = 6)
+
+# Set up a set of mtry to search over. This is not a great grid, but it's fine for now
+#rf_grid <- grid_regular(
+#     mtry(range = c(10, 30)), levels=5)
+#rf_grid<-rbind(rf_grid,60)
+#rf_grid
+
+
+mtry<-c(2, 3, 5,15, 17)
+rf_grid2<-as.data.frame(mtry)
+
+
+
+# configure the tuning part of the model.
+tune_spec <- rand_forest(
+  mtry = tune(),
+  trees = 500,
+  min_n = 5,
+) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+
+# make a turning workflow. This combines the Sonar.Recipe "data processing" steps and new "tuning"
+# steps as the model.
+tune_wf <- workflow() %>%
+  add_recipe(BSB.Classification.Recipe) %>%
+  add_model(tune_spec)
+
+# pass in a bunch of metrics
+class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_accuracy, mn_log_loss,roc_auc, average_precision, accuracy, brier_class, roc_auc)
+
+# Tune the model by passing in the workflow, folds and the rf_grid
+# I can look at the canned metrics in  https://yardstick.tidymodels.org/articles/metric-types.html
+# I'm more interested in the metrics based on "soft" predictions (class_prob). 
+# I will use the class probabilities on the back end, not a 'hard' prediction 
+# I'm interested in the 'aggregate predictions', not the 
+
+tune_res <- tune_grid(
+  tune_wf,
+  resamples = myfolds,
+  grid = rf_grid2,
+  control=control_grid(save_pred = TRUE),
+  metrics=class_and_probs_metrics
+)
+```
+
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
