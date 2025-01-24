@@ -240,9 +240,10 @@ estimation_dataset<-cleaned_landings %>%
 estimation_dataset<-estimation_dataset %>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
   dplyr::filter(keep==1) %>%
-    mutate(year=factor(year)) %>%
-    mutate(month=factor(month)) %>%
-    mutate(semester=factor(semester)) %>%
+    mutate(year=forcats::as_factor(year)) %>%
+    mutate(month=forcats::as_factor(month)) %>%
+    mutate(semester=forcats::as_factor(semester)) %>%
+    mutate(dlrid=forcats::as_factor(dlrid)) %>%
   mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
         state=fct_drop(state)) %>%
