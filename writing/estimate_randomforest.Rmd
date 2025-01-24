@@ -117,6 +117,7 @@ vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob
 vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
+estimation_vintage<-as.character(Sys.Date())
 ```
 
 
@@ -370,10 +371,9 @@ tune_res <- tune_grid(
 
 end_time_tune<-Sys.time()
 
+readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
+
 end_time_tune-start_time_tune
-
-
-readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_results",vintage_string,".Rds")))
 
 ```
 
