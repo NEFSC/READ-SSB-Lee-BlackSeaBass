@@ -156,8 +156,7 @@ cleaned_landings<-cleaned_landings %>%
       month<=6  ~ 1,
       month>=7  ~ 2,
       .default=0)
-      ) %>%
-  select(-month)
+      ) 
 
 #Use the variable labels to convert to factors 
 
@@ -242,6 +241,7 @@ estimation_dataset<-estimation_dataset %>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
   dplyr::filter(keep==1) %>%
     mutate(year=factor(year)) %>%
+    mutate(month=factor(month)) %>%
     mutate(semester=factor(semester)) %>%
   mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
