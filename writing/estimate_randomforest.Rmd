@@ -335,7 +335,7 @@ tune_spec <- rand_forest(
   min_n = 5,
 ) %>%
   set_mode("classification") %>%
-  set_engine("ranger")
+  set_engine("ranger",num.threads=!!my.ranger.threads)
 
 
 # make a turning workflow. This combines the Sonar.Recipe "data processing" steps and new "tuning"
