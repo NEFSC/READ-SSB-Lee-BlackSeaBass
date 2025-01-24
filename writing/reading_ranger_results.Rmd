@@ -60,6 +60,11 @@ conflicts_prefer(viridis::viridis_pal())
 
 here::i_am("writing/reading_ranger_results.Rmd")
 
+
+
+
+
+
 #############################################################################
 #knitr options
 
@@ -110,6 +115,21 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "brier_class")
+
+
+
+
+all.metrics %>%
+  filter(.metric == "mn_log_loss") %>%
+  select(mean, mtry) %>%
+  pivot_longer(mtry,
+    values_to = "value",
+    names_to = "parameter"
+  ) %>%
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point(show.legend = FALSE) +
+  facet_wrap(~parameter, scales = "free_x") +
+  labs(x = NULL, y = "mn_log_loss")
 
 
 ```
