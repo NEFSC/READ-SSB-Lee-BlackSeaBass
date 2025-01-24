@@ -37,8 +37,13 @@ library("tidymodels")
 
 
 # load machine learning and estimation tools
+# ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
+# you might want to install Rcpp, then RcppEigen, then ranger
+
+
 library("nnet")
 library("ranger")
+
 library("partykit")
 library("bonsai")
 # load utilities
@@ -57,8 +62,42 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-
 here::i_am("writing/estimate_randomforest.Rmd")
+
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if(Sys.info()['effective_user'] %in% c("mlee")){
+      runClass<-'Container'
+    }
+    else{
+      runClass <- 'Local'
+    }
+  }
+
+if(platform == 'windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.ranger.threads<-6
+} else if (runClass %in% c('Container')){ 
+  my.ranger.threads<-12
+
+  }
+
+
+
+
+
+
+
+
+
+
+
 
 #############################################################################
 #knitr options
@@ -78,6 +117,7 @@ vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob
 vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
+estimation_vintage<-as.character(Sys.Date())
 ```
 
 
@@ -198,15 +238,16 @@ BSB.Classification.Recipe <- BSB.Classification.Recipe %>%
 
 ```{r define a model}
 
+ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
+  set_engine("ranger",num.threads=!!my.ranger.threads)
 
-ranger_model<-rand_forest(mode="classification", 
-                     engine="ranger",
-                     trees = 500, min_n=5, mtry=3) 
+
 case_weights_allowed(ranger_model)
 
 cf_model<-rand_forest(mode="classification", 
-                     engine="partykit",
-                     trees = 500, min_n=5, mtry=3) 
+                    trees = 500, min_n=5, mtry=3) %>%
+  set_engine("partykit")
+
 case_weights_allowed(cf_model)
 
 ```
@@ -295,7 +336,7 @@ tune_spec <- rand_forest(
   min_n = 5,
 ) %>%
   set_mode("classification") %>%
-  set_engine("ranger")
+  set_engine("ranger",num.threads=!!my.ranger.threads)
 
 
 # make a turning workflow. This combines the Sonar.Recipe "data processing" steps and new "tuning"
@@ -330,10 +371,9 @@ tune_res <- tune_grid(
 
 end_time_tune<-Sys.time()
 
+readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
+
 end_time_tune-start_time_tune
-
-
-readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_results",vintage_string,".Rds")))
 
 ```
 
