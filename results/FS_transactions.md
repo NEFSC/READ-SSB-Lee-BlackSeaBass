@@ -1,4 +1,4 @@
-Number of Observations by year and Market Category \label{FStransactions}
+Number of Observations by year and Market Category
 
 |      | Jumbo  | Large  | Medium | Small | Unclassified |
 |------|--------|--------|--------|-------|--------------|

@@ -1,4 +1,4 @@
-Number of Observations by year and Market Category, Estimation Sample \label{ESTtransactions}
+Number of Observations by year and Market Category, Estimation Sample
 
 |      | Jumbo  | Large  | Medium | Small | Unclassified |
 |------|--------|--------|--------|-------|--------------|
