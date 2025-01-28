@@ -81,16 +81,24 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
-vintage_string<-list.files(here("results","ranger"), pattern=glob2rx("BSB_ranger_results*Rds"))
-vintage_string<-gsub("BSB_ranger_results","",vintage_string)
-vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
+data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+data_vintage_string<-gsub("BSB_estimation_dataset","",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
+estimation_vintage<-list.files(here("results","ranger"), pattern=glob2rx("BSB_ranger_results*Rds"))
+estimation_vintage<-gsub("BSB_ranger_results","",estimation_vintage)
+estimation_vintage<-gsub(".Rds","",estimation_vintage)
+estimation_vintage<-max(estimation_vintage)
+
+
 ```
 
 ```{r load_in_data and results, include=FALSE}
 # this was created with data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",vintage_string,".Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",data_vintage_string,".Rds")))
+tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
 
 ```
 
@@ -136,6 +144,9 @@ all.metrics %>%
 
 ```{r}
 
+extracts<-tune_res %>%
+  collect_notes()
+
 # A ROC curve. I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
@@ -143,13 +154,13 @@ predictions<-tune_res %>%
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==4) %>%
+  dplyr::filter(mtry==3) %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
   
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==4) %>%
+  dplyr::filter(mtry==3) %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 

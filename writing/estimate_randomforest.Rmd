@@ -22,6 +22,12 @@ fontsize: 12pt
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ 
+ If you want to run this from the command line
+ 
+ Rscript -e 'library(rmarkdown); rmarkdown::render("./writing/estimate_randomforest.Rmd", "pdf_document")' 
+ 
+ This doesn't compile to pdf on the containers (pdflatex not found)
  --->
 ```{r global_options, include=FALSE}
 
@@ -179,6 +185,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
  # remove obs with missing data, and select a few predictors
  estimation_dataset<-estimation_dataset %>%
    dplyr::filter(is.na(price)==0) %>%
+   mutate(dlrid=forcats::as_factor(dlrid)) %>%
  #  dplyr::select(c(market_desc,price,year,state, weighting, stockarea, semester)) %>%
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
     )
@@ -221,7 +228,7 @@ nrow(test_data)
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(dlrid, new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor")
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, dlrid), new_role = "predictor")
   
 
 
@@ -324,7 +331,7 @@ myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 6, balance="observ
 #rf_grid
 
 
-mtry<-1:6
+mtry<-1:11
 rf_grid2<-as.data.frame(mtry)
 
 
