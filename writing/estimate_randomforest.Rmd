@@ -322,7 +322,7 @@ small are lower than the prices of medium, but not that much lower.
 
 set.seed(95895)
 # split the training data group wise into 6 folds
-myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 6, balance="observations")
+myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
 # Set up a set of mtry to search over. This is not a great grid, but it's fine for now
 #rf_grid <- grid_regular(
@@ -331,7 +331,8 @@ myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 6, balance="observ
 #rf_grid
 
 
-mtry<-1:11
+mtry<-2:15
+mtry<c(mtry,20,30)
 rf_grid2<-as.data.frame(mtry)
 
 
@@ -378,12 +379,47 @@ tune_res <- tune_grid(
 
 end_time_tune<-Sys.time()
 
-readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
+readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_tune",estimation_vintage,".Rds")))
 
 end_time_tune-start_time_tune
 
 ```
 
+
+
+```{r}
+
+best_tree <- tune_res %>%
+  select_best(metric = "brier_class")
+
+
+# finalize model by picking the best model hyperparameters
+final_wf <- 
+  tune_wf %>% 
+  finalize_workflow(best_tree)
+
+
+# Final model fitting on the full training dataset 
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split) 
+
+
+final_fit %>%
+  collect_metrics()
+
+readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
+
+
+
+```
+
+```{r}
+Sys.time()
+
+
+sessionInfo()
+```
 
 <!---
 \newpage
