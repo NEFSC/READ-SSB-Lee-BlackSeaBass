@@ -82,34 +82,39 @@ stat_areas<-stat_areas %>%
 
 ## Research Question
 
-Can the information contained in prices be used to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category, and therefore improve data going into the stock assessment process.
+Can the information contained in prices be used to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category?
 
 ## Motivation
 
-Landed weights must be converted into landed numbers at age for stock assessments.  This is done by sampling landed fish at the dealer, vessel, or dock and measuring lengths and computing ages. When no fish in a market category are measured, a length distribution must be borrowed for the fish in the Unmeasured market categories.  For Black Sea bass, the unclassified market category was not measured for 3 years.  
+Landed weights must be converted into landed numbers at age for age-structured stock assessments.  This is done by sampling landed fish at the dealer, vessel, or dock and measuring lengths and computing ages. When no or few fish in a market category are measured, a length distribution must be borrowed for the fish in the Unmeasured market categories.  For Black Sea bass, the unclassified market category was not measured for 3 years.
 
 Because it is costlier to collect the age of fish, only a subset of the fish that have lengths also have ages. Once landings in a particular market category is converted to lengths, it is reasonable to apply a length-age relationship derived from 'all market categories' to just a single market category. Equivalently, it is reasonable to convert the landings from all market categories into a single weight-at-length measure and then convert that into an weight-at-age measure. 
+
+The "Unclassified" market category, in conjunction with sampling at vessels, can be particularly challenging. Dealers, not vessels, classify fish into market categories, therefore sampling at the dock means that the "Unclassified" fish might not actually be unclassified. 
 
 ## Extensions
 
 Can we use the methods to other fisheries? If it works well, can port sampling effort be re-deployed away from categories that are hard to get?
 
-The "Unclassified" market category, in conjunction with sampling at vessels, can be particularly challenging. Dealers, not vessels, classify fish into market categories, therefore sampling at the dock means that the "Unclassified" fish might not actually be unclassified. 
-
-
 ## Potential Problems
 
-* State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers.  If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported.
+1. State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers.  If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported.
   * I need to get in touch with the people that load in these state aggregates to figure out how prices are put into the datasets.
+  * For now, I'm setting these outside the model.
 
-* Price Separation: Prices need to vary by market category. If they there isn't any variation in prices across market categories, then it won't work. Prices don't need to have a particular relationship, and that relationship can probably change from year to year (or period-to-period) 
+2. Dealers have their own tendencies in terms of how they classify fish?
+  * This suggests that the dealer id should go into the model as a factor variable. 
+  * It also suggest that cross-validation will be tricky.  The training and validation datasets would not be truly independent if I pull random samples.  See @Rabinowicz2022 and @Rabinowicz2022b for discussions in the context of a mixed linear model.
 
-* Clustering -- A standard k-fold cross-validation splits the training data into $k$ roughly equal samples. Each sample omits approximately $1/k$ of the data, and that $1/k$th is used for model training.  
-* Weighting observations. It does not seem reasonable to treat an observation of 10 lbs the same as an observation of 100lbs.
+## Solved Problems
 
-* Overfitting.  The underlying problem is an out of sample $\hat{y}$ problem [@Mullainathan2017] -- I want to predict the probability of an observation belonging to particular class.  I don't care too much about inference.  
+1.  Price premia: Prices need to vary by market category. If they there isn't any variation in prices across market categories, then it won't work. Prices don't need to have a particular relationship, and that relationship can probably change from year to year (or period-to-period). 
 
-* Some of the RHS variables may be "sparse." This might make a k-fold cross-validation with a parametric estimator difficult.  If there's not enough variation, the maximum liklihood estimator can fail to converge. This should take some seriously bad luck, extreme sparsity, or a large number of folds. 
+2.  Weighting observations. It is not reasonable to treat an observation of 10 lbs the same as an observation of 100lbs.  Using "pounds landed" as a frequency weighting seems appropriate.  This shifts the unit of observation to "a pound of landed fish," which more closely aligns with the goal of the model
+
+3.  Overfitting.  The underlying problem is an out of sample $\hat{y}$ problem [@Mullainathan2017] -- I want to predict the probability of an observation belonging to particular class.  I don't care too much about inference.  
+
+4.  Some of the RHS variables may be "sparse." This might make a k-fold cross-validation with a parametric estimator difficult.  If there's not enough variation, the maximum likelihood estimator can fail to converge. This should take some seriously bad luck, extreme sparsity, or a large number of folds.  This is a 
 
 # Regulations and Background
 
@@ -120,12 +125,9 @@ The "Unclassified" market category, in conjunction with sampling at vessels, can
 
 # Stock assessment
 
-The age-structure of commercial landings is a crucial input to the stock assessment. Samplers measure the length of commercially landed fish and collect otoliths.  Analysts request coverage levels of different market categories. 
-Gaps in the data can arise when categories of certain fish  are not sampled.  
+The age-structure of commercial landings is a crucial input to the stock assessment. Samplers measure the length of commercially landed fish and collect otoliths.  Analysts request coverage levels of different market categories. Gaps in the data can arise when categories of certain fish  are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. 
 
-When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. 
-
-There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  Extra Small and PeeWee are aggregated into Small.  Mixed is aggregated into Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured.
+There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  Extra Small and PeeWee are aggregated into Small; these are very infrequent.  Mixed is aggregated into Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured.
 
 Semester is Jan -June and July -Dec.
 
@@ -158,6 +160,8 @@ The underlying data is taken from **STOCKEFF*iciency, which originally used CFDB
   - There is probably alot of dealer-specific effects here. Some dealers classify everything. Some classify nothing.
 
 5. The definition of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state).
+
+6. The research question is related to an aggregate of predictions: landings aggregated over a stockarea-year-semester (or perhaps stockarea-year).  The model selection metric I use should be related to that.  For example, "True" landings in each market category compared to "actual" landings in each market category, computed at the stockarea-year, stockarea-semester, or stockarea-year-semester level.  
 
 # Methods
 
@@ -199,6 +203,7 @@ Train and Test a multinomial classification model
   - Predict whether a transaction is Small, Medium, Large, or Jumbo classes^[Optionally train a separate model that admits the Unclassified, but I'm struggling to figure out what I learn from that].
        - Use either the Brier classification or the log loss to do model training and selection.  
   - Validate in the usual way (weight of fish correctly predicted -- not the 'rows' of observations correctly predicted).
+  -  
 
   A second, less-conventional validation might be available.  We have some years (2018-2020) where we sample lengths for the unclassified fish.  This can be used to construct a true catch-at-length distribution (outside the ML model). Inside the ML model, we predict the class of the "unclassified" into the constituent market categories and apply the length keys to those to form a catch-at-length distribution.  Construct some sort of loss function based on the differences in weights-at-length  (or weights at age). This assumes that the length measurements of the Unclassified category is "good."
     
@@ -219,6 +224,30 @@ Classification trees are quite unstable and therefore can be prone to poor out o
 
 Classification trees and related methods have some problems with being biased toward selecting certain kinds of variables (factors with many factors, numerics, and variables with lots of missing values) [@Hothorn2006, @Strobl2009]. A criticism of both trees and random forests is that statistical properties don't guide the stopping criteria [@Hothorn2006, @Strobl2009]. A conditional inference process can address both of these problems [@Hothorn2006].
 
+
+Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish? This needs to be handled this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic. However, we would also want to include dealer specific effects as predictors. See @Rabinowicz2022 and @Rabinowicz2022b discusses the applicability of cross-validation in the context of a mixed linear model.  There are two take-aways
+
+@Rabinowicz2022b 's setup:
+1. the data is indexed $i=1,...,N$ and broken up so that $i=1,\ldots,n_1$ are in the first fold, $i=n_1+1,\ldots,n_2$ are in the second fold, etc.
+2. $T_{1}=\{y_i,\bf{x_i}\}_{i=1}^{n_1}$ is the collection of predictors and outcomes in the $1$st of the $K$ folds. The subscripting is a little difficult here.   $T_{2}=\{y_i,\bf{x_i}\}_{i=n_1+1}^{n_2}$ is the data in the 2nd fold, etc.
+3. For a specific fold, the usual cross-validation error estimator an expected value of a loss function of the true outcome and the predictions made by combining the "out-of-fold" model with the data in in the fold. The fold-specific errors are averaged over each of the $K$ folds.  This is standard and the fold-specific loss function for observation $i$ in fold $k$ is written as:
+$$
+L(y_i, \hat{y}(x_i, T_{-k}))
+$$
+This captures the "true data" $y_i, \bf{x_i}$, and the model trained on the $-k$ folds of data.
+
+3. A "more general" form of the Cross-Validation prediction error is the generalization error (hah) in Equation 2. It is the expectation of a modified loss function:
+$$
+L(y_{te,i}, \hat{y}(x_{te,i}, T_{tr}))
+$$
+This captures the "true data" $y_i, \bf{x_i}$, and the model trained on some generic data.  Averaging this loss function over "everything" produces the generalized error. When the data are uncorrelated, the standard formula for a CrossValidation error rate is an unbiased estimate of the generalization error.  This motivates the random fold process.  The standard formula is also an unbiased estimate when the data are "exchangeable" (Anderson 2018, Roberts 2017).  It is also unbiased for predicting new observations from the same clusters in the training dataset, which was not well understood by the literature.   
+
+For certain other cases, a correction factor is needed which requires computing the covariance matrix between various predictions.  
+
+
+
+
+
 # Data
 
 Matched dealer and vessel trip report data from 1996-2024 is available.  Vessel trip report data are trip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer. Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.
@@ -231,6 +260,35 @@ There are two empirical challenges.  First, what to do with these "multi-subtrip
 Black Sea Bass: sales by firms without a federal permit to dealers without a federal permit.  In some states, firms without a federal permit can fish for black sea bass in state waters and sell it to fish dealers who do not have a federal permit. These states require vessels to report their catch at a lower frequency and catch from these vessels is added into the dealer data at a higher.
 
 
+## Random Forest 
+
+Here is the call to the BSB classification recipe that defines the outcome, predictors, identification variables.  Not shown is the command that sets the ``case_weights=frequency_weights()`` using landed pounds for a row of data. Price and lndlb are the only continuous variables, all the others are factors. The dataset does not have any rows where ``market_desc==Unclassified`` 
+
+```{r BSB_data, eval=F, echo=T}
+BSB.Classification.Recipe <- recipe(train_data) %>%
+  update_role(market_desc, new_role = "outcome")%>%
+  update_role(dlrid, new_role = "ID variable") %>%
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor")
+
+BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
+#  step_impute_knn(all_predictors()) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors())
+
+```
+
+I use the ``dlrid`` to control the way the k-fold cross validation is performed.  
+
+Other predictors that could be available
+  1. CAMS derivied data
+      A. STATUS, although it's probably better to put in "state permit" or "no federal permit"
+  2. ``dlrid`` and or permit/vessel id.
+  3. Daily landings in each of the market categories.  If lots of people are landings Jumbos, probably you will also land Jumbos. 
+  4. Daily landings "in the state" of each of the market categories. Same rationale.
+  5. Landings of other things (that are caught along with particular market categories?). Like, do we tend to catch lots of smalls when also catching squid or summer flounder?
+  6. Mesh size?  Or an interaction of mesh size and gear?  I'm not sure how to construct this for something like "other" or "hook" gears.
+
+Probably going to need to move this into the Rcontainer.
 
 
 # Results
@@ -326,6 +384,13 @@ It looks like the yearly effects get smaller in magnitude when I estimate the no
 \input{../results/mlogitNomA_centered.tex}
 
 \input{../results/mlogitNomB_centered.tex}
+
+# Machine Learning Results
+
+## Goodness of Fit
+
+## Notes
+
 
 
 <!---
