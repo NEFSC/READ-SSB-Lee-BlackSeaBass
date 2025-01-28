@@ -4,6 +4,7 @@ subtitle: "Using Prices to Understand The Length of Fish"
 author: "Min-Yang Lee<br />Social Sciences Branch<br />   Northeast Fisheries Science Center<br /> 27 March 2025"
 output:
   xaringan::moon_reader:
+    yolo: false
     css: ["default", "libs/EDAB_theme3_508_SOE_16by9.css", "libs/ml_simple_themes.css"]
     lib_dir: libs
     nature:
@@ -48,13 +49,19 @@ library(here)
 library(kableExtra)
 library(DT)
 library(widgetframe)
+here::i_am("writing/presentations/2025_03_24_Economic_Informed_Stock_Assessments/2025_03_24_Economic_Informed_Stock_Assessments.Rmd")
 
 # if figure output defaults to docs/images/ replace with this before moving to 
 # presentations/docs in both the html output (search and replace)
 # and folder name
 # 20220316_MAFMCSSC_Gaichas_files/figure-html/
 
-imagefolder<-"2025_03_24_Economic_Informed_Stock_Assessments.Rmd"
+imagefolder<-here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments")
+
+mlogit_preds<-read.csv(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mlogit_predictions_raw.csv"))
+mlogit_colfreq_preds<-read.csv(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mlogit_predictions_col_freq.csv"))
+mlogit_rowfreq_preds<-read.csv(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mlogit_predictions_row_freq.csv"))
+
 
 ```
 
@@ -104,13 +111,13 @@ in-line cite with:  `r Cite(myBib, "carr2020expected")`
 # Research Question and Motivation
 
 ## Research Question
-Can we use the information contained in fish prices to infer something useful about the size of the Mixed and Unclassified Black Sea Bass?
+Can we use the information contained in fish prices to infer something useful about the size of the Unclassified Black Sea Bass?
 
 ## Motivation
 
-> Another source of uncertainty stemmed from the fact that no length information on individuals in the unclassified market category have been sampled since 2020. Calculating the catch at length for 2021-2023 necessitated borrowing information from before 2020 which introduces additional uncertainty. [BSB management track assessment report]
+* Another source of uncertainty stemmed from the fact that no length information on individuals in the unclassified market category have been sampled since 2020. Calculating the catch at length for 2021-2023 necessitated borrowing information from before 2020 which introduces additional uncertainty. [BSB management track assessment report]
 
-
+* It is costly to collect length and age information.  Is trying to collect this information for all market categories the most efficient use of our resources?
 
 
 ---
@@ -118,7 +125,7 @@ Can we use the information contained in fish prices to infer something useful ab
 For years, economists have asked the opposite question: how much more do buyers pay for large fish compared to small fish? `r Cite(myBib, "McConnell2000")`
 
 
-Scallops `r Cite(myBib, "Ardini2018")`are a nice example:
+Scallops `r Cite(myBib, "Ardini2018")`are a nice example with clean separation:
 
 <img src="./mfx_myspp_fy.png" alt="Average Discrete Premia (lines) and 90% Confidence Intervals (ranges) Relative to the 11–20 Scallop Size Class for the other Four Size Classes" width="auto" height="400"/>
 
@@ -134,56 +141,129 @@ Scallops `r Cite(myBib, "Ardini2018")`are a nice example:
 <img src="./lee2014_fig1.jpg" alt="Kernel Density Estimates of Length for various market categories" width="auto" />
 ]
 
+But the separation is not as clean.
+
+
 .footnote[
 `r Cite(myBib, "Lee2014")`
 ]
 
 ---
-# Methods
+# Methods Overview
 
-1. Do prices vary by size? (This is like a pre-test)
+1. Exploratory data analysis step: Do prices vary by size? 
   - Estimate a hedonic model: the price per pound is a function of the transaction level attributes, like market category, gear, and time of year. 
+  - A slightly more sophisticated way of checking that prices vary by market category than the box plots from the previous slide.
   
-2. Estimate a categorical model (ordered or un-ordered logit or something related) with price as an explanatory variable.  
+2. Estimate a categorical model (ordered or un-ordered logit or something related) with price as an explanatory variable. 
   - Validate the model with a k-fold cross validation. 
   - Predict out of sample for the unclassified market category.
     
-3.  Estimate a latent class (finite mixture model) on the price of unclassified, where there are a moderate number of classes (say small and large).  
-  - Validate the model with a k-fold cross-validation.
-  - Bonus validation: Validate the model by predicting categories for known small and large. 
-  - Predict the class membership of the unclassified.  
+3.  Train a random forest classification model on the four principle classes (Jumbo, Large, Medium, Small).  
+  - **Test** and **train** with a k-fold cross-validation.
+  - **Validate** on a hold-out sample.
+  - **Predict** out of sample on the "Unclassified".
   
-4. Using the results of (1) or (2) reconstruct a new length distribution of the landed black sea bass.  
+4. Using the results of (3) reconstruct a new length distribution of the landed black sea bass.  
 
 ---
-
 # Potential Pitfalls
 
 - Data is such a bear.
-  - But really, a major problem is that there is less QA/QC on the "value" columns. 
-  - State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers. 
-    - If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  
-    - If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported. The fallacy of aggregation? 
+  - Less QA/QC on the "value" columns (value, sppvalue). 
+  - State-level reporting.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers. 
+      - If these are transactions (trip/subtrip) with true value, this is fine.
+      - If these are transactions (trip/subtrip) with "imputed" or "assigned" value, they *probably cannot* be included in the model.
+      - If these are aggregates of multiple transactions, they *probably cannot* be included, even if the true value reported.
 
 - Price Separation: Prices need to vary by market category. 
   - No variation in prices across market categories, then it won't work
   - No need to assumed a particular price-size relationship
   - price-size relationship can change from year to year
   - Better if the price of ``Unclassified`` is between the price of two other categories.
+  
+---
+#  Pitfalls 2
 
-- What if it's a dealer idiosyncrasy?
-
-
+- Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish?
+  - Example 1: Dealer A's Large is 17-20" while Dealer B's Large is 19-22"
+  - Example 2: Dealer C only grades into "Large" or "Small"
+  - Problem 1: Need to handle this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic. 
+  - Problem 2: Would want to include a dealer "fixed effect" as to account the dealer's tendencies.  If all observations of cluster $c$ are in fold $k$, then I don't know how you use that info to predict.
 
 ---
+# Hedonic Results
+.left-column[
+- Estimates in the columns can be interpreted as the average price of a pound of Black Sea Bass for each market catgory.
+- Not shown are the effects of factor variables for gear,  state, calendar year, and month.
+- Not show are the effects of total landings and total landings$^2$.
+]
+.right-column[
+
+```{r child=here("results","hedonic_table_market_cats.md")}
+```
+]
+Not shown: Effects of 
+---
+## Multinomial Logit
+.left-column[
+- Estimates greater than 1 indicate that increases in a predictor increase the 
+chances of transaction being in a particular market category relative to large.
+- Not shown are factor variables for month, year, and state
+]
+.right-column[
+
+```{r child=here("results","mlogitNom_short.md")}
+```
+]
+
+---
+## Multinomial Logit predictions
+
+I predicted each of the four class probabilities for every transaction.
+
+I multiplied the predictions by the *lndlb* for each transaction and then summed by market category.
+
+```{r}
+kbl(mlogit_preds, digits=0,booktabs=T, align=c("l",rep('r',times=4)), caption =  "Predicted Category (mt) after a multinomial logit.  Main diagonal indicates a correct prediction, off diagonal terms are incorrect predictions. 2018-2024")  %>%
+    #column_spec(5:8, width = "2cm")
+    kable_styling(full_width = F) %>%
+      row_spec(0,bold=FALSE) 
+
+```
+The mechanics of the logit mean that the model is correct: the row sums are equal to the column sums.
+
+```{r}
+kbl(mlogit_rowfreq_preds, digits=2,booktabs=T, align=c("l",rep('r',times=4)), caption =  "Predicted Category after a multinomial logit, expressed as a row frequency(2018-2024)")  %>%
+    #column_spec(5:8, width = "2cm")
+    kable_styling(full_width = F) %>%
+      row_spec(0,bold=FALSE) 
+
+```
+
+This is kind of not great. Plus, it's an "in sample" prediction, so it's overly optimistic 
+
+---
+## Machine Learning with Random Forest
+
+- I trained and tuned a Random Forest on 40% of my data.  I used 10% as a hold out sample. 
+- More predictors, so it's not really a fair comparison to the logit. Factor have a *
+   - Factors: Gear (5), Stockarea (2), state (9), Year (7), Month (12), Semester (2), Grade (1)  
+   - Continuous: Price, Landed pounds
+   - Frequency Weights: Landed Pounds
+- Tuned with mtry in 1:11
+
+ ---
 ## Extensions
-
+.left-column[
 - Can we modify the way lengths have been borrowed?
-
-<img src="./2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg" alt="Borrowed Length data in the 2023 BSB Assessment" width="auto" height="250"  />
-
 - Can we apply these methods to other stocks?  Which stocks?
 - If it works well, can port sampling effort be re-deployed away from categories that are hard to get?
+]
+
+.right-column[
+<img src="./2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg" alt="Borrowed Length data in the 2023 BSB Assessment" width="auto" height="500"  />
+]
 
 ---
 ## End Matter
