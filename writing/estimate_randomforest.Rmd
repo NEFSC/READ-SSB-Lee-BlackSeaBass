@@ -25,7 +25,7 @@ fontsize: 12pt
  
  If you want to run this from the command line
  
- Rscript -e 'library(rmarkdown); rmarkdown::render("./writing/estimate_randomforest.Rmd", "pdf_document")' 
+ Rscript -e 'library(rmarkdown); rmarkdown::render("./writing/estimate_randomforest.Rmd", "html_document")' 
  
  This doesn't compile to pdf on the containers (pdflatex not found)
  --->
