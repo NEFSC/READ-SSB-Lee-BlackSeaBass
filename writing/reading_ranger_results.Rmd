@@ -99,8 +99,9 @@ finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
 finalfit_vintage<-max(finalfit_vintage)
 
 
-
 ```
+
+Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  Final fit vintage is `r finalfit_vintage`.
 
 ```{r load_in_data and results, include=FALSE}
 # this was created with data_prep_ml.Rmd
@@ -150,6 +151,7 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "mn_log_loss")
+ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
 
 
 ```
@@ -169,7 +171,7 @@ predictions %>%
   dplyr::filter(mtry==3) %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","roc.png"), plot=last_plot())
+ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","roc_tune.png"), plot=last_plot())
 
 
 predictions %>%
@@ -177,7 +179,7 @@ predictions %>%
   dplyr::filter(mtry==3) %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","pr_curve.png"), plot=last_plot())
+ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","pr_curve_tune.png"), plot=last_plot())
 
 
   
