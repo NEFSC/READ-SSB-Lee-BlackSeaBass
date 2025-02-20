@@ -115,6 +115,11 @@ are in both real and nominal dollars per landed pound.
 cleaned_landings<-haven::read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
+
+daily_stats<-haven::read_dta(here("data_folder","main","commercial", paste0("daily_cleaned_",vintage_string,".dta")))
+#cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
+
+
 ```
 
 I am not sure that this  group_by ...summarize statement is a good one.
@@ -127,6 +132,7 @@ Additionally, I think some extra columns from CAMS_LAND might be good candidate 
 
 
 ```{r filter_mimic_mlogit_dataclean, include=FALSE}
+
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
   group_by(camsid,hullid, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
@@ -137,6 +143,13 @@ cleaned_landings<-cleaned_landings %>%
            weighting=sum(weighting)
   ) %>%
   ungroup()
+
+
+# merge in daily statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(daily_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one")
+
+
 # compute prices and real prices
 cleaned_landings<-cleaned_landings %>%
   mutate(price=value/lndlb,
@@ -185,44 +198,8 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
-
-
 ```
 
-
-
-<!---
-
-
-
-
-/* these egens are daily sums. I'm not sure how to put them into the data prep step and then collapse (first might work) , so I will put them after */
-/*  market level quantity supplied */
-xi, prefix(_S) noomit i.market_desc*lndlb
-bysort dlr_date: egen QJumbo=total(_SmarXlndlb_1)
-bysort dlr_date: egen QLarge=total(_SmarXlndlb_2)
-bysort dlr_date: egen QMedium=total(_SmarXlndlb_3)
-bysort dlr_date: egen QSmall=total(_SmarXlndlb_4)
-bysort dlr_date: egen QUnc=total(_SmarXlndlb_6)
-
-gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc
-
-gen largerQ=0
-replace largerQ=0 if market_desc==1
-replace largerQ=QJumbo+largerQ if market_desc==2
-replace largerQ=QLarge+largerQ if market_desc==3
-replace largerQ=QMedium+largerQ if inlist(market_desc,4,6) 
-
-gen smallerQ=0
-replace smallerQ=0 if inlist(market_desc,4,6) 
-replace smallerQ=QSmall+smallerQ if market_desc==3
-replace smallerQ=QMedium+smallerQ if market_desc==2
-replace smallerQ=QLarge+smallerQ if market_desc==1
-drop _Smarket_de*
-mdesc largerQ smallerQ 
-
-
---->
 
 ```{r final_tidyup, include=FALSE}
 
