@@ -83,7 +83,7 @@ if(platform == 'Linux'){
     }
   }
 
-if(platform == 'windows'){
+if(platform == 'Windows'){
   runClass<-'Windows'
 }
 
