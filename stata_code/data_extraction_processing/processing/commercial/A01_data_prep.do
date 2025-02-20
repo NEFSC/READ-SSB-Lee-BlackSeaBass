@@ -159,17 +159,14 @@ gen valueR_CPI=value/fCPIAUCSL_2023Q1
 
 clonevar weighting=lndlb
 
+/* this needs to be moved to the end  */
+label var lndlb "landings pounds"
 
-replace lndlb=lndlb/1000
-label var lndlb "landings 000s"
+label var valueR_CPI "real dollars"
+label var value "nominal dollars"
 
-replace value=value/1000
-replace valueR_CPI=valueR_CPI/1000
-label var valueR_CPI "thousands of real dollars"
-label var value "thousands of dollars"
-
-notes value: nominal value in thousands of dollars
-notes valueR_CPI: real value in thousands of 2023Q1 CPIU adjusted dollars
+notes value: nominal value in dollars
+notes valueR_CPI: real value in 2023Q1 CPIU adjusted dollars
 
 
 label var year "Year"
@@ -178,7 +175,78 @@ label var month "Month"
 gen semester=1 if month<=6
 replace semester=2 if month>=7
 
+
+
+
+
+
 save  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 
 
 
+
+
+
+/* interact market category with landings*/
+xi, prefix(_M) noomit i.market_desc*lndlb
+
+/*  market level quantity supplied */
+bysort dlr_date: egen QJumbo=total(_MmarXlndlb_1)
+bysort dlr_date: egen QLarge=total(_MmarXlndlb_2)
+bysort dlr_date: egen QMedium=total(_MmarXlndlb_3)
+bysort dlr_date: egen QSmall=total(_MmarXlndlb_4)
+bysort dlr_date: egen QUnc=total(_MmarXlndlb_6)
+
+
+/* Camsid, dlr_date (Trip) level quantity supplied */
+bysort dlr_date camsid: egen OwnQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date camsid: egen OwnQLarge=total(_MmarXlndlb_2)
+bysort dlr_date camsid: egen OwnQMedium=total(_MmarXlndlb_3)
+bysort dlr_date camsid: egen OwnQSmall=total(_MmarXlndlb_4)
+bysort dlr_date camsid: egen OwnQUnc=total(_MmarXlndlb_6)
+
+/* market category landings by other vessels on this day */
+foreach size in Jumbo Large Medium Small Unc {
+	gen OtherQ`size'=Q`size'-OwnQ`size'
+}
+
+
+/*  market level and state quantity supplied */
+bysort dlr_date state: egen StateQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date state: egen StateQLarge=total(_MmarXlndlb_2)
+bysort dlr_date state: egen StateQMedium=total(_MmarXlndlb_3)
+bysort dlr_date state: egen StateQSmall=total(_MmarXlndlb_4)
+bysort dlr_date state: egen StateQUnc=total(_MmarXlndlb_6)
+
+
+/* market category and state landings by other vessels on this day */
+foreach size in Jumbo Large Medium Small Unc {
+	gen StateOtherQ`size'=StateQ`size'-OwnQ`size'
+}
+
+
+
+drop _Mmarket* _MmarX* OwnQ*
+
+
+order camsid dlr_date Other* StateOther* StateQ* QLarge QMedium QSmall QUnc
+pause 
+keep camsid dlr_date Other* StateOther* StateQ* QLarge QMedium QSmall QUnc
+
+/* what if there's only 1 camsid per dlr_date and state-market category. The "other" Q evaluates to 0. Is this reasonable? I think no and it should evaluate to missing
+
+takea  look at CT, MA here 
+browse if dlr_date==mdy(5,1,2018)
+order state, after(dlr_date)
+sort dlr_date state market_desc
+
+*/
+
+collapse (first) Other* StateOther* StateQ* QLarge QMedium QSmall QUnc, by(camsid dlr_date)
+
+foreach var of varlist Other* StateOther* StateQ* QLarge QMedium QSmall QUnc{
+	label variable `var' ""
+}
+
+
+save  "${data_main}\commercial\daily_cleaned_${in_string}.dta", replace
