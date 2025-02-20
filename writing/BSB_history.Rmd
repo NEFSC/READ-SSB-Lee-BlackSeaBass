@@ -24,7 +24,7 @@ The state-level quotas are managed based on the state of landing by ASFMC.  I th
 
 ## Relevant current regulations
 
-Three states have IFQ programs (MD, DE, and VA) that started in 2004. I don't know if NC and NJ are valid "untreated" states.  Certainly not for prices.
+Three states have IFQ programs (MD, DE, and VA) that started in 2004. I don't know if NC and NJ are valid "untreated" states.  Certainly not for prices.  States mostly seem to have an 11" minimum size for commercial, although some states may have 12"
 
 Maryland [https://www.law.cornell.edu/regulations/maryland/COMAR-08-02-05-21]
 
