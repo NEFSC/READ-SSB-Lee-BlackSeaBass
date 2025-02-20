@@ -149,7 +149,7 @@ But the separation is not as clean.
 ]
 
 ---
-# Methods Overview
+# Methods Overview I 
 
 1. Exploratory data analysis step: Do prices vary by size? 
   - Estimate a hedonic model: the price per pound is a function of the transaction level attributes, like market category, gear, and time of year. 
@@ -158,7 +158,11 @@ But the separation is not as clean.
 2. Estimate a categorical model (ordered or un-ordered logit or something related) with price as an explanatory variable. 
   - Validate the model with a k-fold cross validation. 
   - Predict out of sample for the unclassified market category.
-    
+
+
+---
+# Methods Overview II 
+
 3.  Train a random forest classification model on the four principle classes (Jumbo, Large, Medium, Small).  
   - **Test** and **train** with a k-fold cross-validation.
   - **Validate** on a hold-out sample.
@@ -167,25 +171,26 @@ But the separation is not as clean.
 4. Using the results of (3) reconstruct a new length distribution of the landed black sea bass.  
 
 ---
-# Potential Pitfalls
+## Potential Pitfalls
 
-- Data is such a bear.
+1.  Data is such a bear.
   - Less QA/QC on the "value" columns (value, sppvalue). 
   - State-level reporting.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers. 
       - If these are transactions (trip/subtrip) with true value, this is fine.
       - If these are transactions (trip/subtrip) with "imputed" or "assigned" value, they *probably cannot* be included in the model.
       - If these are aggregates of multiple transactions, they *probably cannot* be included, even if the true value reported.
-
-- Price Separation: Prices need to vary by market category. 
+2.  Price Separation: Prices need to vary by market category. 
   - No variation in prices across market categories, then it won't work
   - No need to assumed a particular price-size relationship
   - price-size relationship can change from year to year
   - Better if the price of ``Unclassified`` is between the price of two other categories.
+
+asd
   
 ---
-#  Pitfalls 2
+##  Pitfalls 2
 
-- Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish?
+3.  Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish?
   - Example 1: Dealer A's Large is 17-20" while Dealer B's Large is 19-22"
   - Example 2: Dealer C only grades into "Large" or "Small"
   - Problem 1: Need to handle this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic. 
@@ -194,16 +199,14 @@ But the separation is not as clean.
 ---
 # Hedonic Results
 .left-column[
-- Estimates in the columns can be interpreted as the average price of a pound of Black Sea Bass for each market catgory.
+- Estimates in the columns can be interpreted as the average price of a pound of Black Sea Bass for each market category.
 - Not shown are the effects of factor variables for gear,  state, calendar year, and month.
 - Not show are the effects of total landings and total landings$^2$.
 ]
 .right-column[
-
 ```{r child=here("results","hedonic_table_market_cats.md")}
 ```
 ]
-Not shown: Effects of 
 ---
 ## Multinomial Logit
 .left-column[
@@ -212,7 +215,6 @@ chances of transaction being in a particular market category relative to large.
 - Not shown are factor variables for month, year, and state
 ]
 .right-column[
-
 ```{r child=here("results","mlogitNom_short.md")}
 ```
 ]
@@ -232,6 +234,11 @@ kbl(mlogit_preds, digits=0,booktabs=T, align=c("l",rep('r',times=4)), caption = 
 
 ```
 The mechanics of the logit mean that the model is correct: the row sums are equal to the column sums.
+
+
+---
+## Multinomial Logit predictions II
+
 
 ```{r}
 kbl(mlogit_rowfreq_preds, digits=2,booktabs=T, align=c("l",rep('r',times=4)), caption =  "Predicted Category after a multinomial logit, expressed as a row frequency(2018-2024)")  %>%
@@ -253,7 +260,32 @@ This is kind of not great. Plus, it's an "in sample" prediction, so it's overly 
    - Frequency Weights: Landed Pounds
 - Tuned with mtry in 1:11
 
- ---
+---
+## Preliminary fit assessments
+
+ 
+.pull-left[
+<img src="./brier_class.png" alt="Brier Classification Metric (Low is good)" width="auto" height="350"  />
+]
+ 
+ .pull-right[
+<img src="./mn_log_loss.png" alt="Multinomial Log-loss Classification Metric (Low is good)" width="auto" height="350"  />
+]
+
+## Preliminary fit assessments
+
+Fair..also wrong not from the same model fit as previous
+
+.pull-right[
+<img src="./roc.png" alt="ROC Curve" width="auto" height="350"  />
+]
+ 
+## Predictions
+
+Haven't written the code yet. I can get the 'class predictions' for the "transactions", but
+I haven't figured out how to get the weights out.
+
+ 
 ## Extensions
 .left-column[
 - Can we modify the way lengths have been borrowed?
