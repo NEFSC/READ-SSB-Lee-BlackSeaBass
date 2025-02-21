@@ -107,7 +107,7 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
   1. south is 621 and greater, plus 614 and 615 
   2. North is 613 and smaller, plus 616
 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
+11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
 are in both real and nominal dollars per landed pound. 
 
 ```{r load_in_data, include=FALSE}
