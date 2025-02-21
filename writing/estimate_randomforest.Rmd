@@ -240,7 +240,9 @@ BSB.Classification.Recipe <- BSB.Classification.Recipe %>%
   step_center(all_numeric_predictors()) %>%
   step_scale(all_numeric_predictors())
 
-recipe_summary<-BSB.Classification.Recipe %>% summary()
+recipe_summary<-BSB.Classification.Recipe %>%
+  summary() %>%
+  arrange(source,role, variable)
 
 
 ```
