@@ -172,11 +172,17 @@ cleaned_landings<-cleaned_landings %>%
          priceR_CPI=valueR_CPI/lndlb,
          month=lubridate::month(dlr_date))
 
-# total landings
+# total daily landings
 cleaned_landings<-cleaned_landings %>%
   group_by(dlr_date) %>%
   mutate(total=sum(lndlb)) %>%
     ungroup()
+
+cleaned_landings<-cleaned_landings %>%
+  group_by(camsid) %>%
+  mutate(trip_level_BSB=sum(lndlb)) %>%
+    ungroup()
+
 
 
 #semester

@@ -23,7 +23,7 @@ bibliography: "../../library.bib"
  <!---- 
 Summary and Housekeeping
 
-This is a data summary document. I ran the files ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
 
 I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
 
@@ -96,16 +96,21 @@ The "Unclassified" market category, in conjunction with sampling at vessels, can
 
 Can we use the methods to other fisheries? If it works well, can port sampling effort be re-deployed away from categories that are hard to get?
 
-## Potential Problems
+## Potential Questions and Problems
 
 1. State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers.  If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported.
   * I need to get in touch with the people that load in these state aggregates to figure out how prices are put into the datasets.
   * For now, I'm setting these outside the model.
 
-2. Dealers have their own tendencies in terms of how they classify fish?
+2. Dealers have their own tendencies in terms of how they classify fish.
   * This suggests that the dealer id should go into the model as a factor variable. 
   * It also suggest that cross-validation will be tricky.  The training and validation datasets would not be truly independent if I pull random samples.  See @Rabinowicz2022 and @Rabinowicz2022b for discussions in the context of a mixed linear model.
 
+3. Is it reasonable to use "pounds landed" as a weighting variable and an explantory variable?
+  * "A pound of landed fish" for weighting
+  * A larger amount of landed (on a trip) is more likely to be graded instead of lumped as "unclassified." yikes, this is not a good justification. But this suggests trip-level (camsid) bsb landings
+  * Targeting ---  landings of other species.
+  
 ## Solved Problems
 
 1.  Price premia: Prices need to vary by market category. If they there isn't any variation in prices across market categories, then it won't work. Prices don't need to have a particular relationship, and that relationship can probably change from year to year (or period-to-period). 
@@ -267,26 +272,38 @@ Here is the call to the BSB classification recipe that defines the outcome, pred
 ```{r BSB_data, eval=F, echo=T}
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
-  update_role(dlrid, new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor")
+  update_role(c(dlrid,camsid), new_role = "ID variable") %>%
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor") %>% 
+  update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") %>% # State-level daily Landings on "other" trips, by market category  
+  update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") %>% # stockarea-level daily Landings on "other" trips, by market category  
+  update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by stockarea and market category   
+  update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by state and market category   
+  update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") # Trailing 7 day trips, by state and stock area.   
 
+
+# You can't center the factor variables
+# rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
 #  step_impute_knn(all_predictors()) %>%
   step_center(all_numeric_predictors()) %>%
   step_scale(all_numeric_predictors())
+
+recipe_summary<-BSB.Classification.Recipe %>% summary()
 
 ```
 
 I use the ``dlrid`` to control the way the k-fold cross validation is performed.  
 
 Other predictors that could be available
-  1. CAMS derivied data
+  1. CAMS derived data
       A. STATUS, although it's probably better to put in "state permit" or "no federal permit"
   2. ``dlrid`` and or permit/vessel id.
-  3. Daily landings in each of the market categories.  If lots of people are landings Jumbos, probably you will also land Jumbos. 
-  4. Daily landings "in the state" of each of the market categories. Same rationale.
-  5. Landings of other things (that are caught along with particular market categories?). Like, do we tend to catch lots of smalls when also catching squid or summer flounder?
-  6. Mesh size?  Or an interaction of mesh size and gear?  I'm not sure how to construct this for something like "other" or "hook" gears.
+  3. Landings of other things (that are caught along with particular market categories?). Like, do we tend to catch lots of smalls when also catching squid or summer flounder?
+  4. Mesh size?  Or an interaction of mesh size and gear?  I'm not sure how to construct this for something like "other" or "hook" gears.
+  5. Trip length. You might go farther to catch larger fish.
+
+The Status==PZERO observations will have most of the typical "vtr" things missing (landings of other species, mesh size, trip length). 
+
 
 Probably going to need to move this into the Rcontainer.
 
