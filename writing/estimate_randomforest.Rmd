@@ -225,7 +225,7 @@ nrow(test_data)
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(dlrid,camsid), new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor") %>% 
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB), new_role = "predictor") %>% 
   update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") %>% # State-level daily Landings on "other" trips, by market category  
   update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") %>% # stockarea-level daily Landings on "other" trips, by market category  
   update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by stockarea and market category   
