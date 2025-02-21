@@ -153,8 +153,9 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
   1. south is 621 and greater, plus 614 and 615 
   2. North is 613 and smaller, plus 616
 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
+11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
 are in both real and nominal dollars per landed pound. 
+12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
 ```{r load_in_data, include=FALSE}
 # this was created with data_prep_ml.Rmd
@@ -220,16 +221,16 @@ nrow(test_data)
 
 # Use a recipe on the training data. 
 
-#############################
-# Handle factor variables 
-#############################
-
 # assign roles to predictors, outcome, groups, and weights
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
-  update_role(dlrid, new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, dlrid), new_role = "predictor")
-  
+  update_role(c(dlrid,camsid), new_role = "ID variable") %>%
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc), new_role = "predictor") %>% 
+  update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") %>% # State-level daily Landings on "other" trips, by market category  
+  update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") %>% # stockarea-level daily Landings on "other" trips, by market category  
+  update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by stockarea and market category   
+  update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by state and market category   
+  update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") # Trailing 7 day trips, by state and stock area.   
 
 
 # You can't center the factor variables
@@ -238,6 +239,10 @@ BSB.Classification.Recipe <- BSB.Classification.Recipe %>%
 #  step_impute_knn(all_predictors()) %>%
   step_center(all_numeric_predictors()) %>%
   step_scale(all_numeric_predictors())
+
+recipe_summary<-BSB.Classification.Recipe %>% summary()
+
+
 ```
 
 
@@ -304,7 +309,7 @@ end_time_1fit-start_time_1fit
 
 
 
-We will do 6 fold cross validation over the mtry set of parameters. We'll hold
+We will do 10 fold cross validation over the mtry set of parameters. We'll hold
 min_n and trees constant. The number of trees isn't the most important thing.
 
 I'm getting a warning about the precision() and the "small" category, which is probably "macro" metric. Some levels had no predicted
