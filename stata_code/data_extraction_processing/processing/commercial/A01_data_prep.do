@@ -191,11 +191,11 @@ save  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 xi, prefix(_M) noomit i.market_desc*lndlb
 
 /*  market level quantity supplied */
-bysort dlr_date: egen QJumbo=total(_MmarXlndlb_1)
-bysort dlr_date: egen QLarge=total(_MmarXlndlb_2)
-bysort dlr_date: egen QMedium=total(_MmarXlndlb_3)
-bysort dlr_date: egen QSmall=total(_MmarXlndlb_4)
-bysort dlr_date: egen QUnc=total(_MmarXlndlb_6)
+bysort dlr_date: egen DailyQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date: egen DailyQLarge=total(_MmarXlndlb_2)
+bysort dlr_date: egen DailyQMedium=total(_MmarXlndlb_3)
+bysort dlr_date: egen DailyQSmall=total(_MmarXlndlb_4)
+bysort dlr_date: egen DailyQUnclassified=total(_MmarXlndlb_6)
 
 
 /* Camsid, dlr_date (Trip) level quantity supplied */
@@ -203,11 +203,11 @@ bysort dlr_date camsid: egen OwnQJumbo=total(_MmarXlndlb_1)
 bysort dlr_date camsid: egen OwnQLarge=total(_MmarXlndlb_2)
 bysort dlr_date camsid: egen OwnQMedium=total(_MmarXlndlb_3)
 bysort dlr_date camsid: egen OwnQSmall=total(_MmarXlndlb_4)
-bysort dlr_date camsid: egen OwnQUnc=total(_MmarXlndlb_6)
+bysort dlr_date camsid: egen OwnQUnclassified=total(_MmarXlndlb_6)
 
 /* market category landings by other vessels on this day */
-foreach size in Jumbo Large Medium Small Unc {
-	gen OtherQ`size'=Q`size'-OwnQ`size'
+foreach size in Jumbo Large Medium Small Unclassified {
+	gen OtherQ`size'=DailyQ`size'-OwnQ`size'
 }
 
 
@@ -216,37 +216,162 @@ bysort dlr_date state: egen StateQJumbo=total(_MmarXlndlb_1)
 bysort dlr_date state: egen StateQLarge=total(_MmarXlndlb_2)
 bysort dlr_date state: egen StateQMedium=total(_MmarXlndlb_3)
 bysort dlr_date state: egen StateQSmall=total(_MmarXlndlb_4)
-bysort dlr_date state: egen StateQUnc=total(_MmarXlndlb_6)
+bysort dlr_date state: egen StateQUnclassified=total(_MmarXlndlb_6)
 
 
 /* market category and state landings by other vessels on this day */
-foreach size in Jumbo Large Medium Small Unc {
+foreach size in Jumbo Large Medium Small Unclassified {
 	gen StateOtherQ`size'=StateQ`size'-OwnQ`size'
 }
 
 
+/*  market level and stockarea quantity supplied */
+
+bysort dlr_date stockarea: egen StockareaQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date stockarea: egen StockareaQLarge=total(_MmarXlndlb_2)
+bysort dlr_date stockarea: egen StockareaQMedium=total(_MmarXlndlb_3)
+bysort dlr_date stockarea: egen StockareaQSmall=total(_MmarXlndlb_4)
+bysort dlr_date stockarea: egen StockareaQUnclassified=total(_MmarXlndlb_6)
+
+foreach size in Jumbo Large Medium Small Unclassified {
+	gen StockareaOtherQ`size'=StockareaQ`size'-OwnQ`size'
+}
+ 
+ 
+ 
+ 
+ /* 
+takea  look at here 
+browse if dlr_date==mdy(5,1,2018)
+order camsid dlr_date state market_desc lndlb tagstate ndistinct_state ndistinct_stockarea StateOtherQ* OtherQ* OwnQ* StockareaQ* StockareaOtherQ*
+browse if dlr_date==mdy(5,1,2018)
+
+*/
+
+
+/* set the StateOtherQ columns to missing if there is only 1 trip on that day, state, market category */
+egen tagstateM = tag(camsid state market_desc dlr_date)
+egen ndistinct_stateM = total(tagstateM), by(state dlr_date market_desc)
+
+
+foreach size in Jumbo Large Medium Small Unclassified{
+	replace StateOtherQ`size'=. if ndistinct_stateM==1 & market_desc_string=="`size'"
+}
+
+
+/* set the StockareaOtherQ columns to missing if there is only 1 trip on that day, stockarea, market category */
+
+egen tagstockareaM = tag(camsid stockarea market_desc dlr_date)
+egen ndistinct_stockareaM = total(tagstockareaM), by(stockarea dlr_date market_desc)
+
+foreach size in Jumbo Large Medium Small Unclassified {
+	replace StockareaOtherQ`size'=. if ndistinct_stockareaM==1 & market_desc_string=="`size'"
+}
 
 drop _Mmarket* _MmarX* OwnQ*
 
 
-order camsid dlr_date Other* StateOther* StateQ* QLarge QMedium QSmall QUnc
-pause 
-keep camsid dlr_date Other* StateOther* StateQ* QLarge QMedium QSmall QUnc
+/* distinct trips by state and day */
+egen tagstate = tag(camsid state dlr_date)
+egen ndistinct_state = total(tagstate), by(state dlr_date)
 
-/* what if there's only 1 camsid per dlr_date and state-market category. The "other" Q evaluates to 0. Is this reasonable? I think no and it should evaluate to missing
+/* distinct trips by stockarea and day */
+egen tagstockarea = tag(camsid stockarea dlr_date)
+egen ndistinct_stockarea = total(tagstockarea), by(stockarea dlr_date)
 
-takea  look at CT, MA here 
-browse if dlr_date==mdy(5,1,2018)
-order state, after(dlr_date)
-sort dlr_date state market_desc
+/* distinct trips by day */
+egen tag = tag(camsid dlr_date)
+egen ndistinct_trips = total(tag), by(dlr_date)
 
-*/
 
-collapse (first) Other* StateOther* StateQ* QLarge QMedium QSmall QUnc, by(camsid dlr_date)
 
-foreach var of varlist Other* StateOther* StateQ* QLarge QMedium QSmall QUnc{
+
+order camsid dlr_date OtherQ* StateOtherQ* StateQ* DailyQ* StockareaOtherQ* StockareaQ* ndistinct_state ndistinct_stockarea ndistinct_trips
+
+preserve
+
+keep camsid dlr_date OtherQ* StateOtherQ* StateQ* DailyQ* StockareaOtherQ* StockareaQ*   ndistinct_state ndistinct_stockarea ndistinct_trips
+collapse (first) Other* StateOther* StateQ* DailyQ* StockareaOtherQ* StockareaQ*, by(camsid dlr_date)
+compress
+foreach var of varlist Other* StateOther* StateQ* DailyQ* StockareaOtherQ* StockareaQ* {
 	label variable `var' ""
 }
 
+sort dlr_date camsid
+save "${data_main}\commercial\camsid_specific_cleaned_${in_string}.dta", replace
+restore
 
-save  "${data_main}\commercial\daily_cleaned_${in_string}.dta", replace
+
+
+
+
+
+
+/* Compute moving sums */
+/*7 day moving sum of QJumbo, QLarge, QMedium, QSmall, QUnclassified */
+
+keep camsid dlr_date state stockarea StateQ* DailyQ* StockareaQ* ndistinct_state ndistinct_stockarea ndistinct_trips
+preserve
+rename ndistinct_trips trips
+collapse (first) DailyQ* trips, by(dlr_date)
+tsset dlr_date
+tsfill, full
+
+
+foreach var of varlist DailyQ* trips{
+	replace `var'=0 if `var'==.
+    tssmooth ma MA7_`var'=`var', window(7 0 0)
+	drop `var'
+}
+
+save "${data_main}\commercial\daily_ma_${in_string}.dta", replace
+restore
+
+/*7 day moving sum of StateQJumbo StateQLarge StateQMedium StateQSmall StateQUnclassified
+collapsed by dlr_date, state
+*/
+
+
+
+
+preserve
+
+collapse (first) StateQ* ndistinct_state, by(dlr_date state)
+tsset state dlr_date
+tsfill, full
+rename ndistinct_state state_trips
+
+foreach var of varlist StateQ* state_trips{
+	replace `var'=0 if `var'==.
+    tssmooth ma MA7_`var'=`var', window(7 0 0)
+	drop `var'
+}
+save "${data_main}\commercial\state_ma_${in_string}.dta", replace
+restore
+
+
+
+/*
+7 day moving sum of StockareaQJumbo StockareaQLarge StockareaQMedium StockareaQSmall StockareaQUnclassified
+collapsed by dlr_date stockarea
+*/
+
+
+collapse (first) StockareaQ* ndistinct_stockarea, by(dlr_date stockarea)
+tsset stockarea dlr_date
+rename ndistinct_stockarea stockarea_trips
+tsfill, full
+
+foreach var of varlist StockareaQ* stockarea_trips{
+	replace `var'=0 if `var'==.
+    tssmooth ma MA7_`var'=`var', window(7 0 0)
+	drop `var'
+}
+save "${data_main}\commercial\stockarea_ma_${in_string}.dta", replace
+
+/* I could easily construct a variable for the number of trips that landed a particular market category (by state or stockarea).
+Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
+But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockareaM */
+
+
+
