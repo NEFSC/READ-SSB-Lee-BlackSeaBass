@@ -116,8 +116,13 @@ cleaned_landings<-haven::read_dta(here("data_folder","main","commercial", paste0
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
 
-daily_stats<-haven::read_dta(here("data_folder","main","commercial", paste0("daily_cleaned_",vintage_string,".dta")))
-#cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
+camsid_specific_stats<-haven::read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
+
+daily_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
+
+state_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+
+stockarea_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
 
 ```
@@ -145,9 +150,20 @@ cleaned_landings<-cleaned_landings %>%
   ungroup()
 
 
-# merge in daily statistics
+# merge in camsid (trip) level statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(daily_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(camsid_specific_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one")
+
+# merge in daily level statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(daily_ma, by=join_by(dlr_date==dlr_date), relationship="many-to-one")
+
+# merge in state-day statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(state_ma, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
+
+cleaned_landings<-cleaned_landings %>%
+  left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
 
 
 # compute prices and real prices
