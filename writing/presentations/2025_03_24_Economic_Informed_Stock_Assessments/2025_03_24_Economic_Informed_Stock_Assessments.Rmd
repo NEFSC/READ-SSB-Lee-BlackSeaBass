@@ -111,7 +111,7 @@ in-line cite with:  `r Cite(myBib, "carr2020expected")`
 # Research Question and Motivation
 
 ## Research Question
-Can we use the information contained in fish prices to infer something useful about the size of the Unclassified Black Sea Bass?
+Can inclusion of prices improve our ability to infer something about the size of the Unclassified Black Sea Bass?
 
 ## Motivation
 

@@ -82,7 +82,7 @@ stat_areas<-stat_areas %>%
 
 ## Research Question
 
-Can the information contained in prices be used to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category?
+Can inclusion of prices improve our ability to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category?
 
 ## Motivation
 
@@ -102,7 +102,7 @@ Can we use the methods to other fisheries? If it works well, can port sampling e
   * I need to get in touch with the people that load in these state aggregates to figure out how prices are put into the datasets.
   * For now, I'm setting these outside the model.
 
-2. Dealers have their own tendencies in terms of how they classify fish.
+2. Dealers have their own diverse tendencies in terms of how they classify fish.
   * This suggests that the dealer id should go into the model as a factor variable. 
   * It also suggest that cross-validation will be tricky.  The training and validation datasets would not be truly independent if I pull random samples.  See @Rabinowicz2022 and @Rabinowicz2022b for discussions in the context of a mixed linear model.
 
@@ -280,7 +280,6 @@ BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by state and market category   
   update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") # Trailing 7 day trips, by state and stock area.   
 
-
 # You can't center the factor variables
 # rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
@@ -289,6 +288,9 @@ BSB.Classification.Recipe <- BSB.Classification.Recipe %>%
   step_scale(all_numeric_predictors())
 
 recipe_summary<-BSB.Classification.Recipe %>% summary()
+
+recipe_summary
+
 
 ```
 
