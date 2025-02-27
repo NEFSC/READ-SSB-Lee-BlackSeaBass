@@ -185,16 +185,16 @@ But the separation is not as clean.
   - price-size relationship can change from year to year
   - Better if the price of ``Unclassified`` is between the price of two other categories.
 
-asd
-  
+
 ---
 ##  Pitfalls 2
-
-3.  Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish?
-  - Example 1: Dealer A's Large is 17-20" while Dealer B's Large is 19-22"
-  - Example 2: Dealer C only grades into "Large" or "Small"
-  - Problem 1: Need to handle this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic. 
-  - Problem 2: Would want to include a dealer "fixed effect" as to account the dealer's tendencies.  If all observations of cluster $c$ are in fold $k$, then I don't know how you use that info to predict.
+3. Dealers have their own diverse but persistent tendencies in terms of how they classify fish.
+  * This suggests that the dealer id should go into the model as a factor variable. 
+  * Example 1: Dealer A's Large is 17-20" while Dealer B's Large is 19-22"
+  * Example 2: Dealer C only grades into "Large" or "Small"
+  * Problem 1: Need to handle this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic. 
+  * Problem 2: Would want to include a dealer "fixed effect" as to account the dealer's tendencies.  If all observations of cluster $c$ are in fold $k$, then I don't know how you use that info to predict.
+  * Problem 3: Inclusion of factor variables with many levels in a machine learning model can lead to overfitting.  Probably will switch to something like "fraction large", "fraction jumbo", etc, by a dealer over either a recent time period or 'before' the estimation dataset.
 
 ---
 # Hedonic Results
