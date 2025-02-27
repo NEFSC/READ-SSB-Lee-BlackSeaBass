@@ -124,6 +124,8 @@ state_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("state_
 
 stockarea_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
+dlrid_historical<-haven::read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+
 
 ```
 

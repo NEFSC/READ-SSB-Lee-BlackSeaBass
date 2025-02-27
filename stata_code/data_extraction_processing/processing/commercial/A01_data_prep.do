@@ -10,7 +10,7 @@ Everything else is data creation or labeling. I prefer to do any 'dropping' as c
 
 
 
-global in_string 2024_12_20
+global in_string 2025_02_27
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
@@ -373,5 +373,41 @@ save "${data_main}\commercial\stockarea_ma_${in_string}.dta", replace
 Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
 But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockareaM */
 
+
+/* historical dealnum things */
+
+use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+bysort dlrid camsid market_desc: gen transaction=_n==1
+
+keep if year>=2013 & year<=2017
+/* sum by dlr and market category */
+collapse (sum) lndlb transaction, by(dlrid market_desc)
+decode market_desc, gen(mymarket)
+
+keep lndlb dlrid mymarket transaction
+/* reshape and zero fill */
+reshape wide lndlb transaction, i(dlrid) j(mymarket) string
+
+foreach var of varlist lndlb* transaction*{
+	replace `var'=0 if `var'==.
+}
+
+egen totalland=rowtotal(lndlb*)
+egen totaltrans=rowtotal(transaction*)
+
+
+
+local sizes Jumbo Large Medium Small Unclassified
+foreach l of local sizes{
+	gen FracL`l'=lndlb`l'/totalland
+	gen FracT`l'=transaction`l'/totaltrans
+
+}
+
+drop totalland totaltrans
+compress
+
+notes: pounds landed and fraction pound landed of 
+save "${data_main}\commercial\dlrid_historical_stats_${in_string}.dta", replace
 
 
