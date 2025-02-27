@@ -102,9 +102,17 @@ Can we use the methods to other fisheries? If it works well, can port sampling e
   * I need to get in touch with the people that load in these state aggregates to figure out how prices are put into the datasets.
   * For now, I'm setting these outside the model.
 
-2. Dealers have their own diverse tendencies in terms of how they classify fish.
+2. Dealers have their own diverse but persistent tendencies in terms of how they classify fish.
   * This suggests that the dealer id should go into the model as a factor variable. 
+  * However, inclusion of factor variables with many levels in a machine learning model can lead to overfitting.
   * It also suggest that cross-validation will be tricky.  The training and validation datasets would not be truly independent if I pull random samples.  See @Rabinowicz2022 and @Rabinowicz2022b for discussions in the context of a mixed linear model.
+  * The standard way to handle a factor variable in econometrics is to encode it as a set of dummy variables (one-hot encoding, which is i.dlr_id in stata's factor variable notation). ranger has three ways to handle this, and "order" is far and away the most reasonable one.:
+      * "ignore", which by " all factors are regarded ordered."
+      * "order" --  order by the the first principal component of the weighted covariance matrix of the contingency table.
+      * "partition" consider all possible 2 way partitions.  This will be extremely computationally intensive for dlrid.
+  * Frequency encoding is a thing. This would create one new column, where the value is the number of times a DLR_ID appears in the datset.  Since the rows are weighted, a slightly better thing would be to include the weight purchased by a DLR_ID instead. I don't like either of these for our dataset
+  * Target encoding is another thing. 1 new column per market category. It would contain something related to the probability that a DLR_ID purchased that market_category. Canonical is to use probability (one-vs-rest target encoding or class probability vectors, if you can stick into a single object), but I could use counts, weights, proportion of purchases, or "weight of evidence". WOE is essentially a logged proportion.
+    For target encoding, I have to be very careful to avoid 'leakage' where data from outside the training data (or CV) is accidentally used to select the best data.
 
 3. Is it reasonable to use "pounds landed" as a weighting variable and an explantory variable?
   * "A pound of landed fish" for weighting
