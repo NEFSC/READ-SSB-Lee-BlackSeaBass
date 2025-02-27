@@ -19,7 +19,7 @@ global extraction_code "${extract_process}\extraction";
 global processing_code "${extract_process}\processing";
 global analysis_code "${my_codedir}\analysis";
 global R_code "${my_projdir}\R_code";
-global my_adopath "${my_codedir}\ado";
+global my_adopath ${my_codedir}/ado;
 
 
 /* setup data folder */
@@ -48,7 +48,7 @@ global exploratory "${my_images}\exploratory";
 global my_tables "${my_projdir}\tables" ;
 
 /* add the programs in $my_adopath to the adopath*/
-adopath + $my_adopath ;
+adopath + "${my_adopath}" ;
 
 
 /*set the date field */
