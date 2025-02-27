@@ -168,7 +168,7 @@ predictions<-tune_res %>%
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==3) %>%
+  dplyr::filter(mtry==5) %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","roc_tune.png"), plot=last_plot())

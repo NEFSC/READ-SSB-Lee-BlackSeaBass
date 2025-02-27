@@ -17,8 +17,18 @@ editor_options:
 fontsize: 12pt
 ---
 
-# Summary and Housekeeping
+# Summary, Housekeeping, and Overview
 
+I'm using the tidymodels framework to train and test the classification trees and
+random forest.  The main advantage is that switching models or estimation packages
+(partykit::ctree vs ranger vs randomForest for example) is easier. Writing the model 
+uses tidy syntax.  Tuning the model is made easier by using tune and yardstick.
+Fitting ranger requires bonsai.
+
+The canonical way to do this is to declare a recipe and a workflow.  Ideally,
+everything would be part of the workflow, but my data processing skills in R are
+note good enough to want to do this.  Therefore, I'm basically passing the
+recipe into the workflow. C'est la guerre.
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
@@ -28,6 +38,10 @@ fontsize: 12pt
  Rscript -e 'library(rmarkdown); rmarkdown::render("./writing/estimate_randomforest.Rmd", "html_document")' 
  
  This doesn't compile to pdf on the containers (pdflatex not found)
+ 
+ 
+ 
+ 
  --->
 ```{r global_options, include=FALSE}
 
@@ -183,15 +197,14 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
  # for reproducibility
  set.seed(45687)
 
- # remove obs with missing data, and select a few predictors
+ # remove obs with missing prices,
  estimation_dataset<-estimation_dataset %>%
    dplyr::filter(is.na(price)==0) %>%
    mutate(dlrid=forcats::as_factor(dlrid)) %>%
- #  dplyr::select(c(market_desc,price,year,state, weighting, stockarea, semester)) %>%
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
     )
 
- # Just for now, just look at post 2018 and take a sample of the data  
+ # Just for now, just look at post 2018 and take a 50% sample of the data  
   estimation_dataset$rand<-runif(nrow(estimation_dataset))
 
 
@@ -214,7 +227,10 @@ nrow(test_data)
 
 ```
 
+# Recipe definition
 
+The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
+and predictor variables.
 
 
 ```{r, recipe}
@@ -225,13 +241,27 @@ nrow(test_data)
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(dlrid,camsid), new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB), new_role = "predictor") %>% 
-  update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") %>% # State-level daily Landings on "other" trips, by market category  
-  update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") %>% # stockarea-level daily Landings on "other" trips, by market category  
-  update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by stockarea and market category   
-  update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") %>% # Trailing 7 days landings, by state and market category   
-  update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") # Trailing 7 day trips, by state and stock area.   
+  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB), new_role = "predictor")
 
+# State-level daily Landings on "other" trips, by market category  
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") 
+
+# stockarea-level daily Landings on "other" trips, by market category  
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") 
+
+# Trailing 7 days landings, by stockarea and market category   
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor")
+
+# Trailing 7 days landings, by state and market category   
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") 
+
+# Trailing 7 day trips, by state and stock area.   
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") 
 
 # You can't center the factor variables
 # rescale and recenter 
@@ -245,15 +275,52 @@ recipe_summary<-BSB.Classification.Recipe %>%
   arrange(source,role, variable)
 
 
+
+#How many predictors
+npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
+
 ```
 
 
+# Model Definition and Baseline Fit
 
+The model definition step declares the type of model (classification), engine (ranger), 
+and any options.  For this section, I'm setting 500 trees in the RF, no fewer than 5
+observations at the end of a branch, and 3 randomly selected variables.
+
+I have left most of these options at their defaults. I'm noting things here 
+
+Missing values are handled with the "na.learn" option (default). 
+
+>With na.action = "na.learn", missing values are ignored for calculating an 
+initial split criterion value (i.e., decrease of impurity). Then for the best 
+split, all missings are tried in both child nodes and the choice is made based 
+again on the split criterion value.
+
+@Hastie2009: The first is applicable to categorical predictors: we simply make a new category for “missing.”
+Second is construction of surrogate variables. When considering a predictor for a split, we use only the observations for which that predictor is not missing. Having chosen the best (primary) predictor and split point, we form a list of surrogate predictors and split points. The first surrogate is the predictor and corresponding split point that best mimics the split of the training data achieved by the primary split.  This is basically na.learn.
+
+probability=FALSE. A probability forest (Malley et al 2012) might be a good idea
+
+importance=NULL and splitrule=NULL.  This uses the Gini index as the impurity measure.
+
+Geurts et al(2006)'s extremely random trees can be set with splitrule="extratrees".
+
+trees=500. I don't have a good rationale for choose this.
+
+Need to investigate the handling of the unordered factor covariates (@Hastie2009; Coppersmith et al 1999)
+
+For an unordered predictor with $q$ levels, there are $2^{q-1}-1$ different ways to partition into two groups. This is not great.  For One way to handle this is to order the predictor levels in decreasing order of frequency and treat as if the factor was ordered.  This is proven to be the optimal way to handle unordered predictors for binary and quantitative (numeric) dependent variables.  It is not for multicategory outcomes @Hastie2009.
+
+The partitioning algorithm tends to favor categorical predictors with many levels q; the number of partitions grows exponentially in q, and the more choices we have, the more likely we can find a good one for the data at hand. This can lead to severe overfitting if q is large, and such variables should be avoided @Hastie2009.
+
+  * Coppersmith D., Hong S. J., Hosking J. R. (1999). Partitioning nominal attributes in decision
+trees. Data Min Knowl Discov 3:197-217. doi:10.1023/A:1009869804967.
 
 ```{r define a model}
 
 ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads)
+  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order")
 
 
 case_weights_allowed(ranger_model)
@@ -289,7 +356,7 @@ BSB.cf.Workflow <-
 
 
 
-```{r fit_model}
+```{r fit_model, eval=FALSE}
 set.seed(234)
 # Fit the model on the entire training dataset. This of course, is not the best 
 # thing to do.  There's 2 parameters that we should search over mtry and min_n
@@ -309,15 +376,20 @@ end_time_1fit-start_time_1fit
 ```
 
 
-
+## Tuning
 
 We will do 10 fold cross validation over the mtry set of parameters. We'll hold
 min_n and trees constant. The number of trees isn't the most important thing.
 
 I'm getting a warning about the precision() and the "small" category, which is probably "macro" metric. Some levels had no predicted
-events (i.e. `true_positive + false_positive = 0`). Precision is undefined in this case, and those levels will be removed from the averaged result.
+events (i.e. `true_positive + false_positive = 0`). Precision is undefined in this case, and those levels will be removed from the averaged result.  Here is an example:
 
-1.  The model is not doing a great job at fitting the "small" class.  The prices of 
+>While computing multiclass `precision()`, some levels had no predicted events (i.e. `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and those levels will be removed from the averaged result.
+               Note that the following number of true events actually occurred for each problematic event level:
+               'Small': 123
+
+1.  The model is currently not doing a great job at fitting the "small" class.  The prices of 
 small are lower than the prices of medium, but not that much lower.
 2.  It might be that we're getting some + probability for smalls, just not enough to be over the threshold. 
 3.  There's very little "small" being landed anyway.
@@ -328,7 +400,7 @@ small are lower than the prices of medium, but not that much lower.
 
 
 set.seed(95895)
-# split the training data group wise into 6 folds
+# split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
 # Set up a set of mtry to search over. This is not a great grid, but it's fine for now
@@ -338,8 +410,8 @@ myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="obser
 #rf_grid
 
 
-mtry<-2:15
-mtry<c(mtry,20,30)
+mtry<-1:15
+mtry<-c(mtry,20,npredict)
 rf_grid2<-as.data.frame(mtry)
 
 
@@ -351,10 +423,10 @@ tune_spec <- rand_forest(
   min_n = 5,
 ) %>%
   set_mode("classification") %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads)
+  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order")
 
 
-# make a turning workflow. This combines the Sonar.Recipe "data processing" steps and new "tuning"
+# make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
 # steps as the model.
 tune_wf <- workflow() %>%
   add_recipe(BSB.Classification.Recipe) %>%
@@ -416,8 +488,6 @@ final_fit %>%
   collect_metrics()
 
 readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
-
-
 
 ```
 
