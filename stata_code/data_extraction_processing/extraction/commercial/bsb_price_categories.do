@@ -8,7 +8,7 @@ jdbc connect , jar("$jar")  driverclass("$classname")  url("$NEFSC_USERS_URL")  
 
 
 /* pull in size keyfile data */
-local sizes "select nespp4, species_itis as itis_tsn, grade_code, grade_desc, market_code, market_desc, cf_lndlb_livlb from cfdbs.species_itis_ne where species_itis=167687 order by nespp4";
+local sizes "select nespp4, species_itis as itis_tsn, grade_code, grade_desc, market_code, market_desc, cf_lndlb_livlb from nefsc_garfo.scbi_species_itis_ne where species_itis=167687 order by nespp4";
 	
 jdbc load, exec("`sizes'") case(lower);
 duplicates drop;
