@@ -50,7 +50,7 @@ save  $data_main/commercial/dealer_permit_$vintage_string.dta, replace;
 /*this has market categories, but  I'm not sure if it's the proper support table */
 
 
-local sql "select * from CFDBS.SPECIES_ITIS_NE" ; 
+local sql "select * from nefsc_garfo.scbi_species_itis_ne" ; 
 
 
 clear;
