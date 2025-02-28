@@ -135,7 +135,7 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "brier_class")
-#ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","brier_class.png"), plot=last_plot())
+ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","brier_class.png"), plot=last_plot())
 
 ```
 
@@ -155,8 +155,7 @@ all.metrics %>%
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "mn_log_loss")
 
-
-#ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
+ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
 ```
 
 
