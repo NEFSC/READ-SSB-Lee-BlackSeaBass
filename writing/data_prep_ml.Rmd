@@ -164,8 +164,15 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   left_join(state_ma, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
 
+# merge in stockarea-day statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
+
+
+
+# merge in dlrid historical statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
 
 
 # compute prices and real prices
