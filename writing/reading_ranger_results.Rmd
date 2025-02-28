@@ -108,17 +108,15 @@ Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",data_vintage_string,".Rds")))
 tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_tune",tuning_vintage,".Rds")))
 
-final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
+#final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
 
 
 
 ```
 
-
+Brier classification suggests an mtry around 5 to 7.
 
 ```{r hyper_parameter_tuning_results}
-
-
 
 # eyeball the metrics 
 all.metrics<-tune_res %>%
@@ -126,6 +124,8 @@ all.metrics<-tune_res %>%
 
 all.metrics %>%
   filter(.metric == "brier_class") %>%
+  filter(mtry <=15) %>%
+
   select(mean, mtry) %>%
   pivot_longer(mtry,
     values_to = "value",
@@ -135,13 +135,16 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "brier_class")
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","brier_class.png"), plot=last_plot())
+#ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","brier_class.png"), plot=last_plot())
 
+```
 
+Brier classification suggests mtry around 5 or 6.
 
-
+```{r hyper_parameter_tuning_results}
 all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
+  filter(mtry <=10) %>%
   select(mean, mtry) %>%
   pivot_longer(mtry,
     values_to = "value",
@@ -151,16 +154,26 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "mn_log_loss")
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
 
 
+#ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
 ```
 
-```{r}
 
+Are there any warnings from the tuning?
+
+```{r roc}
 extracts<-tune_res %>%
   collect_notes()
+extracts
+not_good<-unique(extracts$id)
+notgood
+```
+Yes, a few resamples have some odd results. In Resamples 2 and 4, Small is never predicted, but there are some small that actually occur.  When this happens, Precision is undefined.
 
+In other resamples, there is difficulty computing Sensitivity or Recall because there are no "true" events (like no smalls).
+
+```{r warnings}
 # A ROC curve. I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
@@ -169,6 +182,8 @@ predictions<-tune_res %>%
 predictions %>%
   group_by(id, mtry) %>%
   dplyr::filter(mtry==5) %>%
+  dplyr::filter(!id %in% not_good) %>%
+
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","roc_tune.png"), plot=last_plot())
@@ -176,7 +191,8 @@ ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assess
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==3) %>%
+  dplyr::filter(mtry==5)%>%
+  dplyr::filter(!id %in% not_good) %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","pr_curve_tune.png"), plot=last_plot())
