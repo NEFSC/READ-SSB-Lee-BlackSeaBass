@@ -10,7 +10,6 @@ Everything else is data creation or labeling. I prefer to do any 'dropping' as c
 
 
 
-global in_string 2025_02_27
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
@@ -388,8 +387,17 @@ keep lndlb dlrid mymarket transaction
 /* reshape and zero fill */
 reshape wide lndlb transaction, i(dlrid) j(mymarket) string
 
-foreach var of varlist lndlb* transaction*{
-	replace `var'=0 if `var'==.
+local sizes Jumbo Large Medium Small Unclassified
+
+
+foreach  l of local sizes {
+	replace lndlb`l'=0 if lndlb`l'==.
+	label var lndlb`l'  "Dealer level pounds purchased from 2013-2017 in market category `l'"
+	
+	replace transaction`l'=0 if transaction`l'==.
+	label var transaction`l'  "Dealer level number of transactions from 2013-2017 in market category `l' "
+
+	
 }
 
 egen totalland=rowtotal(lndlb*)
@@ -400,7 +408,10 @@ egen totaltrans=rowtotal(transaction*)
 local sizes Jumbo Large Medium Small Unclassified
 foreach l of local sizes{
 	gen FracL`l'=lndlb`l'/totalland
+	label var FracL`l' "Fraction of pounds from 2013-2017 in market category `l'"
 	gen FracT`l'=transaction`l'/totaltrans
+	label var FracT`l' "Fraction of total transactions from 2013-2017 in market category `l'"
+
 
 }
 
