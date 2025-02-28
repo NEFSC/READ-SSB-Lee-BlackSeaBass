@@ -376,16 +376,16 @@ But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockar
 /* historical dealnum things */
 
 use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
-bysort dlrid camsid market_desc: gen transaction=_n==1
+bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 
 keep if year>=2013 & year<=2017
 /* sum by dlr and market category */
-collapse (sum) lndlb transaction, by(dlrid market_desc)
+collapse (sum) lndlb TransactionCount, by(dlrid market_desc)
 decode market_desc, gen(mymarket)
 
-keep lndlb dlrid mymarket transaction
+keep lndlb dlrid mymarket TransactionCount
 /* reshape and zero fill */
-reshape wide lndlb transaction, i(dlrid) j(mymarket) string
+reshape wide lndlb TransactionCount, i(dlrid) j(mymarket) string
 
 local sizes Jumbo Large Medium Small Unclassified
 
@@ -394,28 +394,29 @@ foreach  l of local sizes {
 	replace lndlb`l'=0 if lndlb`l'==.
 	label var lndlb`l'  "Dealer level pounds purchased from 2013-2017 in market category `l'"
 	
-	replace transaction`l'=0 if transaction`l'==.
-	label var transaction`l'  "Dealer level number of transactions from 2013-2017 in market category `l' "
+	replace TransactionCount`l'=0 if TransactionCount`l'==.
+	label var TransactionCount`l'  "Dealer level number of transactions from 2013-2017 in market category `l' "
 
 	
 }
 
 egen totalland=rowtotal(lndlb*)
-egen totaltrans=rowtotal(transaction*)
+egen totaltrans=rowtotal(TransactionCount*)
 
 
 
 local sizes Jumbo Large Medium Small Unclassified
 foreach l of local sizes{
-	gen FracL`l'=lndlb`l'/totalland
-	label var FracL`l' "Fraction of pounds from 2013-2017 in market category `l'"
-	gen FracT`l'=transaction`l'/totaltrans
-	label var FracT`l' "Fraction of total transactions from 2013-2017 in market category `l'"
-
+	gen Share`l'=lndlb`l'/totalland
+	label var Share`l' "Dealer Share of pounds from 2013-2017 in market category `l'"
+	gen FracT`l'=TransactionCount`l'/totaltrans
+	label var FracT`l' "Dealer Fraction of total transactions from 2013-2017 in market category `l'"
 
 }
-
 drop totalland totaltrans
+
+order dlrid lndlb* TransactionCount* Share* FracT*
+
 compress
 
 notes: pounds landed and fraction pound landed of 
