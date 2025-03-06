@@ -104,7 +104,7 @@ if(platform == 'Windows'){
 if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-6
 } else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-12
+  my.ranger.threads<-15
 
   }
 
@@ -216,7 +216,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
  estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting))
 
-set.seed(4847482)
+set.seed(124559)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
 # consider splitting on 
 data_split <- initial_split(data=estimation_dataset, prop=0.8) 
@@ -334,7 +334,7 @@ trees. Data Min Knowl Discov 3:197-217. doi:10.1023/A:1009869804967.
 ```{r define a model}
 
 ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order")
+  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
 
 
 case_weights_allowed(ranger_model)
@@ -413,7 +413,7 @@ small are lower than the prices of medium, but not that much lower.
 ```{r hyper_parameter_tuning}
 
 
-set.seed(95895)
+set.seed(95)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
@@ -424,8 +424,8 @@ myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="obser
 #rf_grid
 
 
-mtry<-1:15
-mtry<-c(mtry,20,npredict)
+mtry<-1:20
+mtry<-c(mtry,25,npredict)
 rf_grid2<-as.data.frame(mtry)
 
 
@@ -437,7 +437,7 @@ tune_spec <- rand_forest(
   min_n = 5,
 ) %>%
   set_mode("classification") %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order")
+  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
 
 
 # make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
@@ -480,10 +480,11 @@ end_time_tune-start_time_tune
 
 
 
-```{r}
+```{r FinalModelFit}
+# Add other metrics 
 
 best_tree <- tune_res %>%
-  select_best(metric = "brier_class")
+  select_best(metric = "mn_log_loss")
 
 
 # finalize model by picking the best model hyperparameters
@@ -495,9 +496,9 @@ final_wf <-
 # Final model fitting on the full training dataset 
 final_fit <- 
   final_wf %>%
-  last_fit(data_split) 
+  last_fit(data_split, metrics=class_and_probs_metrics) 
 
-
+# print out the metrics
 final_fit %>%
   collect_metrics()
 
