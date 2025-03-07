@@ -102,7 +102,7 @@ if(platform == 'Windows'){
 if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-6
 } else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-7
+  my.ranger.threads<-12
 
   }
 
@@ -203,18 +203,18 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
     )
 
  # Just for now, take a 50% sample of the data  
-  estimation_dataset$rand<-runif(nrow(estimation_dataset))
+ # estimation_dataset$rand<-runif(nrow(estimation_dataset))
 
 
-  estimation_dataset<-estimation_dataset %>%
-      dplyr::filter(rand<=0.50)
+#  estimation_dataset<-estimation_dataset %>%
+#      dplyr::filter(rand<=0.50)
  
 
  # construct the "case weights" variable here.
  estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting))
 
-set.seed(124559)
+set.seed(2428)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
 # consider splitting on 
 data_split <- initial_split(data=estimation_dataset, prop=0.8) 
