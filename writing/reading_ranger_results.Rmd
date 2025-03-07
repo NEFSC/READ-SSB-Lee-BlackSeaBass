@@ -41,6 +41,8 @@ library("nnet")
 library("ranger")
 library("partykit")
 library("bonsai")
+library("vip")
+
 # load utilities
 library("knitr")
 library("kableExtra")
@@ -108,13 +110,13 @@ Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",data_vintage_string,".Rds")))
 tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_tune",tuning_vintage,".Rds")))
 
-#final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
+final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
 
 
 
 ```
 
-Brier classification suggests an mtry around 5 to 7.
+Brier classification suggests an mtry around 13.
 
 ```{r hyper_parameter_tuning_results}
 
@@ -124,7 +126,7 @@ all.metrics<-tune_res %>%
 
 all.metrics %>%
   filter(.metric == "brier_class") %>%
-  filter(mtry <=15) %>%
+#  filter(mtry <=15) %>%
 
   select(mean, mtry) %>%
   pivot_longer(mtry,
@@ -135,16 +137,16 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "brier_class")
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","brier_class.png"), plot=last_plot())
+ggsave(here("results","ranger","tune",paste0("brier_class.png",tuning_vintage,".png")), plot=last_plot())
 
 ```
 
-Brier classification suggests mtry around 5 or 6.
+Multinomial log-loss suggests mtry of 9.  There might be another dip round 15-20, so might need to try again there.
 
 ```{r hyper_parameter_tuning_results}
 all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
-  filter(mtry <=10) %>%
+#  filter(mtry <=10) %>%
   select(mean, mtry) %>%
   pivot_longer(mtry,
     values_to = "value",
@@ -154,25 +156,27 @@ all.metrics %>%
   geom_point(show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "mn_log_loss")
+ggsave(here("results","ranger","tune",paste0("mn_log_loss.png",tuning_vintage,".png")), plot=last_plot())
 
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","mn_log_loss.png"), plot=last_plot())
 ```
 
 
 Are there any warnings from the tuning?
 
-```{r roc}
+```{r warnings}
 extracts<-tune_res %>%
   collect_notes()
 extracts
 not_good<-unique(extracts$id)
-notgood
+not_good
 ```
 Yes, a few resamples have some odd results. In Resamples 2 and 4, Small is never predicted, but there are some small that actually occur.  When this happens, Precision is undefined.
 
 In other resamples, there is difficulty computing Sensitivity or Recall because there are no "true" events (like no smalls).
 
-```{r warnings}
+# Some in-sample results from Tuning
+
+```{r roc}
 # A ROC curve. I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
@@ -180,52 +184,73 @@ predictions<-tune_res %>%
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==5) %>%
-  dplyr::filter(!id %in% not_good) %>%
-
+  dplyr::filter(mtry==9) %>%
+  #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","roc_tune.png"), plot=last_plot())
+
+ggsave(here("results","ranger","tune",paste0("roc_tune_",tuning_vintage,".png")), plot=last_plot())
 
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==5)%>%
-  dplyr::filter(!id %in% not_good) %>%
+  dplyr::filter(mtry==9)%>%
+#  dplyr::filter(!id %in% not_good) %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
-ggsave(here("writing","presentations","2025_03_24_Economic_Informed_Stock_Assessments","pr_curve_tune.png"), plot=last_plot())
+
+ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",tuning_vintage,".png")), plot=last_plot())
 
 
   
 ```
 
 ```{r }
-
-predictions<-final_fit %>%
+# Get predictions
+final_predictions<-final_fit %>%
   collect_predictions()
+
+# look at the fit metrics
+final_fit_metrics<-final_fit %>%
+  collect_metrics()
+
+# Look at variable importance
+final_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = 20)
+ggsave(here("results","ranger","final",paste0("vip",finalfit_vintage,".png")), plot=last_plot())
+
+
+final_predictions %>%
+  roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  autoplot()
+ggsave(here("results","ranger","final",paste0("roc_",finalfit_vintage,".png")), plot=last_plot())
+
+
+final_predictions %>%
+  pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  autoplot()
+ggsave(here("results","ranger","final",paste0("pr_curve",finalfit_vintage,".png")), plot=last_plot())
+
 
 # I have "true", I just need to merge in "weighting"  
 
-
-predictions<-predictions %>%
-  mutate(predJ=.pred_Jumbo*weighting,
-         predL=.pred_Large*weighting,
-         predM=.pred_Medium*weighting,
-         predS=.pred_Small*weighting)
-
-
-aggregate_predictions<-predictions %>%
-  group_by(market_desc) %>%
-  summarise(predJ=sum(predJ),
-         predL=sum(predJ),
-         predM=sum(predJ),
-         predS=sum(predJ),
-         true_pounds=sum(weighting)
+# 
+# weighted_final_predictions<-final_predictions %>%
+#   mutate(predJ=.pred_Jumbo*weighting,
+#          predL=.pred_Large*weighting,
+#          predM=.pred_Medium*weighting,
+#          predS=.pred_Small*weighting)
+# 
+# 
+# aggregate_predictions<-predictions %>%
+#   group_by(market_desc, year) %>%
+#   summarise(predJ=sum(predJ),
+#          predL=sum(predJ),
+#          predM=sum(predJ),
+#          predS=sum(predJ),
+#          true_pounds=sum(weighting)
   )
-
-
-
 ```
 
 
