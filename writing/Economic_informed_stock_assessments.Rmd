@@ -1,6 +1,6 @@
 ---
 title: 'Economic Informed Stock Assessments: Using Prices to Understand the Length of Fish'
-author: "Min-Yang Lee"
+author: "Min-Yang Lee and Emily Liljestrand"
 date: "`r format(Sys.time(), '%B %d, %Y')`" 
 documentclass: article
 csl: "../ajae_mod.csl"
