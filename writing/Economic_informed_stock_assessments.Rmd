@@ -44,7 +44,7 @@ Warnings: There is something funky going on with VA "status=PZERO" starting in 2
  library("mapview")
  library("sf")
 library("htmltools")
-here::i_am("writing/BSB_data_summary.Rmd")
+here::i_am("writing/Economic_informed_stock_assessments.Rmd")
 
 #############################################################################
 #knitr options
