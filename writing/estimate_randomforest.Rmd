@@ -55,11 +55,9 @@ library("scales")
 # load tidyverse and related
 library("tidymodels")
 
-
 # load machine learning and estimation tools
 # ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
 # you might want to install Rcpp, then RcppEigen, then ranger
-
 
 library("nnet")
 library("ranger")
@@ -104,7 +102,7 @@ if(platform == 'Windows'){
 if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-6
 } else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-15
+  my.ranger.threads<-7
 
   }
 

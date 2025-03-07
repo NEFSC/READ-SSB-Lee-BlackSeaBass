@@ -1,0 +1,82 @@
+
+## Do prices vary by size? 
+
+We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004, @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in a hierarchical linear model; finding that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than average.  Other attributes can impact prices: @Gobillon2017 examine buyer- and seller- effects. 
+
+
+
+## A Simple Hedonic Model
+We first estimate a simple hedonic model using data from 2018-2024. We omit the "questionable observations" from VA and DE.  We aggregate to the "CAMSID, market-category, gear, area, datesail, dateland, dealer" level (this is basically the CAMSID-subtrip-market category"). We deflate to real prices using the CPI-U for Q1 of 2023.  We perform some aggregation of gears, aggregating to the following gear categories: "Line and Hand", "Trawl", "Gillnet", "Pot and Trap" and "all other" gears.  We aggregate the "Mixed or Unsized" market category with the "Unclassified" market category. We also aggregate the Small, Extra Small, and PeeWee into a single, Small category. Tables \ref{ESTtransactions}  and \ref{ESTavglbs}  summarize the number of observations and average landings per transaction for the estimation sample.
+
+\input{../results/EST_transactions.tex}
+
+\input{../results/EST_avg_lbs.tex}
+
+We include transactions from New Hampshire to North Carolina where the real price is between \$0.15 and \$15 per pound. The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. It is not reasonable to treat transactions of 2 lbs the same as transactions of 200 or 2,000 lbs. Therefore we weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.  
+
+Table \ref{HedonicTableA} contains some results of the more interesting results. There are 28.5 millions pounds of Black Sea Bass spread over 350,000 transactions during the 2018-2024 time period.  We prefer the Weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass recieved \$5.89 per pound, which Small Black Sea bass were prices at \$3.47.  Unclassified Black Sea bass were priced between the Medium and Large Market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to small fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
+
+
+Table \ref{HedonicTableB} shows the results for the month and state dummies. The Year dummies indicate a substantial decrease in the real price of black sea bass over the 2018-2024 period.  Prices have also fallen in nominal terms (not shown, Appendix if necessary).
+
+<!---This will read a .tex file.  
+ --->
+\input{../results/hedonic_tableA.tex}
+
+\input{../results/hedonic_tableB.tex}
+
+
+<!---This will read a md table. but I can't get the figure numbering and captioning to work well.
+```{r hedonictable, echo=FALSE, results='asis', caption="MY TABLE" }
+res <- knitr::knit_child(here("results","hedonic_table.md"), quiet = TRUE)
+cat(res, sep = '\n')
+```
+--->
+
+
+
+<!--- This will render a markdown table. I don't know how to get the figure numbering and captions to work properly yet. It looks pretty good in html or in pdf. 
+```{r child=here("results","hedonic_table.md"), caption="Test"}
+```
+--->
+
+
+<!--- This will render a markdown table. I don't know how to get the figure numbering and captions to work properly yet.
+```{r caption="TESTME"}
+  htmltools::includeMarkdown(here("results","hedonic_table.md"))
+```
+ --->
+
+
+
+
+
+Tables \ref{FStransactions}  and \ref{FSavglbs}  summarize the number of observations and average landings per transaction for the full sample.
+
+\input{../results/FS_transactions.tex}
+
+\input{../results/FS_avg_lbs.tex}
+
+<!--- 
+group k-fold sampling alternative
+However, we would also want to include dealer specific effects as predictors. See @Rabinowicz2022 and @Rabinowicz2022a discusses the applicability of cross-validation in the context of a mixed linear model.  There are two take-aways
+
+@Rabinowicz2022a 's setup:
+1. the data is indexed $i=1,...,N$ and broken up so that $i=1,\ldots,n_1$ are in the first fold, $i=n_1+1,\ldots,n_2$ are in the second fold, etc.
+2. $T_{1}=\{y_i,\bf{x_i}\}_{i=1}^{n_1}$ is the collection of predictors and outcomes in the $1$st of the $K$ folds. The subscripting is a little difficult here.   $T_{2}=\{y_i,\bf{x_i}\}_{i=n_1+1}^{n_2}$ is the data in the 2nd fold, etc.
+3. For a specific fold, the usual cross-validation error estimator an expected value of a loss function of the true outcome and the predictions made by combining the "out-of-fold" model with the data in in the fold. The fold-specific errors are averaged over each of the $K$ folds.  This is standard and the fold-specific loss function for observation $i$ in fold $k$ is written as:
+$$
+L(y_i, \hat{y}(x_i, T_{-k}))
+$$
+This captures the "true data" $y_i, \bf{x_i}$, and the model trained on the $-k$ folds of data.
+
+3. A "more general" form of the Cross-Validation prediction error is the generalization error (hah) in Equation 2. It is the expectation of a modified loss function:
+$$
+L(y_{te,i}, \hat{y}(x_{te,i}, T_{tr}))
+$$
+This captures the "true data" $y_i, \bf{x_i}$, and the model trained on some generic data.  Averaging this loss function over "everything" produces the generalized error. When the data are uncorrelated, the standard formula for a CrossValidation error rate is an unbiased estimate of the generalization error.  This motivates the random fold process.  The standard formula is also an unbiased estimate when the data are "exchangeable" (Anderson 2018, Roberts 2017).  It is also unbiased for predicting new observations from the same clusters in the training dataset, which was not well understood by the literature.   
+
+For certain other cases, a correction factor is needed which requires computing the covariance matrix between various predictions. 
+
+
+ --->
