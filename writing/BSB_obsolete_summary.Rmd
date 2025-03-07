@@ -1,0 +1,53 @@
+
+# Summary: Research Question, Motivation, Extensions, and Potential Problems
+
+
+
+## Research Question
+
+Can inclusion of prices improve our ability to classify Black Sea Bass in the "Mixed" and "Unclassified" market categories into another market category?
+
+## Motivation
+
+Landed weights must be converted into landed numbers at age for age-structured stock assessments.  This is done by sampling landed fish at the dealer, vessel, or dock and measuring lengths and computing ages. When no or few fish in a market category are measured, a length distribution must be borrowed for the fish in the Unmeasured market categories.  For Black Sea bass, the unclassified market category was not measured for 3 years.
+
+Because it is costlier to collect the age of fish, only a subset of the fish that have lengths also have ages. Once landings in a particular market category is converted to lengths, it is reasonable to apply a length-age relationship derived from 'all market categories' to just a single market category. Equivalently, it is reasonable to convert the landings from all market categories into a single weight-at-length measure and then convert that into an weight-at-age measure. 
+
+The "Unclassified" market category, in conjunction with sampling at vessels, can be particularly challenging. Dealers, not vessels, classify fish into market categories, therefore sampling at the dock means that the "Unclassified" fish might not actually be unclassified. 
+
+## Extensions
+
+Can we use the methods to other fisheries? If it works well, can port sampling effort be re-deployed away from categories that are hard to get?
+
+## Potential Questions and Problems
+
+1. State-level aggregates.  There are rows in the dealer data that are state-level reports of sales by non-federal permits to non-federal dealers.  If these are transactions (trip/subtrip), they can be assigned as long as the value reported is the true value, not an imputed one.  If the transactions are aggregates, they *probably cannot* be assigned even if the true value reported.
+  * I need to get in touch with the people that load in these state aggregates to figure out how prices are put into the datasets.
+  * For now, I'm setting these outside the model.
+
+2. Dealers have their own diverse but persistent tendencies in terms of how they classify fish.
+  * This suggests that the dealer id should go into the model as a factor variable. 
+  * However, inclusion of factor variables with many levels in a machine learning model can lead to overfitting.
+  * It also suggest that cross-validation will be tricky.  The training and validation datasets would not be truly independent if I pull random samples.  See @Rabinowicz2022 and @Rabinowicz2022a for discussions in the context of a mixed linear model.
+  * The standard way to handle a factor variable in econometrics is to encode it as a set of dummy variables (one-hot encoding, which is i.dlr_id in stata's factor variable notation). ranger has three ways to handle this, and "order" is far and away the most reasonable one.:
+      * "ignore", which by " all factors are regarded ordered."
+      * "order" --  order by the the first principal component of the weighted covariance matrix of the contingency table.
+      * "partition" consider all possible 2 way partitions.  This will be extremely computationally intensive for dlrid.
+  * Frequency encoding is a thing. This would create one new column, where the value is the number of times a DLR_ID appears in the datset.  Since the rows are weighted, a slightly better thing would be to include the weight purchased by a DLR_ID instead. I don't like either of these for our dataset
+  * Target encoding is another thing. 1 new column per market category. It would contain something related to the probability that a DLR_ID purchased that market_category. Canonical is to use probability (one-vs-rest target encoding or class probability vectors, if you can stick into a single object), but I could use counts, weights, proportion of purchases, or "weight of evidence". WOE is essentially a logged proportion.
+    For target encoding, I have to be very careful to avoid 'leakage' where data from outside the training data (or CV) is accidentally used to select the best data.
+
+3. Is it reasonable to use "pounds landed" as a weighting variable and an explantory variable?
+  * "A pound of landed fish" for weighting
+  * A larger amount of landed (on a trip) is more likely to be graded instead of lumped as "unclassified." yikes, this is not a good justification. But this suggests trip-level (camsid) bsb landings
+  * Targeting ---  landings of other species.
+  
+## Solved Problems
+
+1.  Price premia: Prices need to vary by market category. If they there isn't any variation in prices across market categories, then it won't work. Prices don't need to have a particular relationship, and that relationship can probably change from year to year (or period-to-period). 
+
+2.  Weighting observations. It is not reasonable to treat an observation of 10 lbs the same as an observation of 100lbs.  Using "pounds landed" as a frequency weighting seems appropriate.  This shifts the unit of observation to "a pound of landed fish," which more closely aligns with the goal of the model
+
+3.  Overfitting.  The underlying problem is an out of sample $\hat{y}$ problem [@Mullainathan2017] -- I want to predict the probability of an observation belonging to particular class.  I don't care too much about inference.  
+
+4.  Some of the RHS variables may be "sparse." This might make a k-fold cross-validation with a parametric estimator difficult.  If there's not enough variation, the maximum likelihood estimator can fail to converge. This should take some seriously bad luck, extreme sparsity, or a large number of folds.  This is a 

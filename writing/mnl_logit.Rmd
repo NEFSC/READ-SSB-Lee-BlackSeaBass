@@ -1,0 +1,48 @@
+
+## A Multinomial  Logit
+
+A Multinomial logit is estimated on the four primary market categories (Jumbo, Large, Medium, and Small).  The omitted base category is the Large category. As with the hedonic model, I have weighted the rows by pounds landed and estimate on the "pooled" dataset with all years together.
+
+$\begin{aligned}
+Pr[Y=1| X] &= \frac{e^{X\beta^1}}{\sum_{j=1}^4 e^{X\beta^j}}\\
+Pr[Y=2| X] &= \frac{e^{X\beta^2}}{\sum_{j=1}^4 e^{X\beta^j}}\\
+Pr[Y=3| X] &= \frac{e^{X\beta^3}}{\sum_{j=1}^4 e^{X\beta^j}}\\
+Pr[Y=4| X] &= \frac{e^{X\beta^4}}{\sum_{j=1}^4 e^{X\beta^j}}
+\end{aligned}$
+
+Following convention, one $j$ (Large) is chosen as a baseline and the corresponding $\beta^j$'s are set to zero to identify the other set of coefficients.
+
+$\begin{aligned}
+Pr[Y=1| X] &= \frac{e^{X\beta^1}}{\sum_{j=1}^3 e^{X\beta^j}}\\
+Pr[Y=2| X] &= \frac{e^{X\beta^2}}{\sum_{j=1}^3 e^{X\beta^j}}\\
+Pr[Y=3| X] &= \frac{e^{X\beta^3}}{\sum_{j=1}^3 e^{X\beta^j}}\\
+Pr[Y=4| X] &= \frac{1}{\sum_{j=1}^Je^{X\beta^j}}
+\end{aligned}$
+
+The relative probability of Jumbo to the baseline is $e^{X\beta^1}$.  A 1 unit change in an element of $x_i$ changes the relative probability by:
+
+$$\frac{e^{X_{\tilde i}\beta_{\tilde i}^1 + (x_i+1)\beta_i^1}}{e^{X\beta^1}}$$.  This is just $e^{beta_i^1}$. 
+
+I've centered the price variable at the grand mean (\$2.84 per pound), included a full set of dummy variables for gear, and estimated the models without a constant. The gear RRR's can be interpreted as the relative risk of landings being in a particular category compared to the large baseline for an average priced transaction, landed in January of 2018 in Rhode Island.  Rhode Island was chosen as the baseline state because it had a mix of landings across the size classes (some states had very small amounts of landings in some categories).
+
+Tables \ref{mlogitNomACentered} and \ref{mlogitNomBCentered} show the relative risk ratios for price, gear, and month. Values greater than 1 indicate that increases in an independent variable increase the probability that the transaction will be in a particular market category compared to the base category. 
+
+Here is some interpretation:
+
+1. Landings by Gillnets (in January 2018 in RI) have a 53\% risk of being Jumbo compared to Large.  They have a 111\% risk of being Medium and a 153\% risk of being small. 
+2. Landings in October (of 2018 in RI) have a 72\% risk of being Jumbo compared to large.
+3. Landings in MA have a much larger risk of being Jumbo compared to large, which landings in all the other states except VA have a larger risk of being Medium. RI is the most likely place for Smalls to be landed-- all the other State coefficients for Small are well below 1. 
+4. 2019 had lots of Mediums, 2020 had lots of Jumbos. The other year coefficients are less than 1, indicating larges were the most prevalent.
+5. The Price effect is really large.  A \$1 increase in price produces a 330\% change in relative risk ratio for Jumbo to Large. The same increase produces a very large decrease relative risk ratio of Medium to Large and an even greater one for Small to Large. 
+
+<!---
+\input{../results/mlogitA.tex}
+
+\input{../results/mlogitB.tex}
+--->
+
+It looks like the yearly effects get smaller in magnitude when I estimate the nominal version. Still should check out a shift in within season or location? 
+ 
+\input{../results/mlogitNomA_centered.tex}
+
+\input{../results/mlogitNomB_centered.tex}
