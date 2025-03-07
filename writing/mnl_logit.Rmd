@@ -1,4 +1,18 @@
 
+## Classical Statistics Approach
+
+Estimate a categorical model (multinomial logit) with price and other things as explanatory variables. 
+  - Model selection and validate the model with a k-fold cross validation (?)
+  - Predict out of sample for the unclassified market category
+  - Validate again by predicting out of sample lengths for the unclassified fish and compare to the years where we do have lengths for the unclassified fish.
+  - I've also estimated a multinomial logit in stata. Cross-validation and model selection is a little harder, but can be done by hand. 
+  - Handling the dealer's "market category propensity" is a problem for inference, but a "fixed effects" logit might not be too awful for prediction.  A correlated random effects inspired approach, where we put in something like a cumulative fraction in each market category might work.  
+  
+Estimate a latent class (finite mixture model) on the price of unclassified, where there are a moderate number of classes (say small and large).  
+  - Validate the model with a k-fold cross-validation.
+  - Bonus validation: Validate the model by predicting categories for known small and large. 
+  - Predict the class membership of the unclassified.  
+
 ## A Multinomial  Logit
 
 A Multinomial logit is estimated on the four primary market categories (Jumbo, Large, Medium, and Small).  The omitted base category is the Large category. As with the hedonic model, I have weighted the rows by pounds landed and estimate on the "pooled" dataset with all years together.
