@@ -82,7 +82,9 @@ stat_areas<-stat_areas %>%
 ```{r, child=here("writing", c("summary.Rmd")),  eval=FALSE}
 ```
 
+Can we use prices to predict market category?  
 
+Can we "take it to production" for other stocks?  This requires something somewhat off the shelf methods and data that is regularly collected.
 
 
 # Background
@@ -121,64 +123,48 @@ State -- regulations vary by state, so sizes of landed fish will also vary.  For
 
 Black sea bass are caught by fishing vessels that typically use bottom trawl and pot/trap gear; gillnets and lines are less commonly used. Firms can target both sizes of fish and their catch of other species, but cannot perfectly control what they catch and land.  For example, the seasonal inshore movement during the spring and offshore movement affects things.  When fish offshore, they are less available to smaller vessels or those that are registered in states that manage with stringent possession limits.  Strong year classes can make a size class more available during certain years.   
 
-After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.]  Fish in the "Unclassified" or "Mixed" category are precisely that, a combination of other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).
+After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.]  Fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).  Fish dealers may act as middlemen, simply selling fish to processors, restaurants, or final consumers.  They may do some processing themselves and sell filleted fish to entities farther along the value chain.
 
-It is quite well known that prices of fish depend on the body size, the fact consumers typically prefer larger fish motivates and necessitates the collection of size information by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
+Prices of fish depend on the size of fish; the fact consumers typically prefer larger fish both motivates and necessitates the collection of size information by disaggregated by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
 
-Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish.^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
+Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
 
 \input{../results/hedonic_tableA.tex}
 
-# Methods
+# Methods and Data
 
+The core of this research question is accurate prediction of the market category, not understanding the causal mechanisms by which one variable affects another.  Machine learning, which focuses on $\hat{y}$ instead of $\hat{\beta}$ is likely to be a good approach [@Varian2014, @Mullainathan2017].  Economic theory and on-the-ground expertise of the subject matter (the black sea bass fishery) helps guide variable selection [@Mullainathan2017].  We first provide a general description of the machine learning method, before describing and justifying the methods, modeling choices, and data that we use in this application.
 
-
-
-## A Machine Learning Approach to Classification
-
-Can prices be used to classify the "Mixed" or "Unclassifieds" into a standard market category? 
-
-For all models, predictors (right hand side variables) would probably include price, year, month, state, gear, stockarea, stockunit, and some other things.
-
-I'm not sure if it's better to split the data into Stock Units or to add stock units as a predictor.
-
-The dealers are the ones that classify the fish. At minimum, we need to assume there is a dealer propensity to grade into particular classes.
-
-The core of this research question is accurate prediction of the market category, not understanding the causal mechanisms by which one variable affects another.  Machine learning, which focuses on $\hat{y}$ instead of $\hat{\beta}$ is likely to be a good approach [@Varian2014, @Mullainathan2017].  Economic theory and content expertise can play a very important crucial role in starting the algorithm [@Mullainathan2017].
-
-Train and Test a multinomial classification model  
-  - Predict whether a transaction is Small, Medium, Large, or Jumbo classes^[Optionally train a separate model that admits the Unclassified, but I'm struggling to figure out what I learn from that].
-       - Use either the multinomial log loss to do model training and selection.  
-  - Validate in the usual way (weight of fish correctly predicted -- not the 'rows' of observations correctly predicted).
-  -  
-
-  A second, less-conventional validation might be available.  We have some years (2018-2020) where we sample lengths for the unclassified fish.  This can be used to construct a true catch-at-length distribution (outside the ML model). Inside the ML model, we predict the class of the "unclassified" into the constituent market categories and apply the length keys to those to form a catch-at-length distribution.  Construct some sort of loss function based on the differences in weights-at-length  (or weights at age). This assumes that the length measurements of the Unclassified category is "good."
-    
-  - Predict out of sample on the years where we do not have any lengths of Unclassified fish (2021-2023).
-
-There are *many* machine learning models for multinomial classification.  The approach and following description draws heavily on [ @Strobl2009, @Varian2014, @Mullainathan2017, and @Hastie2023].  Because so much of the scientific enterprise at NEFSC is built on R, we look for relatively mature (old) methods that have been implemented in R. The general approach is:
-
-1. Split the dataset into a "training" and "validation" datset.  Do nothing with the validation dataset until step 3. 
-2. Further split the training dataset into k-folds to find the best hyperparameters (or tuning parameters -- these are essentially analyst-defined arguments to a machine learning routine that can be found by runing the ml routine many times, but not from 1 run of the model).
-3. Run the machine learning model with the best hyperparameters on the full training dataset.
-4. Predict on the validation dataset to demonstrate that the model fits well.
-5. Predict out of sample.
-
-
-Classification and Regression Trees [CART, @Breiman1984] and their evolutionary offshoots are attractive methods. A classification tree does recursive binary splitting.  The data is partitioned based on one explanatory variable and data in the same partition are given the same predicted value. Where to split is based on minimizing a measure of variation among member of the partition; a split is good if it results in all the members of the partition having the same value of the dependent variable.  The CART algorithm repeats this process for all partitions until a user specified stopping-criteria is met. It is top-down, because it begins operation on the whole dataset and it is "greedy" or "naive" because it does not look ahead. 
+Many machine learning models have been developed to perform multinomial classification.  The following description draws heavily on [@Strobl2009, @Varian2014, @Mullainathan2017, and @Hastie2023].  Classification and Regression Trees [CART, @Breiman1984] and their evolutionary offshoots are attractive methods for multinomial classification.  A classification tree performs recursive binary splitting.  The dependent variable is partitioned into two groups based on a single explanatory variable.  The optimal explanatory variable to use (and, for continuous explanatory variables, the value at which the split occurs) is based on minimizing a measure of variation among member of the partition.  A good split will results in a large reduction in the variation among the observations in the partition.  The CART algorithm continues splitting until a user specified stopping-criteria is met. It is top-down, because it begins operation on the whole dataset and it is "greedy" or "naive" because it does not look ahead. 
 
 Classification trees are quite unstable and therefore can be prone to poor out of sample performance.  Bagging is a way to improve performance. Bagged classification trees simply bootstraps the classification tree and then aggregate in a reasonable way. Random forests are another improvement.  Random forests are bagged classification trees that also have a restricted the number of predictors. This increases the variation in the trees and can improve out of sample performance.
 
-Classification trees and related methods have some problems with being biased toward selecting certain kinds of variables (factors with many factors, numerics, and variables with lots of missing values) [@Hothorn2006, @Strobl2009]. A criticism of both trees and random forests is that statistical properties don't guide the stopping criteria [@Hothorn2006, @Strobl2009]. A conditional inference process can address both of these problems [@Hothorn2006].
+Training
+  - Tuning hyper parameters
+  - Training - after finding the best hyper parameters, fitting a final model
+  - Validation -- out of sample prediction
 
 
-Dealer specific effects.  How do we handle the fact that dealers have their own tendencies in terms of how they classify fish? This needs to be handled this properly in the $k-$fold cross validation, otherwise the training and validation datasets are not truly independent and the model fit measures are overly optimistic.  
+## Our approach
+
+We train a multinomial Random Forest 2018-2024 black sea bass sales from the Small, Medium, Large, and Jumbo market categories.  We use the  multinomial log-loss to do model tuning.  We use 80% of our dataset to train and tune the model, further dividing this into 10 folds for selecting optimal hyperparameters.  After tuning, we train the model on the entire 80% training sample and validate on the remaining 20\%. We use the finalized model to perform out-of-sample prediction to recover the true but unobserved combination of the other market categories.  Finally, we aggregate up to construct the new length structures of caught fish at the stockarea-semester level. 
+
+Dealers are the entities that classify the fish and dealers are likely to have an unobserved propensity to grade fish into particular classes.  This poses minor problems for We cluster-sample during the tuning process; all observations from a single dealer are allocated to exactly one fold.  This ensures that the validation fold does not inadvertently contain "training data", which would lead to overly optimistic model fit.  Including a full set of binary indicator variables to account dealer-specific effects ("one-hot" encoding) can lead to both overfitting [@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. Instead we use a variation of target encoding.
+
+<!---  
+
+need to blend in the data to make this a little easier to follow.
+--->
+
+<!---  
+
+  A second, less-conventional validation might be available.  We have some years (2018-2020) where we sample lengths for the unclassified fish.  This can be used to construct a true catch-at-length distribution (outside the ML model). Inside the ML model, we predict the class of the "unclassified" into the constituent market categories and apply the length keys to those to form a catch-at-length distribution.  Construct some sort of loss function based on the differences in weights-at-length  (or weights at age). This assumes that the length measurements of the Unclassified category is "good."
+  
+  The model selection metric I use should be related to that.  For example, "True" landings in each market category compared to "actual" landings in each market category, computed at the stockarea-year, stockarea-semester, or stockarea-year-semester level.  
+--->    
 
 
-The model selection metric I use should be related to that.  For example, "True" landings in each market category compared to "actual" landings in each market category, computed at the stockarea-year, stockarea-semester, or stockarea-year-semester level.  
-
-
-# Data
+## Data
 
 Matched dealer and vessel trip report data from 1996-2024 is available.  Vessel trip report data are trip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer. Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.
 
@@ -241,6 +227,19 @@ Dealer total transactions by market category from 2013-2017
 TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified
 
 
+# Dealer share of landings by market category from 2013-2017   
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(ShareJumbo, ShareLarge, ShareMedium,ShareSmall, ShareUnclassified), new_role = "predictor") 
+
+# Dealer transaction count of landings by market category from 2013-2017   
+
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified), new_role = "predictor") 
+
+
+For all models, predictors (right hand side variables) would probably include price, year, month, state, gear, stockarea, stockunit, and some other things.
+
+I'm not sure if it's better to split the data into Stock Units or to add stock units as a predictor.
 
 
 ## Random Forest 
