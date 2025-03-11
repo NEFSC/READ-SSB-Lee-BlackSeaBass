@@ -120,7 +120,7 @@ if (runClass %in% c('Local', 'Windows')){
 #############################################################################
 #knitr options
 
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
 											dpi = 600)
 options(tinytex.verbose = TRUE)
 # options(knitr.table.format = "latex")
@@ -169,7 +169,7 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
 are in both real and nominal dollars per landed pound. 
 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
-```{r load_in_data, include=FALSE}
+```{r load_in_data}
 # this was created with data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 
@@ -179,18 +179,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 
 
 
-```{r simple_ml, include=FALSE}
-
-###################################################
-# Inspired by R code for "Big Data: New Tricks for Econometrics
-# Journal of Economic Perspectives 28(2), 3-28            
-# http://pubs.aeaweb.org/doi/pdfplus/10.1257/jep.28.2.3
-# Hal R. Varian
-
-# recoded into a tidymodels setup with recipes and workflows
-
-###################################################
-
+```{r ml_data_setup, include=TRUE}
 
  # for reproducibility
  set.seed(648721)
@@ -202,10 +191,8 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
     )
 
- # Just for now, take a 50% sample of the data  
- # estimation_dataset$rand<-runif(nrow(estimation_dataset))
-
-
+# Take a 50% sample of the data, just to test how the code runs.  
+# estimation_dataset$rand<-runif(nrow(estimation_dataset))
 #  estimation_dataset<-estimation_dataset %>%
 #      dplyr::filter(rand<=0.50)
  
@@ -216,8 +203,8 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 
 set.seed(2428)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
-# consider splitting on 
-data_split <- initial_split(data=estimation_dataset, prop=0.8) 
+# consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
+data_split <- group_initial_split(data=estimation_dataset, prop=0.8, group=dlrid) 
 train_data <- training(data_split)
 test_data <- testing(data_split)
 
@@ -286,7 +273,7 @@ recipe_summary<-BSB.Classification.Recipe %>%
   summary() %>%
   arrange(source,role, variable)
 
-
+recipe_summary
 
 #How many predictors
 npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
@@ -337,11 +324,10 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
 
 case_weights_allowed(ranger_model)
 
-cf_model<-rand_forest(mode="classification", 
-                    trees = 500, min_n=5, mtry=3) %>%
-  set_engine("partykit")
-
-case_weights_allowed(cf_model)
+#cf_model<-rand_forest(mode="classification", 
+#                    trees = 500, min_n=5, mtry=3) %>%
+#  set_engine("partykit")
+#case_weights_allowed(cf_model)
 
 ```
 
@@ -352,16 +338,14 @@ The workflow is the combination of data processing and model statement
 
 BSB.Ranger.Workflow <-
   workflow() %>%
-#  add_case_weights(fweight)%>% 
   add_model(ranger_model) %>% 
   add_recipe(BSB.Classification.Recipe)
 
 
-BSB.cf.Workflow <-
-  workflow() %>%
-#  add_case_weights(fweight)%>% 
-  add_model(cf_model) %>% 
-  add_recipe(BSB.Classification.Recipe)
+# BSB.cf.Workflow <-
+#   workflow() %>%
+#   add_model(cf_model) %>% 
+#   add_recipe(BSB.Classification.Recipe)
 
 ```
 
@@ -383,7 +367,6 @@ rf_fit <-
 end_time_1fit<-Sys.time()
 
 end_time_1fit-start_time_1fit
-# Should probably predict out of sample here, but not 
 
 ```
 
@@ -392,20 +375,6 @@ end_time_1fit-start_time_1fit
 
 We will do 10 fold cross validation over the mtry set of parameters. We'll hold
 min_n and trees constant. The number of trees isn't the most important thing.
-
-I'm getting a warning about the precision() and the "small" category, which is probably "macro" metric. Some levels had no predicted
-events (i.e. `true_positive + false_positive = 0`). Precision is undefined in this case, and those levels will be removed from the averaged result.  Here is an example:
-
->While computing multiclass `precision()`, some levels had no predicted events (i.e. `true_positive + false_positive = 0`).
-               Precision is undefined in this case, and those levels will be removed from the averaged result.
-               Note that the following number of true events actually occurred for each problematic event level:
-               'Small': 123
-
-1.  The model is currently not doing a great job at fitting the "small" class.  The prices of 
-small are lower than the prices of medium, but not that much lower.
-2.  It might be that we're getting some + probability for smalls, just not enough to be over the threshold. 
-3.  There's very little "small" being landed anyway.
-
 
 
 ```{r hyper_parameter_tuning}
@@ -476,7 +445,7 @@ end_time_tune-start_time_tune
 
 ```
 
-
+Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
 ```{r FinalModelFit}
 # Add other metrics 
@@ -496,11 +465,17 @@ final_fit <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
+readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
+```
+
+Print out the final fit metrics.
+
+```{r fit_metrics}
+
 # print out the metrics
 final_fit %>%
   collect_metrics()
 
-readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
 
 ```
 
