@@ -70,7 +70,7 @@ here::i_am("writing/reading_ranger_results.Rmd")
 #############################################################################
 #knitr options
 
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
 											dpi = 600)
 options(tinytex.verbose = TRUE)
 # options(knitr.table.format = "latex")
@@ -118,7 +118,7 @@ final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_resul
 
 Brier classification suggests an mtry around 13.
 
-```{r hyper_parameter_tuning_results}
+```{r brier_class}
 
 # eyeball the metrics 
 all.metrics<-tune_res %>%
@@ -143,7 +143,7 @@ ggsave(here("results","ranger","tune",paste0("brier_class.png",tuning_vintage,".
 
 Multinomial log-loss suggests mtry of 9.  There might be another dip round 15-20, so might need to try again there.
 
-```{r hyper_parameter_tuning_results}
+```{r log_loss}
 all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
 #  filter(mtry <=10) %>%
@@ -250,7 +250,7 @@ ggsave(here("results","ranger","final",paste0("pr_curve",finalfit_vintage,".png"
 #          predM=sum(predJ),
 #          predS=sum(predJ),
 #          true_pounds=sum(weighting)
-  )
+#  )
 ```
 
 
