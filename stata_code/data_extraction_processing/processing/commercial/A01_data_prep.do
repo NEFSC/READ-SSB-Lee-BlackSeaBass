@@ -105,6 +105,11 @@ replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)", "EXTRA SMALL
 
 replace market_desc=proper(market_desc)
 replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
+
+replace market_code="JB" if market_code=="XG"
+replace market_desc="Jumbo" if inlist(market_desc,"Extra Large")
+
+
 label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
 rename market_desc market_desc_string
@@ -179,7 +184,7 @@ replace semester=2 if month>=7
 
 
 
-save  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+save  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
 
 
 
@@ -297,7 +302,7 @@ foreach var of varlist Other* StateOther* StateQ* DailyQ* StockareaOtherQ* Stock
 }
 
 sort dlr_date camsid
-save "${data_main}\commercial\camsid_specific_cleaned_${in_string}.dta", replace
+save "${data_main}\commercial\camsid_specific_cleaned_${vintage_string}.dta", replace
 restore
 
 
@@ -323,7 +328,7 @@ foreach var of varlist DailyQ* trips{
 	drop `var'
 }
 
-save "${data_main}\commercial\daily_ma_${in_string}.dta", replace
+save "${data_main}\commercial\daily_ma_${vintage_string}.dta", replace
 restore
 
 /*7 day moving sum of StateQJumbo StateQLarge StateQMedium StateQSmall StateQUnclassified
@@ -345,7 +350,7 @@ foreach var of varlist StateQ* state_trips{
     tssmooth ma MA7_`var'=`var', window(7 0 0)
 	drop `var'
 }
-save "${data_main}\commercial\state_ma_${in_string}.dta", replace
+save "${data_main}\commercial\state_ma_${vintage_string}.dta", replace
 restore
 
 
@@ -366,7 +371,7 @@ foreach var of varlist StockareaQ* stockarea_trips{
     tssmooth ma MA7_`var'=`var', window(7 0 0)
 	drop `var'
 }
-save "${data_main}\commercial\stockarea_ma_${in_string}.dta", replace
+save "${data_main}\commercial\stockarea_ma_${vintage_string}.dta", replace
 
 /* I could easily construct a variable for the number of trips that landed a particular market category (by state or stockarea).
 Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
@@ -375,10 +380,10 @@ But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockar
 
 /* historical dealnum things */
 
-use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+use "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
 bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 
-keep if year>=2013 & year<=2017
+keep if year>=2010 & year<=2014
 /* sum by dlr and market category */
 collapse (sum) lndlb TransactionCount, by(dlrid market_desc)
 decode market_desc, gen(mymarket)
@@ -392,10 +397,10 @@ local sizes Jumbo Large Medium Small Unclassified
 
 foreach  l of local sizes {
 	replace lndlb`l'=0 if lndlb`l'==.
-	label var lndlb`l'  "Dealer level pounds purchased from 2013-2017 in market category `l'"
+	label var lndlb`l'  "Dealer level pounds purchased from 2010-2014 in market category `l'"
 	
 	replace TransactionCount`l'=0 if TransactionCount`l'==.
-	label var TransactionCount`l'  "Dealer level number of transactions from 2013-2017 in market category `l' "
+	label var TransactionCount`l'  "Dealer level number of transactions from 2010-2014 in market category `l' "
 
 	
 }
@@ -408,9 +413,9 @@ egen totaltrans=rowtotal(TransactionCount*)
 local sizes Jumbo Large Medium Small Unclassified
 foreach l of local sizes{
 	gen Share`l'=lndlb`l'/totalland
-	label var Share`l' "Dealer Share of pounds from 2013-2017 in market category `l'"
+	label var Share`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
 	gen FracT`l'=TransactionCount`l'/totaltrans
-	label var FracT`l' "Dealer Fraction of total transactions from 2013-2017 in market category `l'"
+	label var FracT`l' "Dealer Fraction of total transactions from 2010-2014 in market category `l'"
 
 }
 drop totalland totaltrans
@@ -420,6 +425,6 @@ order dlrid lndlb* TransactionCount* Share* FracT*
 compress
 
 notes: pounds landed and fraction pound landed of 
-save "${data_main}\commercial\dlrid_historical_stats_${in_string}.dta", replace
+save "${data_main}\commercial\dlrid_historical_stats_${vintage_string}.dta", replace
 
 
