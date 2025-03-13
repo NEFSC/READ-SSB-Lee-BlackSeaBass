@@ -75,8 +75,8 @@ lbs_per_mt<-2204.62
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","raw","commercial"), pattern=glob2rx("landings_all*.dta"))
-vintage_string<-gsub("landings_all_","",vintage_string)
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.dta"))
+vintage_string<-gsub("landings_cleaned_","",vintage_string)
 vintage_string<-gsub(".dta","",vintage_string)
 vintage_string<-max(vintage_string)
 ```
@@ -114,7 +114,6 @@ are in both real and nominal dollars per landed pound.
 ```{r load_in_data, include=FALSE}
 cleaned_landings<-haven::read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
-
 
 camsid_specific_stats<-haven::read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
 
@@ -253,9 +252,10 @@ cleaned_landings<-cleaned_landings %>%
 # what do I want to estimate on? 
 # Nominal prices that are above $0.15 per pound
 # North Carolina to Mass
+# 2015 to 2025 data
 
 estimation_dataset<-cleaned_landings %>%
-   mutate(keep = case_when(year<2018~ 0,
+   mutate(keep = case_when(year<=2014~ 0,
                            year>=2025~ 0,
                            price<0.15 ~ 0,
                            market_desc=="Unclassified" ~ 0,
