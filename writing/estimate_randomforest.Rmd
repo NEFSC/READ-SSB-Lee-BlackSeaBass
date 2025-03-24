@@ -104,7 +104,7 @@ if(platform == 'Windows'){
 if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-6
 } else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-12
+  my.ranger.threads<-8
 
   }
 
@@ -184,7 +184,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 ```{r ml_data_setup, include=TRUE}
 
  # for reproducibility
- set.seed(648721)
+ set.seed(4587315)
 
  # remove obs with missing prices,
  estimation_dataset<-estimation_dataset %>%
