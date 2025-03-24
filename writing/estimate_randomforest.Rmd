@@ -213,6 +213,9 @@ test_data <- testing(data_split)
 
 nrow(train_data)
 nrow(test_data)
+readr::write_rds(data_split, file=here("results","ranger",paste0("data_split",estimation_vintage,".Rds")))
+
+
 
 ```
 
