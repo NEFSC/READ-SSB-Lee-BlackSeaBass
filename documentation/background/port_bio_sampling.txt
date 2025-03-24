@@ -1,0 +1,95 @@
+Port Bio Sampling is a GARFO run project! [Vic Vecchio at GARFO and Russ Brown]
+
+Willing to consider anything that helps better "do" things
+
+Even though GARFO doesn't use the data.  
+	Should we move it back to NEFSC (housed in FMRD)  Same contractor is there.
+
+End of the fiscal --- all the stock assesmsents "ask" for their stock coverage.
+	2019 -- Garfo would cover the difference between the asks and the budget. Wow!
+		Brian figures out total # of fish that can be lengthed --- then allocates those to individual species based on the analyst ask
+		Also mid-year adjustments
+			Sort of need to project where/what market cats are coming in.
+			Flexibility -- if they don't see X, they can fill it with Y if there are no X's being landed.
+			Need to match landings to a "trip"
+
+
+Analyst gets a number of lengths, but they can allocate it to different categories as they see fit.
+	
+		
+
+
+
+"samples requested" (a "sample" is a matched group of lengths and aes
+	lengths requested
+	ages requested
+	Every age has a length. Not every length has an age
+		Some dealers are not okay with this and will not let them take the head.
+
+	Each sample "should" be from a different trip. 
+	
+For a species with multiple stock areas, a sample can only be taken from a subtrip that visits a single stock area.
+	MA DMF pilot -- to keep fish separate. 
+
+Try to balance across ports? dealers? vessels?
+	If you sample a bunch of Jumbo Black Sea bass on 1 day, will you also do Mediums or Small from that same dealer/boat?
+	What "sample" is brought back?
+
+How do the samplers decide where to go and what to measure?
+
+Intercept location varies a bit (dock, dealer, etc)
+	Dockside unclassified might actually be classified later on. That's worrying.
+
+	Up to the individual sampler to decide what to do based on their quarterly requests
+		Talk to captains to hear what might be coming in
+		Access to the vtracs to see what is going out and coming in.
+			Alot of X being landed now, need to get them now before the fleets switch to Y.
+		Contractors paid on a per-length basis.
+			Lots of samples of things that are easy to measure.
+			NEFSC not really at the table for the contract negotiations.	
+
+		Need to ask a dealer or vessel owner for permission to measure and take lengths.
+
+Will someone try to hunt down "Small's" from 
+
+
+trying to allocate sampler dollars
+	1.  No restrictions
+	2.  in proportion to commercial landings
+	3.  Assign stocks to tier
+		High profile, high landings and Analytical Assessments
+		high profile and analytical 
+		remaining analytical 
+		empirical 
+		
+	How do you feel about that? Advantages and disadvantages?
+
+Pre 2020: 7 FT samplers
+FY 2024: 3 FT and 1 PT
+
+big drop in sampled fish
+big drop in pct of requestes filled in 2024
+MAFMC and MADMF are filling in gaps..well below 2019 coverage.
+
+	MAFMC funded sampling is "opportunistic" and based on MAFMC prioritization.
+		Did not work very well.
+			NEFSC still puts in the sample requests, some on the standard contract and some on the MAFMC contract.
+				Port samplers would collect alot on the MAFMC contract and not on ours. 
+					7 regions, with at most 1 sampler. Understaffed.  Contracting company didn't staff up. lots of uncollected samples. Very hard time recruiting. 
+
+	$3/sample.
+
+
+mixed stock-area trips!
+
+
+Gutted to whole weight factors. No weights taken -although MADMF does collect weights. Database system is set up, but port samplers don't do that.
+
+
+There are some combinations of species-market cats that are 'hard to get'
+	Each analysis has their own critiera for coverage -- just in case.
+
+
+Lots of databases now
+	CFDBS for "pre-CAMS" data
+	CAMS came online, so now there is BSM for the "raw" length-age data. Now it goes into CAMS. In BSM, not all samples are allocated to specific areas yet. Still trying to work out. "stale" data in CFDBS AA.
