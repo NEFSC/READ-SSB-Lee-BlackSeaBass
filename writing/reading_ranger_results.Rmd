@@ -83,8 +83,8 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
-data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
-data_vintage_string<-gsub("BSB_estimation_dataset","",data_vintage_string)
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx("data_split*Rds"))
+data_vintage_string<-gsub("data_split","",data_vintage_string)
 data_vintage_string<-gsub(".Rds","",data_vintage_string)
 data_vintage_string<-max(data_vintage_string)
 
@@ -105,18 +105,14 @@ finalfit_vintage<-max(finalfit_vintage)
 
 Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  Final fit vintage is `r finalfit_vintage`.
 
-```{r load_in_data and results, include=FALSE}
+```{r load_in_data and tuning_results, include=FALSE}
 # this was created with data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",data_vintage_string,".Rds")))
+data_split<-readr::read_rds(file=here("results","ranger",paste0("data_split",data_vintage_string,".Rds")))
 tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_tune",tuning_vintage,".Rds")))
-
-final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
-
-
 
 ```
 
-Brier classification suggests an mtry around 13.
+Brier classification suggests an mtry around 12 to 14.  Number of trees doesn't matter much.
 
 ```{r brier_class}
 
@@ -124,39 +120,36 @@ Brier classification suggests an mtry around 13.
 all.metrics<-tune_res %>%
   collect_metrics() 
 
-all.metrics %>%
-  filter(.metric == "brier_class") %>%
-#  filter(mtry <=15) %>%
+best_tree <- tune_res %>%
+  select_best(metric = "mn_log_loss")
 
-  select(mean, mtry) %>%
-  pivot_longer(mtry,
-    values_to = "value",
-    names_to = "parameter"
-  ) %>%
-  ggplot(aes(value, mean, color = parameter)) +
-  geom_point(show.legend = FALSE) +
-  facet_wrap(~parameter, scales = "free_x") +
-  labs(x = NULL, y = "brier_class")
-ggsave(here("results","ranger","tune",paste0("brier_class.png",tuning_vintage,".png")), plot=last_plot())
+brier<-all.metrics %>%
+  filter(.metric == "brier_class") %>%
+  select(mean, mtry,trees) %>%
+  rename(brier_class=mean) %>%
+  mutate(trees=as.factor(trees))
+
+ brier %>% ggplot(aes(mtry, brier_class, color=trees)) +
+  geom_point(show.legend = TRUE) 
+
+ ggsave(here("results","ranger","tune",paste0("brier_class.png",tuning_vintage,".png")), plot=last_plot())
 
 ```
 
-Multinomial log-loss suggests mtry of 9.  There might be another dip round 15-20, so might need to try again there.
+Multinomial log-loss suggests mtry of 9 and that 1000 trees is a little better than 500.
 
 ```{r log_loss}
-all.metrics %>%
+mn_log_loss<-all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
 #  filter(mtry <=10) %>%
-  select(mean, mtry) %>%
-  pivot_longer(mtry,
-    values_to = "value",
-    names_to = "parameter"
-  ) %>%
-  ggplot(aes(value, mean, color = parameter)) +
-  geom_point(show.legend = FALSE) +
-  facet_wrap(~parameter, scales = "free_x") +
-  labs(x = NULL, y = "mn_log_loss")
-ggsave(here("results","ranger","tune",paste0("mn_log_loss.png",tuning_vintage,".png")), plot=last_plot())
+  select(mean, mtry,trees) %>%
+  rename(mn_log_loss=mean) %>%
+  mutate(trees=as.factor(trees))
+
+ mn_log_loss %>% ggplot(aes(mtry, mn_log_loss, color=trees)) +
+  geom_point(show.legend = TRUE) 
+
+ ggsave(here("results","ranger","tune",paste0("mn_log_loss.png",tuning_vintage,".png")), plot=last_plot())
 
 ```
 
@@ -170,9 +163,8 @@ extracts
 not_good<-unique(extracts$id)
 not_good
 ```
-Yes, a few resamples have some odd results. In Resamples 2 and 4, Small is never predicted, but there are some small that actually occur.  When this happens, Precision is undefined.
+There are warnings in all the runs, all related to computation of precision.  All but 1 are due to "no predicted" smalls; one is due to no-predicted medium.
 
-In other resamples, there is difficulty computing Sensitivity or Recall because there are no "true" events (like no smalls).
 
 # Some in-sample results from Tuning
 
@@ -184,17 +176,26 @@ predictions<-tune_res %>%
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==9) %>%
+  dplyr::filter(mtry==11) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
+
+
+
+test2<-predictions %>%
+  group_by(id, mtry) %>%
+  dplyr::filter(mtry==11) %>%
+  #dplyr::filter(!id %in% not_good) %>%
+  roc_curve(market_desc, .pred_Jumbo:.pred_Small)
+
 
 ggsave(here("results","ranger","tune",paste0("roc_tune_",tuning_vintage,".png")), plot=last_plot())
 
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==9)%>%
+  dplyr::filter(mtry==11)%>%
 #  dplyr::filter(!id %in% not_good) %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
@@ -205,7 +206,27 @@ ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",tuning_vintage,".p
   
 ```
 
-```{r }
+```{r load_final_model}
+
+rm(tune_res)
+
+final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
+
+# What is the workflow
+final_fit$.workflow
+
+# And the recipe
+final_fit$.workflow[[1]]$pre$actions$recipe$recipe
+
+preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
+ dplyr::filter(role=="predictor")
+
+num_preds<-nrow(preds)
+
+```
+
+
+```{r final_predictions}
 # Get predictions
 final_predictions<-final_fit %>%
   collect_predictions()
@@ -213,44 +234,56 @@ final_predictions<-final_fit %>%
 # look at the fit metrics
 final_fit_metrics<-final_fit %>%
   collect_metrics()
+final_fit_metrics
 
-# Look at variable importance
+# Look at variable importance. I want to see all the predictors
 final_fit %>% 
   extract_fit_parsnip() %>% 
-  vip(num_features = 20)
+  vip(num_features = num_preds)
 ggsave(here("results","ranger","final",paste0("vip",finalfit_vintage,".png")), plot=last_plot())
 
-
+# Reciever operator curve (True positive vs False Positive) for the final model applied to the hold-out sample
 final_predictions %>%
   roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 ggsave(here("results","ranger","final",paste0("roc_",finalfit_vintage,".png")), plot=last_plot())
 
-
+# PR curve
 final_predictions %>%
   pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
   autoplot()
 ggsave(here("results","ranger","final",paste0("pr_curve",finalfit_vintage,".png")), plot=last_plot())
+```
 
 
-# I have "true", I just need to merge in "weighting"  
+```{r predicted_pounds}
+# Compute predicted pounds for the validation dataset
+#pull the test data, merge it with the predictions
+test_data <- testing(data_split)
+test_data<-test_data %>%
+  rename(market_descOG=market_desc)
+test_data<-cbind(test_data, final_predictions)
 
-# 
-# weighted_final_predictions<-final_predictions %>%
-#   mutate(predJ=.pred_Jumbo*weighting,
-#          predL=.pred_Large*weighting,
-#          predM=.pred_Medium*weighting,
-#          predS=.pred_Small*weighting)
-# 
-# 
-# aggregate_predictions<-predictions %>%
-#   group_by(market_desc, year) %>%
-#   summarise(predJ=sum(predJ),
-#          predL=sum(predJ),
-#          predM=sum(predJ),
-#          predS=sum(predJ),
-#          true_pounds=sum(weighting)
-#  )
+# keep just a few columns
+test_data<-test_data %>%
+  select(c(camsid, weighting, market_desc, lndlb, stockarea, year, market_descOG, .pred_Jumbo:.pred_Small, .pred_class))
+
+#predicted pounds per transaction in the validation dataset.
+test_data<-test_data %>%
+   mutate(predJ=.pred_Jumbo*lndlb,
+          predL=.pred_Large*lndlb,
+          predM=.pred_Medium*lndlb,
+          predS=.pred_Small*lndlb)
+ 
+# This is basically a confusion matrix at the stockarea-year level.
+ aggregate_predictions<-test_data %>%
+   group_by(stockarea, year,market_desc) %>%
+   summarise(predJ=sum(predJ),
+          predL=sum(predL),
+          predM=sum(predM),
+          predS=sum(predS),
+          true_pounds=sum(lndlb)
+  )
 ```
 
 
