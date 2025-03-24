@@ -45,6 +45,8 @@ recipe into the workflow. C'est la guerre.
  --->
 ```{r global_options, include=FALSE}
 
+testing<-FALSE
+
 
 library("here")
 
@@ -191,11 +193,12 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
     )
 
-# Take a 50% sample of the data, just to test how the code runs.  
-# estimation_dataset$rand<-runif(nrow(estimation_dataset))
-#  estimation_dataset<-estimation_dataset %>%
-#      dplyr::filter(rand<=0.50)
- 
+# When testing, take a 50% subset of the data. This is just to test how my code is working   
+if(testing==TRUE){
+ estimation_dataset$rand<-runif(nrow(estimation_dataset))
+ estimation_dataset<-estimation_dataset %>%
+     dplyr::filter(rand<=0.50)
+}
 
  # construct the "case weights" variable here.
  estimation_dataset<-estimation_dataset %>%
