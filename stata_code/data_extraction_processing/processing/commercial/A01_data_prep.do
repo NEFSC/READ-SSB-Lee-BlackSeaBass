@@ -412,19 +412,19 @@ egen totaltrans=rowtotal(TransactionCount*)
 
 local sizes Jumbo Large Medium Small Unclassified
 foreach l of local sizes{
-	gen Share`l'=lndlb`l'/totalland
-	label var Share`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
-	gen FracT`l'=TransactionCount`l'/totaltrans
-	label var FracT`l' "Dealer Fraction of total transactions from 2010-2014 in market category `l'"
+	gen Share2014`l'=lndlb`l'/totalland
+	label var Share2014`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
+	gen Frac2014T`l'=TransactionCount`l'/totaltrans
+	label var Frac2014T`l' "Dealer Fraction of total transactions from 2010-2014 in market category `l'"
 
 }
 drop totalland totaltrans
 
-order dlrid lndlb* TransactionCount* Share* FracT*
+order dlrid lndlb* TransactionCount* Share2014* Frac2014T*
 
 compress
 
-notes: pounds landed and fraction pound landed of 
+notes: pounds landed and fraction pound landed of bsb 
 save "${data_main}\commercial\dlrid_historical_stats_${vintage_string}.dta", replace
 
 
