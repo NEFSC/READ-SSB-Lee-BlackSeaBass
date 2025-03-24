@@ -204,7 +204,7 @@ if(testing==TRUE){
  estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting))
 
-set.seed(2428)
+set.seed(2824)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
 data_split <- group_initial_split(data=estimation_dataset, prop=0.8, group=dlrid) 
