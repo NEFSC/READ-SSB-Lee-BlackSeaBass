@@ -428,6 +428,7 @@ tune_wf <- workflow() %>%
 hardhat::extract_parameter_set_dials(tune_wf)
 
 # pass in a bunch of metrics
+# if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
 class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_accuracy, mn_log_loss,average_precision, accuracy, brier_class, roc_auc)
 
 # Tune the model by passing in the workflow, folds and the rf_grid
