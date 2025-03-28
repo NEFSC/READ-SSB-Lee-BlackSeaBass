@@ -33,6 +33,55 @@ save  $data_main/commercial/cams_port_$vintage_string.dta, replace;
 
 /* dealer keyfile */
 
+
+/* cfdbs.Port keyfile 
+
+. */
+
+#delimit ;
+local sql "select * from cfdbs.port" ; 
+
+
+
+clear;
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
+destring, replace;
+compress;
+notes: "`sql'";
+
+save  $data_main/commercial/cfdbs_port_$vintage_string.dta, replace;
+
+
+
+
+#delimit ;
+local sql "select * from NEFSC_GARFO.TRIP_REPORTS_PORT" ; 
+
+
+
+clear;
+/*jdbc load, exec("`sql'") case(lower); */
+odbc load, exec("`sql';") $myNEFSC_USERS_conn; 
+destring, replace;
+compress;
+notes: "`sql'";
+
+save  $data_main/commercial/cfdbs_port_$vintage_string.dta, replace;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 local sql "select * from NEFSC_GARFO.PERMIT_DEALER" ; 
 
 
