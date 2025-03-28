@@ -199,7 +199,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 if(testing==TRUE){
  estimation_dataset$rand<-runif(nrow(estimation_dataset))
  estimation_dataset<-estimation_dataset %>%
-     dplyr::filter(rand<=testing_frac)
+     dplyr::filter(rand<=testing_fraction)
 }
 
  # construct the "case weights" variable here.
@@ -455,8 +455,8 @@ rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 #Search over mtry and trees
 rf_grid2 <- grid_regular(
      mtry(range = c(1, 20)),
-     trees(range=c(500,1000)),
-     levels=c(10,2)
+     trees(range=c(500,1500)),
+     levels=c(20,3)
 )
 
 
