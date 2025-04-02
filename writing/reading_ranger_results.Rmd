@@ -213,10 +213,10 @@ rm(tune_res)
 final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
 
 # What is the workflow
-final_fit$.workflow
+final_workflow<-extract_workflow(final_fit)
 
 # And the recipe
-final_fit$.workflow[[1]]$pre$actions$recipe$recipe
+extract_recipe(final_fit)
 
 preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
  dplyr::filter(role=="predictor")
