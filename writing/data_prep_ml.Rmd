@@ -265,7 +265,6 @@ estimation_dataset<-cleaned_landings %>%
 # deal with factors
 estimation_dataset<-estimation_dataset %>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
-  filter(keep==1) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
     mutate(semester=forcats::as_factor(semester)) %>%
@@ -281,7 +280,9 @@ estimation_dataset<-estimation_dataset %>%
 # put the unclassifieds into a dataset
 unclassified_dataset<-estimation_dataset %>%
   filter(keep==0) %>%
-  filter(market_desc=="Unclassified")
+  filter(market_desc=="Unclassified") %>%
+  filter( year%in% as.character(2015:2024))
+
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
 
 estimation_dataset<-estimation_dataset %>%
