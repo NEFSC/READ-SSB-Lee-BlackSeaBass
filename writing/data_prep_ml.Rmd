@@ -229,17 +229,6 @@ cleaned_landings<-cleaned_landings %>%
 
 # flag observations to keep
 
-cleaned_landings<-cleaned_landings %>%
-    mutate(keep = case_when(state =="CN"  ~ 0,
-                           state =="FL"  ~ 0, 
-                           state =="ME"  ~ 0,
-                           state =="NH"  ~ 0,
-                           state =="PA"  ~ 0,
-                           state =="SC"  ~ 0,
-                           .default=1))%>% 
-  mutate(keep=case_when(price>=15 ~0, 
-                        .default=keep))
-
 #Factor the cams status column
 cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
@@ -250,20 +239,26 @@ cleaned_landings<-cleaned_landings %>%
 ```{r final_tidyup, include=FALSE}
 
 # what do I want to estimate on? 
-# Nominal prices that are above $0.15 per pound
+# Nominal prices that are above $0.15 per pound and below 15
 # North Carolina to Mass
-# 2015 to 2025 data
+# 2015 to 2024 data
+
 
 estimation_dataset<-cleaned_landings %>%
-   mutate(keep = case_when(year<=2014~ 0,
-                           year>=2025~ 0,
+   mutate(keep = case_when(year<2015~ 0,
+                           year>2024~ 0,
                            price<0.15 ~ 0,
-                           market_desc=="Unclassified" ~ 0,
-                           .default=keep)
+                           price>15 ~ 0,
+                           state =="CN"  ~ 0,
+                           state =="FL"  ~ 0, 
+                           state =="PA"  ~ 0,
+                           state =="SC"  ~ 0,
+                           .default=1)
           )
 
 # deal with factors
 estimation_dataset<-estimation_dataset %>%
+    filter(keep==1 )%>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
@@ -272,21 +267,21 @@ estimation_dataset<-estimation_dataset %>%
   mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
         state=fct_drop(state)) %>%
-  mutate(state=fct_relevel(state,c("RI","CT", "DE", "MD", "MA", "NJ", "NY", "NC","VA"))) %>%
-     mutate(weighting = frequency_weights(weighting))
+     mutate(weighting = frequency_weights(weighting)) 
+    
 
 
 
 # put the unclassifieds into a dataset
 unclassified_dataset<-estimation_dataset %>%
-  filter(keep==0) %>%
-  filter(market_desc=="Unclassified") %>%
-  filter( year%in% as.character(2015:2024))
+  filter(market_desc=="Unclassified") 
 
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
 
+# put everything else in a dataset
+
 estimation_dataset<-estimation_dataset %>%
-  filter(keep==1)
+  filter(market_desc!="Unclassified") 
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 
