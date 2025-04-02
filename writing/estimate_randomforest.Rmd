@@ -434,62 +434,62 @@ class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_a
 
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
-# start_time_tune<-Sys.time()
-
-# tune_res <- tune_grid(
-#   tune_wf,
-#   resamples = myfolds,
-#   grid = rf_grid,
-#   control=rf_control_grid,
-#   metrics=class_and_probs_metrics
-# )
-
-
-
-#Search over mtry and trees
-rf_grid2 <- grid_regular(
-     mtry(range = c(1, 20)),
-     trees(range=c(500,1500)),
-     levels=c(20,3)
-)
-
-
-# configure the tuning part of the model.
-tune_spec2 <- rand_forest(
-  mtry = tune(),
-  trees = tune(),
-  min_n = 5,
-) %>%
-  set_mode("classification") %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
-
-
-
-
-# make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
-# steps as the model.
-tune_wf2 <- workflow() %>%
-  add_recipe(BSB.Classification.Recipe) %>%
-  add_model(tune_spec2)
-# search over mtry and trees
-
-
-hardhat::extract_parameter_set_dials(tune_wf2)
-
-
 start_time_tune<-Sys.time()
 
 tune_res <- tune_grid(
-  tune_wf2,
+  tune_wf,
   resamples = myfolds,
-  grid = rf_grid2,
+  grid = rf_grid,
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
 
 
 
-end_time_tune<-Sys.time()
+# #Search over mtry and trees
+# rf_grid2 <- grid_regular(
+#      mtry(range = c(1, 20)),
+#      trees(range=c(500,1500)),
+#      levels=c(20,3)
+# )
+# 
+# 
+# # configure the tuning part of the model.
+# tune_spec2 <- rand_forest(
+#   mtry = tune(),
+#   trees = tune(),
+#   min_n = 5,
+# ) %>%
+#   set_mode("classification") %>%
+#   set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
+# 
+# 
+# 
+# 
+# # make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
+# # steps as the model.
+# tune_wf2 <- workflow() %>%
+#   add_recipe(BSB.Classification.Recipe) %>%
+#   add_model(tune_spec2)
+# # search over mtry and trees
+# 
+# 
+# hardhat::extract_parameter_set_dials(tune_wf2)
+# 
+# 
+# start_time_tune<-Sys.time()
+# 
+# tune_res <- tune_grid(
+#   tune_wf2,
+#   resamples = myfolds,
+#   grid = rf_grid2,
+#   control=rf_control_grid,
+#   metrics=class_and_probs_metrics
+# )
+# 
+# 
+# 
+# end_time_tune<-Sys.time()
 
 readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_tune",estimation_vintage,".Rds")))
 
