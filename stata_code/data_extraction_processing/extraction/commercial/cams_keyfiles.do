@@ -39,7 +39,7 @@ save  $data_main/commercial/cams_port_$vintage_string.dta, replace;
 . */
 
 #delimit ;
-local sql "select * from cfdbs.port" ; 
+local sql "select * from NEFSC_GARFO.CFDBS_port" ; 
 
 
 
@@ -67,7 +67,7 @@ destring, replace;
 compress;
 notes: "`sql'";
 
-save  $data_main/commercial/cfdbs_port_$vintage_string.dta, replace;
+save  $data_main/commercial/trip_reports_port_$vintage_string.dta, replace;
 
 
 
