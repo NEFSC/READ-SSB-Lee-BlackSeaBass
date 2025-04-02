@@ -46,7 +46,7 @@ recipe into the workflow. C'est la guerre.
 ```{r global_options, include=FALSE}
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
-testing<-TRUE
+testing<-FALSE
 testing_fraction<-.25
 
 
@@ -188,12 +188,6 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
  # for reproducibility
  set.seed(4587315)
 
- # remove obs with missing prices,
- estimation_dataset<-estimation_dataset %>%
-   dplyr::filter(is.na(price)==0) %>%
-   mutate(dlrid=forcats::as_factor(dlrid)) %>%
-    mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
-    )
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if(testing==TRUE){
