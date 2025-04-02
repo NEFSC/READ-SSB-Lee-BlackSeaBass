@@ -112,18 +112,18 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
 are in both real and nominal dollars per landed pound. 
 
 ```{r load_in_data, include=FALSE}
-cleaned_landings<-haven::read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
+cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
-camsid_specific_stats<-haven::read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
+camsid_specific_stats<-read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
 
-daily_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
+daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
 
-state_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
 
-stockarea_ma<-haven::read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
+stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
-dlrid_historical<-haven::read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
 
 
 ```
@@ -260,11 +260,12 @@ estimation_dataset<-cleaned_landings %>%
                            price<0.15 ~ 0,
                            market_desc=="Unclassified" ~ 0,
                            .default=keep)
-          ) 
+          )
+
 # deal with factors
 estimation_dataset<-estimation_dataset %>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
-  dplyr::filter(keep==1) %>%
+  filter(keep==1) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
     mutate(semester=forcats::as_factor(semester)) %>%
@@ -272,8 +273,21 @@ estimation_dataset<-estimation_dataset %>%
   mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
         state=fct_drop(state)) %>%
-  mutate(state=fct_relevel(state,c("RI","CT", "DE", "MD", "MA", "NJ", "NY", "NC","VA")))
-readr::write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+  mutate(state=fct_relevel(state,c("RI","CT", "DE", "MD", "MA", "NJ", "NY", "NC","VA"))) %>%
+     mutate(weighting = frequency_weights(weighting))
+
+
+
+# put the unclassifieds into a dataset
+unclassified_dataset<-estimation_dataset %>%
+  filter(keep==0) %>%
+  filter(market_desc=="Unclassified")
+write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
+
+estimation_dataset<-estimation_dataset %>%
+  filter(keep==1)
+
+write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 
 ```
 
