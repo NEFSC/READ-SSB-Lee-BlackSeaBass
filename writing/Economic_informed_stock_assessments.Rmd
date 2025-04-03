@@ -1,22 +1,36 @@
 ---
 title: 'Economic Informed Stock Assessments: Using Prices to Understand the Length of Fish'
-author: "Min-Yang Lee and Emily Liljestrand"
+authors:
+  - name: Min-Yang Lee
+    email: Min-Yang.Lee@noaa.gov
+    address: [NOAA Northeast Fisheries Science Center, 166 Water Street, Woods Hole, MA 02543, USA]
+    corresponding_author: yes
+  - name: Emily Liljestrand
+    address: [NOAA Northeast Fisheries Science Center, 166 Water Street, Woods Hole, MA 02543, USA]
 date: "`r format(Sys.time(), '%B %d, %Y')`" 
-documentclass: article
-csl: "../ajae_mod.csl"
-abstract: "The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  Gaps in the data can arise when categories of certain fish simply are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. The size of individual fish is a characteristic than determines the price of fish; larger specimens nearly always receive higher prices than smaller ones. I use the Black Sea Bass fishery in the Northeast United States to illustrate my approach to using economic data to inform stock assessments.  There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. I estimate a hedonic model to confirm that individual size impacts fish prices: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. Then I estimate a multinomial logit that explains market category as a function of prices and other attributes.  I use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing me to construct a price-informed length structure of commercial removals. "
-keywords: "Hedonic Prices, Age structure, Stock assessment"
-output:
-  pdf_document: 
-    includes:
-      in_header: "../preamble-latex.tex"
-    keep_tex: yes
-    pandoc_args: --pdf-engine=pdflatex
-    number_sections: true
-  word_document: null
-  html_document: null
-fontsize: 12pt
+abstract: |
+ The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  Gaps in the data can arise when categories of certain fish simply are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. The size of individual fish is a characteristic than determines the price of fish; larger specimens nearly always receive higher prices than smaller ones. I use the Black Sea Bass fishery in the Northeast United States to illustrate my approach to using economic data to inform stock assessments.  There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. I estimate a hedonic model to confirm that individual size impacts fish prices: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. Then I estimate a multinomial logit that explains market category as a function of prices and other attributes.  I use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing me to construct a price-informed length structure of commercial removals. 
+keywords: 
+  - Hedonic Prices
+  - Age structure
+  -  Stock assessment
 bibliography: "C:/Users/min-yang.lee/Documents/library.bib"
+link-citations: yes
+header-includes:
+- \usepackage{graphicx}
+- \usepackage{float}
+- \usepackage{pdflscape}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+output: 
+  bookdown::pdf_book:
+    base_format: rticles::oup_article
+    keep_tex: yes
+    toc: False
+    fig_caption: yes
+    pandoc_args: [ "--csl", "ices-journal-of-marine-science.csl" ]
+
+
 ---
 
 
@@ -34,24 +48,28 @@ Warnings: There is something funky going on with VA "status=PZERO" starting in 2
 
 ```{r global_options, include=FALSE}
 
- library("foreign")
- library("here")
- library("tidyverse")
- library("scales")
- library("knitr")
- library("lubridate")
- library("kableExtra")
- library("haven")
- library("mapview")
- library("sf")
+library("foreign")
+library("here")
+library("tidyverse")
+library("scales")
+library("knitr")
+library("lubridate")
+library("kableExtra")
+library("haven")
+library("mapview")
+library("sf")
 library("htmltools")
 here::i_am("writing/Economic_informed_stock_assessments.Rmd")
+# pak::pak("adletaw/captioner")
+library("captioner")
+fig_nums <- captioner(prefix= "Figure")
 
 #############################################################################
 #knitr options
+knitr::opts_chunk$set(echo = TRUE)
 
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
-											dpi = 600)
+#knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+#											dpi = 600)
 options(tinytex.verbose = TRUE)
 # options(knitr.table.format = "latex")
 options(scipen=999)
@@ -100,15 +118,26 @@ The age-structure of commercial landings is a crucial input to the stock assessm
 Need to justify having these as explanatory variables (predictors).
 Stock area
 Semester
+Recent landings in the stock area by market category
+recent landings in the state by market category
+today's landings from a stock area by market category by other boats
+today's landings from a in a state by market category by other boats
+state and stock area trips
+lndlb (trip level landings by market category)
+trip level landings of black sea bass
 
 
-```{r borrowed_lengths, fig.show = "hold", out.width = "48%", fig.cap="Borrowed Lengths in Black Sea Bass",  fig.align = "center", echo=FALSE}
+```{r borrowed_lengths,echo=FALSE,out.width="48%", fig.align='center'}
 knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg")))
 ```
 
-Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
+`r fig_nums(name="Borrowed_lengths", caption ="Borrowed Lengths in Black Sea Bass.")`
 
-The underlying data is taken from **STOCKEFF**iciency, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
+
+
+Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` (`r fig_nums("Borrowed_lengths", display="cite")`) illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
+
+The underlying data is taken from **STOCKEFF**, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
 
 For our purposes, we do not care about predicting a single "unclassified" observation well.  The research question is related to an aggregate of predictions: landings aggregated over a stockarea-year-semester (or perhaps stockarea-year).  
 
@@ -128,8 +157,6 @@ After landing, fish are delivered to buyers (fish dealer), where they classified
 Prices of fish depend on the size of fish; the fact consumers typically prefer larger fish both motivates and necessitates the collection of size information by disaggregated by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
 
 Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
-
-\input{../results/hedonic_tableA.tex}
 
 # Methods and Data
 
