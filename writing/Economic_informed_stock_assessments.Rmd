@@ -100,10 +100,44 @@ stat_areas<-stat_areas %>%
 ```{r, child=here("writing", c("summary.Rmd")),  eval=FALSE}
 ```
 
-Can we use prices to predict market category?  
+The age-structure of commercial landings is a crucial input to the quantitative 
+stock assessments in the Northeast United States. In the Northeast US, commercial
+fishing vessels catch fish and sell their landed fish to fish dealers, who sort
+the catch into market categories.   The National Marine Fisheries Service
+deploys biological samplers to measure the length of commercially landed fish. 
+Otoliths are collected from a subset of measured fish; this information is used
+to convert the landed weight of all market categories into a vector of numbers-at-age
+of commercial landings. 
 
-Can we "take it to production" for other stocks?  This requires something somewhat off the shelf methods and data that is regularly collected.
+The stock assessment enterprise in the Northeast U.S. has a series of business 
+rules for handling gaps in the market category to age relationship that arise 
+when certain market categories are either not sampled or under sampled. This 
+typically involves borrowing from neighboring strata.
 
+In this article, we propose an alternative approach that involves using the 
+information contained in fish prices to fill in information about the size of
+these unmeasured fish. The Black Sea Bass fishery in the Northeast United States
+is to illustrate our approach to using economic data to inform stock assessments.
+There are 5 common market categories: Jumbo, Large, Medium, Small, and 
+Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the 
+“Unclassified” market category; however no fish in this category were measured. 
+
+General approach. Verify this will work by estimating a not-too-complicated hedonic
+model.  Look at the coefficients on sizes. Train a random forest model to classify
+using data containing four classes. Predict out of sample on data that is Unclassified.
+
+Our ultimate goal is to estimate (simulate, predict) the numbers at length
+for the un-measured "Unclassified" fish at a scale that is relevant for the stock
+assessment. However, we do not use prices to predict the length of any particular
+bundle of fish. Rather, we predict the class membership, that is "Small", 
+"Medium", "Large", or "Jumbo", for the un-measures "Unclassified" 
+fish.  We then use the length- and age-data for those market categories to make 
+a prediction about the Unclassified fish. Because our goal is a good aggregate
+prediction, in this case at the year-stock unit-semester level, the accuracy of
+an individual prediction is of limited interest.
+
+This method is good because it can be applied to existing streams of historical data.
+It can also be used to allocated sampling coverage.
 
 # Background
 
@@ -112,19 +146,18 @@ Can we "take it to production" for other stocks?  This requires something somewh
 ```
 
 ## Black Sea Bass and the Stock Assessment Enterprise 
-
-The age-structure of commercial landings is a crucial input to the stock assessment. Samplers measure the length of commercially landed fish and collect otoliths.  Analysts request coverage levels of different market categories. Gaps in the data can arise when categories of certain fish  are not sampled.  When this occurs, the information contained in fish prices can be used to fill in information about the size of these unmeasured fish. 
+Analysts request coverage levels of different market categories. 
 
 Need to justify having these as explanatory variables (predictors).
-Stock area
-Semester
-Recent landings in the stock area by market category
-recent landings in the state by market category
-today's landings from a stock area by market category by other boats
-today's landings from a in a state by market category by other boats
-state and stock area trips
-lndlb (trip level landings by market category)
-trip level landings of black sea bass
+    * Stock area (north and south)
+    * Semester
+    * Recent landings in the stock area by market category
+    * recent landings in the state by market category
+    * today's landings from a stock area by market category by other boats
+    * today's landings from a in a state by market category by other boats
+    * state and stock area trips
+    * lndlb (trip level landings by market category)
+    * trip level landings of black sea bass
 
 
 ```{r borrowed_lengths,echo=FALSE,out.width="48%", fig.align='center'}
@@ -133,13 +166,9 @@ knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commerc
 
 `r fig_nums(name="Borrowed_lengths", caption ="Borrowed Lengths in Black Sea Bass.")`
 
-
-
 Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` (`r fig_nums("Borrowed_lengths", display="cite")`) illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
 
-The underlying data is taken from **STOCKEFF**, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
 
-For our purposes, we do not care about predicting a single "unclassified" observation well.  The research question is related to an aggregate of predictions: landings aggregated over a stockarea-year-semester (or perhaps stockarea-year).  
 
 ## Regulatory Environment
 
@@ -158,6 +187,9 @@ Prices of fish depend on the size of fish; the fact consumers typically prefer l
 
 Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
 
+\input{../results/hedonic_tableA.tex}
+
+
 # Methods and Data
 
 The core of this research question is accurate prediction of the market category, not understanding the causal mechanisms by which one variable affects another.  Machine learning, which focuses on $\hat{y}$ instead of $\hat{\beta}$ is likely to be a good approach [@Varian2014, @Mullainathan2017].  Economic theory and on-the-ground expertise of the subject matter (the black sea bass fishery) helps guide variable selection [@Mullainathan2017].  We first provide a general description of the machine learning method, before describing and justifying the methods, modeling choices, and data that we use in this application.
@@ -171,6 +203,8 @@ Training
   - Training - after finding the best hyper parameters, fitting a final model
   - Validation -- out of sample prediction
 
+
+Machine learning in fisheries has become increasingly popular [@Malde2020]; the themed section ``Applications of machine learning and artifical intelligence in marine science`` contains many papers, most of which are application of image proceesing algorithms.  @Alvarez-Ellacuria2020 collection of length data is a different way to address a similar problem; how large are the fish that are caught? In fisheries, random forests have also been used to classify acoustic data [@Fallon2016, @Proud2020]; fishery metiers [@Oostdijk2024], and habitat [@Liu2025].
 
 ## Our approach
 
@@ -362,5 +396,9 @@ Probably going to need to move this into the Rcontainer.
 ```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
 
+<!---
+The boneyard:
+The underlying data is taken from **STOCKEFF**, which originally used CFDBS and other sources. For more recent data, it points at "CAMS.CFDBS" style tables, which relies on CAMS.  It also does the area allocation also. It does some intermediate aggregation.  Then Emily pulls it from the stockeff webpage.  To bring anything to production probably will require pushing something to oracle.
+--->
 
 
