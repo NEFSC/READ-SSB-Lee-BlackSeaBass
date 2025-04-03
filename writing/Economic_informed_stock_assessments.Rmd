@@ -158,8 +158,6 @@ Prices of fish depend on the size of fish; the fact consumers typically prefer l
 
 Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
 
-\input{../results/hedonic_tableA.tex}
-
 # Methods and Data
 
 The core of this research question is accurate prediction of the market category, not understanding the causal mechanisms by which one variable affects another.  Machine learning, which focuses on $\hat{y}$ instead of $\hat{\beta}$ is likely to be a good approach [@Varian2014, @Mullainathan2017].  Economic theory and on-the-ground expertise of the subject matter (the black sea bass fishery) helps guide variable selection [@Mullainathan2017].  We first provide a general description of the machine learning method, before describing and justifying the methods, modeling choices, and data that we use in this application.
