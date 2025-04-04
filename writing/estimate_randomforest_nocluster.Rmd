@@ -176,7 +176,6 @@ are in both real and nominal dollars per landed pound.
 ```{r load_in_data}
 # this was created with data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-
 ```
 
 
@@ -186,12 +185,6 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
  # for reproducibility
  set.seed(4587315)
 
- # remove obs with missing prices,
- estimation_dataset<-estimation_dataset %>%
-   dplyr::filter(is.na(price)==0) %>%
-   mutate(dlrid=forcats::as_factor(dlrid)) %>%
-    mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small"))
-    )
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if(testing==TRUE){
@@ -204,16 +197,29 @@ if(testing==TRUE){
  estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting))
 
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
+keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
+keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
+keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
+keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
+keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+
+
+estimation_dataset<- estimation_dataset %>%
+  select(all_of(keep_cols))
+
 set.seed(2824)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
 # split on strata=market_desc, although I don't think this is strictly necessary. 
 data_split <- initial_split(data=estimation_dataset, prop=0.8, strata=market_desc) 
 train_data <- training(data_split)
 test_data <- testing(data_split)
+readr::write_rds(data_split, file=here("results","ranger",paste0("nocluster_data_split",estimation_vintage,".Rds")))
 
 nrow(train_data)
 nrow(test_data)
-readr::write_rds(data_split, file=here("results","ranger",paste0("nocluster_data_split",estimation_vintage,".Rds")))
 
 
 
@@ -456,9 +462,9 @@ tune_res <- tune_grid(
 #      trees(range=c(500,1500)),
 #      levels=c(20,3)
 # )
-
-
-# configure the tuning part of the model.
+# 
+# 
+# # configure the tuning part of the model.
 # tune_spec2 <- rand_forest(
 #   mtry = tune(),
 #   trees = tune(),
@@ -493,10 +499,9 @@ tune_res <- tune_grid(
 # 
 # 
 # 
-# end_time_tune<-Sys.time()
 
 readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_nocluster_tune",estimation_vintage,".Rds")))
-
+end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
 ```
