@@ -1,53 +1,20 @@
----
-title: "Black Sea Bass: A Random Forest"
-author: "Min-Yang Lee"
-date: "`r format(Sys.time(), '%B %d, %Y')`"
-output:
-  html_document:
-    df_print: paged
-    fig_caption: yes
-  pdf_document:
-    keep_tex: yes
-    fig_caption: yes
-    number_sections: yes
-header-includes: \usepackage{setspace}\doublespacing
-urlcolor: blue
-editor_options:
-  chunk_output_type: console
-fontsize: 12pt
----
 
-# Summary, Housekeeping, and Overview
+# I'm using the tidymodels framework to train and test the classification trees and
+# random forest.  The main advantage is that switching models or estimation packages
+# (partykit::ctree vs ranger vs randomForest for example) is easier. Writing the model 
+# uses tidy syntax.  Tuning the model is made easier by using tune and yardstick.
+# Fitting ranger requires bonsai.
+# 
+# The canonical way to do this is to declare a recipe and a workflow.  Ideally,
+# everything would be part of the workflow, but my data processing skills in R are
+# note good enough to want to do this.  Therefore, I'm basically passing the
+# recipe into the workflow. C'est la guerre.
 
-I'm using the tidymodels framework to train and test the classification trees and
-random forest.  The main advantage is that switching models or estimation packages
-(partykit::ctree vs ranger vs randomForest for example) is easier. Writing the model 
-uses tidy syntax.  Tuning the model is made easier by using tune and yardstick.
-Fitting ranger requires bonsai.
 
-The canonical way to do this is to declare a recipe and a workflow.  Ideally,
-everything would be part of the workflow, but my data processing skills in R are
-note good enough to want to do this.  Therefore, I'm basically passing the
-recipe into the workflow. C'est la guerre.
-
-<!---- 
- The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
- 
- If you want to run this from the command line
- 
- Rscript -e 'library(rmarkdown); rmarkdown::render("./writing/estimate_randomforest_nocluster.Rmd", "html_document")' 
- 
- This doesn't compile to pdf on the containers (pdflatex not found)
- 
- 
- 
- 
- --->
-```{r global_options, include=FALSE}
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 testing<-TRUE
-testing_fraction<-.25
+testing_fraction<-0.30
 
 
 library("here")
@@ -84,7 +51,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-here::i_am("writing/estimate_randomforest_nocluster.Rmd")
+here::i_am("writing/estimate_randomforest_nocluster.R")
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -111,25 +78,6 @@ if (runClass %in% c('Local', 'Windows')){
   }
 
 
-
-
-
-
-
-
-
-
-
-
-#############################################################################
-#knitr options
-
-knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
-											dpi = 600)
-options(tinytex.verbose = TRUE)
-# options(knitr.table.format = "latex")
-options(scipen=999)
-
 lbs_per_mt<-2204.62
 #############################################################################
 my_images<-here("images")
@@ -140,47 +88,42 @@ vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
-```
 
 
-Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
+# 
+# Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
+# 
+# 1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
+# 2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
+# 3. I do some tidying-up (converting datetime variables to date variables)
+# 4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
+# 
+# 5. There is a little data dropping
+#   1. landed pounds=0
+#   2. Some landings from VA and DE that look like aggregates. 
+# 6. I do some binning of gears, loosely into
+#   1. Line or Hand gear
+#   2. Trawls
+#   3. Gillnets
+#   4. Pot and Trap
+#   5. Misc=Dredge, Seine, and Unknown.
+#   
+# 7.  I do some binning of market categories
+#   1. Unclassified and "Mixed or Unsized" are combined
+#   2. Small, Extra Small, and Pee Wee (Rats) are combined
+#   3. Medium and "Medium or Select" are combined.
+# 8.  Ungraded is combined with Round
+# 9. I construct a stockunit indicator
+#   1. south is 621 and greater, plus 614 and 615 
+#   2. North is 613 and smaller, plus 616
+# 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
+# 11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
+# are in both real and nominal dollars per landed pound. 
+# 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
-1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
-2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
-3. I do some tidying-up (converting datetime variables to date variables)
-4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
-
-5. There is a little data dropping
-  1. landed pounds=0
-  2. Some landings from VA and DE that look like aggregates. 
-6. I do some binning of gears, loosely into
-  1. Line or Hand gear
-  2. Trawls
-  3. Gillnets
-  4. Pot and Trap
-  5. Misc=Dredge, Seine, and Unknown.
-  
-7.  I do some binning of market categories
-  1. Unclassified and "Mixed or Unsized" are combined
-  2. Small, Extra Small, and Pee Wee (Rats) are combined
-  3. Medium and "Medium or Select" are combined.
-8.  Ungraded is combined with Round
-9. I construct a stockunit indicator
-  1. south is 621 and greater, plus 614 and 615 
-  2. North is 613 and smaller, plus 616
-10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
-are in both real and nominal dollars per landed pound. 
-12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
-
-```{r load_in_data}
-# this was created with data_prep_ml.Rmd
+# Load data from data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-```
 
-
-
-```{r ml_data_setup, include=TRUE}
 
  # for reproducibility
  set.seed(4587315)
@@ -193,9 +136,10 @@ if(testing==TRUE){
      dplyr::filter(rand<=testing_fraction)
 }
 
- # construct the "case weights" variable here.
+# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
  estimation_dataset<-estimation_dataset %>%
-     mutate(weighting = frequency_weights(weighting))
+     mutate(weighting = frequency_weights(weighting),
+            market_desc=fct_drop(market_desc))
 
 keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
@@ -223,17 +167,11 @@ nrow(test_data)
 
 
 
-```
+# # Recipe definition
+# 
+# The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
+# and predictor variables.
 
-# Recipe definition
-
-The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
-and predictor variables.
-
-
-```{r, recipe}
-
-# Use a recipe on the training data. 
 
 # assign roles to predictors, outcome, groups, and weights
 BSB.Classification.Recipe <- recipe(train_data) %>%
@@ -270,10 +208,6 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified), new_role = "predictor") 
 
-
-
-
-
 # You can't center the factor variables
 # rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
@@ -290,45 +224,45 @@ recipe_summary
 #How many predictors
 npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
 
-```
 
 
-# Model Definition and Baseline Fit
 
-The model definition step declares the type of model (classification), engine (ranger), 
-and any options.  For this section, I'm setting 500 trees in the RF, no fewer than 5
-observations at the end of a branch, and 3 randomly selected variables.
+#' # Model Definition and Baseline Fit
+#' 
+#' The model definition step declares the type of model (classification), engine (ranger), 
+#' and any options.  For this section, I'm setting 500 trees in the RF, no fewer than 5
+#' observations at the end of a branch, and 3 randomly selected variables.
+#' 
+#' I have left most of these options at their defaults. I'm noting things here 
+#' 
+#' Missing values are handled with the "na.learn" option (default). 
+#' 
+#' >With na.action = "na.learn", missing values are ignored for calculating an 
+#' initial split criterion value (i.e., decrease of impurity). Then for the best 
+#' split, all missings are tried in both child nodes and the choice is made based 
+#' again on the split criterion value.
+#' 
+#' @Hastie2009: The first is applicable to categorical predictors: we simply make a new category for “missing.”
+#' Second is construction of surrogate variables. When considering a predictor for a split, we use only the observations for which that predictor is not missing. Having chosen the best (primary) predictor and split point, we form a list of surrogate predictors and split points. The first surrogate is the predictor and corresponding split point that best mimics the split of the training data achieved by the primary split.  This is basically na.learn.
+#' 
+#' probability=FALSE. A probability forest (Malley et al 2012) might be a good idea
+#' 
+#' importance=NULL and splitrule=NULL.  This uses the Gini index as the impurity measure.
+#' 
+#' Geurts et al(2006)'s extremely random trees can be set with splitrule="extratrees".
+#' 
+#' trees=500. I don't have a good rationale for choose this.
+#' 
+#' Need to investigate the handling of the unordered factor covariates (@Hastie2009; Coppersmith et al 1999)
+#' 
+#' For an unordered predictor with $q$ levels, there are $2^{q-1}-1$ different ways to partition into two groups. This is not great.  For One way to handle this is to order the predictor levels in decreasing order of frequency and treat as if the factor was ordered.  This is proven to be the optimal way to handle unordered predictors for binary and quantitative (numeric) dependent variables.  It is not for multicategory outcomes @Hastie2009.
+#' 
+#' The partitioning algorithm tends to favor categorical predictors with many levels q; the number of partitions grows exponentially in q, and the more choices we have, the more likely we can find a good one for the data at hand. This can lead to severe overfitting if q is large, and such variables should be avoided @Hastie2009.
+#' 
+#'   * Coppersmith D., Hong S. J., Hosking J. R. (1999). Partitioning nominal attributes in decision
+#' trees. Data Min Knowl Discov 3:197-217. doi:10.1023/A:1009869804967.
 
-I have left most of these options at their defaults. I'm noting things here 
 
-Missing values are handled with the "na.learn" option (default). 
-
->With na.action = "na.learn", missing values are ignored for calculating an 
-initial split criterion value (i.e., decrease of impurity). Then for the best 
-split, all missings are tried in both child nodes and the choice is made based 
-again on the split criterion value.
-
-@Hastie2009: The first is applicable to categorical predictors: we simply make a new category for “missing.”
-Second is construction of surrogate variables. When considering a predictor for a split, we use only the observations for which that predictor is not missing. Having chosen the best (primary) predictor and split point, we form a list of surrogate predictors and split points. The first surrogate is the predictor and corresponding split point that best mimics the split of the training data achieved by the primary split.  This is basically na.learn.
-
-probability=FALSE. A probability forest (Malley et al 2012) might be a good idea
-
-importance=NULL and splitrule=NULL.  This uses the Gini index as the impurity measure.
-
-Geurts et al(2006)'s extremely random trees can be set with splitrule="extratrees".
-
-trees=500. I don't have a good rationale for choose this.
-
-Need to investigate the handling of the unordered factor covariates (@Hastie2009; Coppersmith et al 1999)
-
-For an unordered predictor with $q$ levels, there are $2^{q-1}-1$ different ways to partition into two groups. This is not great.  For One way to handle this is to order the predictor levels in decreasing order of frequency and treat as if the factor was ordered.  This is proven to be the optimal way to handle unordered predictors for binary and quantitative (numeric) dependent variables.  It is not for multicategory outcomes @Hastie2009.
-
-The partitioning algorithm tends to favor categorical predictors with many levels q; the number of partitions grows exponentially in q, and the more choices we have, the more likely we can find a good one for the data at hand. This can lead to severe overfitting if q is large, and such variables should be avoided @Hastie2009.
-
-  * Coppersmith D., Hong S. J., Hosking J. R. (1999). Partitioning nominal attributes in decision
-trees. Data Min Knowl Discov 3:197-217. doi:10.1023/A:1009869804967.
-
-```{r define a model}
 
 ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
   set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
@@ -336,18 +270,8 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
 
 case_weights_allowed(ranger_model)
 
-#cf_model<-rand_forest(mode="classification", 
-#                    trees = 500, min_n=5, mtry=3) %>%
-#  set_engine("partykit")
-#case_weights_allowed(cf_model)
 
-```
-
-The workflow is the combination of data processing and model statement
-
-```{r define_workflow}
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
-
 BSB.Ranger.Workflow <-
   workflow() %>%
   add_model(ranger_model) %>% 
@@ -359,55 +283,41 @@ BSB.Ranger.Workflow <-
 #   add_model(cf_model) %>% 
 #   add_recipe(BSB.Classification.Recipe)
 
-```
 
-
-
-
-```{r fit_model, eval=FALSE}
-set.seed(234)
 # Fit the model on the entire training dataset. This of course, is not the best 
 # thing to do.  There's 2 parameters that we should search over mtry and min_n
 # to find the best model. But this is *a* model.
 
-start_time_1fit<-Sys.time()
-
-rf_fit <- 
-  BSB.Ranger.Workflow %>% 
-  fit(data = train_data)
-
-end_time_1fit<-Sys.time()
-
-end_time_1fit-start_time_1fit
-
-```
+# start_time_1fit<-Sys.time()
+# 
+# rf_fit <- 
+#   BSB.Ranger.Workflow %>% 
+#   fit(data = train_data)
+# 
+# end_time_1fit<-Sys.time()
+# 
+# end_time_1fit-start_time_1fit
 
 
 ## Tuning
-
-We will do 10 fold cross validation over the mtry and trees set of parameters. We'll hold
-trees constant. The number of trees isn't the most important thing, but we should eventually search over it.
-
-
-```{r hyper_parameter_tuning}
-
+# 
+# We will do 10 fold cross validation over the mtry parameter. We'll hold
+# trees constant. The number of trees isn't the most important thing, but we should eventually search over it.
 
 set.seed(457)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::vfold_cv(train_data, strata=market_desc, v = 10)
 
 # Set up a set of mtry to search over. This is not a great grid, but it's fine for now
-#rf_grid <- grid_regular(
-#     mtry(range = c(1, 20)), levels=10)
-#      trees(range=c(100,1000), levels=5)
-#rf_grid<-rbind(rf_grid,60)
-#rf_grid
 
-
-mtry<-1:20
-mtry<-c(mtry,25,npredict)
-rf_grid<-as.data.frame(mtry)
-
+if (testing==TRUE){
+  mtry<-1:3
+  rf_grid<-as.data.frame(mtry)
+} else if (testing==FALSE) {
+  mtry<-1:20
+  mtry<-c(mtry,25,npredict)
+  rf_grid<-as.data.frame(mtry)
+}
 
 
 # configure the tuning part of the model.
@@ -453,16 +363,14 @@ tune_res <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-end_time_tune<-Sys.time()
 
 
-#An alternative that searches over more things
-#Search over mtry and trees
-# rf_grid2 <- grid_regular(
-#      mtry(range = c(1, 20)),
-#      trees(range=c(500,1500)),
-#      levels=c(20,3)
-# )
+# Search over 2 sets of parameters
+# #Search over mtry and trees
+# rf_grid2 <-  grid_regular(
+#     mtry(range = c(1, 20)), levels=10)
+#      trees(range=c(100,1000), levels=5)
+#     )
 # 
 # 
 # # configure the tuning part of the model.
@@ -501,15 +409,12 @@ end_time_tune<-Sys.time()
 # 
 # 
 
-readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_nocluster_tune",estimation_vintage,".Rds")))
+write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_nocluster_tune",estimation_vintage,".Rds")))
+end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
-```
 
-Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
-
-```{r FinalModelFit}
-# Add other metrics 
+# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
 best_tree <- tune_res %>%
   select_best(metric = "mn_log_loss")
@@ -527,35 +432,12 @@ final_fit <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
-readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_nocluster_results",estimation_vintage,".Rds")))
-```
+write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_nocluster_results",estimation_vintage,".Rds")))
 
-Print out the final fit metrics.
-
-```{r fit_metrics}
 
 # print out the metrics
 final_fit %>%
   collect_metrics()
 
-
-```
-
-```{r}
 Sys.time()
-
-
 sessionInfo()
-```
-
-<!---
-\newpage
---->
-# References
-<div id="refs"></div>
-
-
-
-
-
-# Appendix{-}
