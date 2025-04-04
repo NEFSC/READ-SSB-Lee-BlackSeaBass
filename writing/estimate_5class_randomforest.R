@@ -13,7 +13,7 @@
 
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
-testing<-TRUE
+testing<-FALSE
 testing_fraction<-0.30
 
 
