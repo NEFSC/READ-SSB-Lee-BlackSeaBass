@@ -46,7 +46,7 @@ recipe into the workflow. C'est la guerre.
 ```{r global_options, include=FALSE}
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
-testing<-FALSE
+testing<-TRUE
 testing_fraction<-.25
 
 
@@ -84,7 +84,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-here::i_am("writing/estimate_randomforest_nocluster.Rmd")
+here::i_am("writing/estimate_randomforest.Rmd")
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -193,8 +193,8 @@ if(testing==TRUE){
      dplyr::filter(rand<=testing_fraction)
 }
 
- # construct the "case weights" variable here.
- estimation_dataset<-estimation_dataset %>%
+# construct the "case weights" variable here.
+estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting))
 
 keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
@@ -212,11 +212,11 @@ estimation_dataset<- estimation_dataset %>%
 
 set.seed(2824)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
-# split on strata=market_desc, although I don't think this is strictly necessary. 
-data_split <- initial_split(data=estimation_dataset, prop=0.8, strata=market_desc) 
+# consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
+data_split <- group_initial_split(data=estimation_dataset, prop=0.8, group=dlrid) 
 train_data <- training(data_split)
 test_data <- testing(data_split)
-readr::write_rds(data_split, file=here("results","ranger",paste0("nocluster_data_split",estimation_vintage,".Rds")))
+readr::write_rds(data_split, file=here("results","ranger",paste0("data_Asplit",estimation_vintage,".Rds")))
 
 nrow(train_data)
 nrow(test_data)
@@ -289,6 +289,7 @@ recipe_summary
 
 #How many predictors
 npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
+
 
 ```
 
@@ -394,7 +395,7 @@ trees constant. The number of trees isn't the most important thing, but we shoul
 
 set.seed(457)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
-myfolds<-rsample::vfold_cv(train_data, strata=market_desc, v = 10)
+myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
 # Set up a set of mtry to search over. This is not a great grid, but it's fine for now
 #rf_grid <- grid_regular(
@@ -455,8 +456,8 @@ tune_res <- tune_grid(
 )
 
 
-#An alternative that searches over more things
-#Search over mtry and trees
+
+# #Search over mtry and trees
 # rf_grid2 <- grid_regular(
 #      mtry(range = c(1, 20)),
 #      trees(range=c(500,1500)),
@@ -500,7 +501,7 @@ tune_res <- tune_grid(
 # 
 # 
 
-readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_nocluster_tune",estimation_vintage,".Rds")))
+readr::write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_tune",estimation_vintage,".Rds")))
 end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
@@ -527,7 +528,7 @@ final_fit <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
-readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_nocluster_results",estimation_vintage,".Rds")))
+readr::write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_results",estimation_vintage,".Rds")))
 ```
 
 Print out the final fit metrics.
