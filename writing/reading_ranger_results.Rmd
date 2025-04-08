@@ -25,6 +25,8 @@ fontsize: 12pt
  --->
 ```{r global_options, include=FALSE}
 
+modeltype<-"fiveclass"
+# OR "nocluster", or "fiveclass"
 
 library("here")
 
@@ -63,6 +65,24 @@ conflicts_prefer(viridis::viridis_pal())
 here::i_am("writing/reading_ranger_results.Rmd")
 
 
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+}else if (modeltype=="fiveclass"){
+  data_pattern<-"five_class_data_split"
+  tuning_pattern<-"BSB_ranger_5class_tune"
+  final_pattern<-"BSB_ranger_5class_results"
+} else {
+  stop("Unknown modeltype")
+}
+
+
 
 
 
@@ -83,20 +103,20 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
-data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx("data_split*Rds"))
-data_vintage_string<-gsub("data_split","",data_vintage_string)
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(paste0(data_pattern,"*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
 data_vintage_string<-gsub(".Rds","",data_vintage_string)
 data_vintage_string<-max(data_vintage_string)
 
 
-tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx("BSB_ranger_tune*Rds"))
-tuning_vintage<-gsub("BSB_ranger_tune","",tuning_vintage)
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(paste0(tuning_pattern,"*Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
 
-finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx("BSB_ranger_results*Rds"))
-finalfit_vintage<-gsub("BSB_ranger_results","",finalfit_vintage)
+finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(paste0(final_pattern,"*Rds")))
+finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
 finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
 finalfit_vintage<-max(finalfit_vintage)
 
@@ -107,8 +127,8 @@ Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  
 
 ```{r load_in_data and tuning_results, include=FALSE}
 # this was created with data_prep_ml.Rmd
-data_split<-readr::read_rds(file=here("results","ranger",paste0("data_split",data_vintage_string,".Rds")))
-tune_res<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_tune",tuning_vintage,".Rds")))
+data_split<-readr::read_rds(file=here("results","ranger",paste0(data_pattern,data_vintage_string,".Rds")))
+tune_res<-readr::read_rds(file=here("results","ranger",paste0(tuning_pattern,tuning_vintage,".Rds")))
 
 ```
 
@@ -125,14 +145,13 @@ best_tree <- tune_res %>%
 
 brier<-all.metrics %>%
   filter(.metric == "brier_class") %>%
-  select(mean, mtry,trees) %>%
-  rename(brier_class=mean) %>%
-  mutate(trees=as.factor(trees))
+  select(mean, mtry) %>%
+  rename(brier_class=mean) 
 
- brier %>% ggplot(aes(mtry, brier_class, color=trees)) +
+ brier %>% ggplot(aes(mtry, brier_class)) +
   geom_point(show.legend = TRUE) 
 
- ggsave(here("results","ranger","tune",paste0("brier_class.png",tuning_vintage,".png")), plot=last_plot())
+ ggsave(here("results","ranger","tune",paste0("brier_class",modeltype,tuning_vintage,".png")), plot=last_plot())
 
 ```
 
@@ -142,14 +161,13 @@ Multinomial log-loss suggests mtry of 9 and that 1000 trees is a little better t
 mn_log_loss<-all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
 #  filter(mtry <=10) %>%
-  select(mean, mtry,trees) %>%
-  rename(mn_log_loss=mean) %>%
-  mutate(trees=as.factor(trees))
+  select(mean, mtry) %>%
+  rename(mn_log_loss=mean)
 
- mn_log_loss %>% ggplot(aes(mtry, mn_log_loss, color=trees)) +
+ mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
   geom_point(show.legend = TRUE) 
 
- ggsave(here("results","ranger","tune",paste0("mn_log_loss.png",tuning_vintage,".png")), plot=last_plot())
+ ggsave(here("results","ranger","tune",paste0("mn_log_loss",modeltype,tuning_vintage,".png")), plot=last_plot())
 
 ```
 
@@ -173,34 +191,39 @@ There are warnings in all the runs, all related to computation of precision.  Al
 predictions<-tune_res %>%
   collect_predictions()
 
+# pull the probability names
+prob_names<-colnames(predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
 
 predictions %>%
+  dplyr::filter(mtry==9) %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==11) %>%
   #dplyr::filter(!id %in% not_good) %>%
-  roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  roc_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
 
 
 
 test2<-predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==11) %>%
+  dplyr::filter(mtry==9) %>%
   #dplyr::filter(!id %in% not_good) %>%
-  roc_curve(market_desc, .pred_Jumbo:.pred_Small)
+  roc_curve(market_desc,any_of(prob_names))
 
 
-ggsave(here("results","ranger","tune",paste0("roc_tune_",tuning_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","tune",paste0("roc_tune_",modeltype,tuning_vintage,".png")), plot=last_plot())
 
 
 predictions %>%
   group_by(id, mtry) %>%
   dplyr::filter(mtry==11)%>%
 #  dplyr::filter(!id %in% not_good) %>%
-  pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  pr_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
 
-ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",tuning_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",modeltype,tuning_vintage,".png")), plot=last_plot())
 
 
   
@@ -210,7 +233,8 @@ ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",tuning_vintage,".p
 
 rm(tune_res)
 
-final_fit<-readr::read_rds(file=here("results","ranger",paste0("BSB_ranger_results",tuning_vintage,".Rds")))
+final_fit<-read_rds(file=here("results","ranger",paste0(final_pattern,tuning_vintage,".Rds")))
+
 
 # What is the workflow
 final_workflow<-extract_workflow(final_fit)
@@ -231,6 +255,12 @@ num_preds<-nrow(preds)
 final_predictions<-final_fit %>%
   collect_predictions()
 
+# pull the probability names
+prob_names<-colnames(predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
 # look at the fit metrics
 final_fit_metrics<-final_fit %>%
   collect_metrics()
@@ -240,19 +270,19 @@ final_fit_metrics
 final_fit %>% 
   extract_fit_parsnip() %>% 
   vip(num_features = num_preds)
-ggsave(here("results","ranger","final",paste0("vip",finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",paste0("vip",modeltype,finalfit_vintage,".png")), plot=last_plot())
 
 # Reciever operator curve (True positive vs False Positive) for the final model applied to the hold-out sample
 final_predictions %>%
-  roc_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  roc_curve(market_desc, any_of(prob_names))  %>%
   autoplot()
-ggsave(here("results","ranger","final",paste0("roc_",finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",paste0("roc_",modeltype,finalfit_vintage,".png")), plot=last_plot())
 
 # PR curve
 final_predictions %>%
-  pr_curve(market_desc, .pred_Jumbo:.pred_Small) %>%
+  pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
-ggsave(here("results","ranger","final",paste0("pr_curve",finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",paste0("pr_curve",modeltype,finalfit_vintage,".png")), plot=last_plot())
 ```
 
 
@@ -266,24 +296,29 @@ test_data<-cbind(test_data, final_predictions)
 
 # keep just a few columns
 test_data<-test_data %>%
-  select(c(camsid, weighting, market_desc, lndlb, stockarea, year, market_descOG, .pred_Jumbo:.pred_Small, .pred_class))
+  select(c(camsid, weighting, market_desc, lndlb, stockarea, year, market_descOG, any_of(prob_names), .pred_class))
 
 #predicted pounds per transaction in the validation dataset.
-test_data<-test_data %>%
-   mutate(predJ=.pred_Jumbo*lndlb,
-          predL=.pred_Large*lndlb,
-          predM=.pred_Medium*lndlb,
-          predS=.pred_Small*lndlb)
- 
+
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    test_data[[paste0("pred_", l)]] <- test_data[[paste0(".pred_", l)]] * test_data$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+
 # This is basically a confusion matrix at the stockarea-year level.
  aggregate_predictions<-test_data %>%
    group_by(stockarea, year,market_desc) %>%
-   summarise(predJ=sum(predJ),
-          predL=sum(predL),
-          predM=sum(predM),
-          predS=sum(predS),
-          true_pounds=sum(lndlb)
-  )
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+   ungroup()
+aggregate_predictions$modeltype<-modeltype
+ 
+write_rds(aggregate_predictions, file=here("results","ranger",paste0("aggregate_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+
 ```
 
 
