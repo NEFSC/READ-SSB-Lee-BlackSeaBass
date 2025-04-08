@@ -126,10 +126,9 @@ General approach. Verify this will work by estimating a not-too-complicated hedo
 model.  Look at the coefficients on sizes. Train a random forest model to classify
 using data containing four classes. Predict out of sample on data that is Unclassified.
 
-Our ultimate goal is to estimate (simulate, predict) the numbers at length
-for the un-measured "Unclassified" fish at a scale that is relevant for the stock
-assessment. However, we do not use prices to predict the length of any particular
-bundle of fish. Rather, we predict the class membership, that is "Small", 
+Our ultimate goal is to predict the numbers at length
+for the un-measured "Unclassified" fish at the relevant scale for the stock
+assessment. Rather, we predict the probabilities of class membership, that is "Small", 
 "Medium", "Large", or "Jumbo", for the un-measures "Unclassified" 
 fish.  We then use the length- and age-data for those market categories to make 
 a prediction about the Unclassified fish. Because our goal is a good aggregate
@@ -145,19 +144,69 @@ It can also be used to allocated sampling coverage.
 ```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=FALSE}
 ```
 
+## Catching, Selling, and Classifying Fish
+
+Black sea bass are caught by fishing vessels that typically use bottom trawl and
+pot/trap gear; gillnets and lines are less commonly used. Firms can target both
+sizes of fish and their catch of other species, but cannot perfectly control 
+what they catch and land.  For example, the seasonal inshore movement during 
+the spring and offshore movement affects things.  When fish offshore, they are
+less available to smaller vessels or those that are registered in states that 
+manage with stringent possession limits.  Strong year classes can make a size 
+class more available during certain years.   
+
+After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.]  Fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).  Fish dealers may act as middlemen, simply selling fish to processors, restaurants, or final consumers.  They may do some processing themselves and sell filleted fish to entities farther along the value chain.
+
+Prices of fish depend on the size of fish; the fact consumers typically prefer larger fish both motivates and necessitates the collection of size information by disaggregated by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
+
+Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
+
+\input{../results/hedonic_tableA.tex}
+
+## Regulatory Environment
+
+The fishery is jointly managed by the ASFMC and the MAFMC.  Regulations are enacted 
+by GARFO.  There is also a South Atlantic stock that is managed by SAFMC.
+
+From 1996 through 2003, the fishery was managed primarily by quarterly catch 
+limits for the entire fishery. There were early closures in 1999 (Quarters 2,3,4),
+2000 (2,3,4), and 2001 (all). Quota was allocated to each state staring in 2003
+(Amendment 13) and is monitored based on landed state. In 2021, the formula 
+that allocates commercial quotas to the states was revised; 75% of the quota is
+allocated according to historical  fishing and 25% is allocated in proportion 
+to where the biomass is located.
+
+There is quite a bit of fishing that occurs within state waters, so the Vessel
+Trip Report (logbook) coverage isn't perfect. Three states  (MD, DE, and VA) 
+have IFQ programs that started in 2004. Current minimum size limits are 11" 
+or 12".  Possession limits vary widely by state; the IFQ states do not have 
+possession limits while Massachusetts and Rhode Island use seasonally varying 
+limits that have been as strict as 50 lbs/day or as loose as 1,500 lbs per week.
+Nearly all states require a vessel operator to have a limited access permit to 
+land black sea bass in that state.
+
 ## Black Sea Bass and the Stock Assessment Enterprise 
 Analysts request coverage levels of different market categories. 
 
-Need to justify having these as explanatory variables (predictors).
-    * Stock area (north and south)
+Need to justify having these as explanatory variables (predictors). 
+
+    * Stock area (north and south): The stocks are different and have different
+    underlying size compositions. For example, there appears to be a sizable 2012
+    year class in the North stock that persists to age 6 in 2017.  There's few 
+    age 4+ in the south. This is from the 2024 BSB unit pdf.
     * Semester
-    * Recent landings in the stock area by market category
-    * recent landings in the state by market category
-    * today's landings from a stock area by market category by other boats
+    * Recent landings in the stock area by market category: catching fish is patchy.
+    If vessels are catching alot of larges, they are going to keep catching lots of 
+    larges.
+    * recent landings in the state by market category: Same. In addition, there's 
+    persistent "demand" if vessels can move around. processors and customers
+    are set up for certain things.
+    * today's landings from a stock area by market category by other boats: same as above
     * today's landings from a in a state by market category by other boats
     * state and stock area trips
     * lndlb (trip level landings by market category)
-    * trip level landings of black sea bass
+    * trip level landings of black sea bass -- trips with large quantities might
+    be more likely to sort, 
 
 
 ```{r borrowed_lengths,echo=FALSE,out.width="48%", fig.align='center'}
@@ -167,27 +216,6 @@ knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commerc
 `r fig_nums(name="Borrowed_lengths", caption ="Borrowed Lengths in Black Sea Bass.")`
 
 Slide 8 from ``2023_BSB_UNIT_ppt_TOR2_commercialdata.pdf`` (`r fig_nums("Borrowed_lengths", display="cite")`) illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
-
-
-
-## Regulatory Environment
-
-[only the details needed to establish why we have certain RHS variables in the the model]
-
-State -- regulations vary by state, so sizes of landed fish will also vary.  For example, the current minimum size is 12" in Massachusetts but 11" Maryland and Virginia.  Maryland,  Virginia, and Delaware manage with IFQs, not possession limits.  NC has relatively large possession limits (4000 or 3000 lbs), while the RI possession limit was 1,500lbs per week for the summer and typically around 100 lbs/day at other times in 2024. These regulations have implications for the distances that fishing firms can travel and still make a profit.
-
-
-## Catching, Selling, and Classifying Fish
-
-Black sea bass are caught by fishing vessels that typically use bottom trawl and pot/trap gear; gillnets and lines are less commonly used. Firms can target both sizes of fish and their catch of other species, but cannot perfectly control what they catch and land.  For example, the seasonal inshore movement during the spring and offshore movement affects things.  When fish offshore, they are less available to smaller vessels or those that are registered in states that manage with stringent possession limits.  Strong year classes can make a size class more available during certain years.   
-
-After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.]  Fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).  Fish dealers may act as middlemen, simply selling fish to processors, restaurants, or final consumers.  They may do some processing themselves and sell filleted fish to entities farther along the value chain.
-
-Prices of fish depend on the size of fish; the fact consumers typically prefer larger fish both motivates and necessitates the collection of size information by disaggregated by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
-
-Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
-
-\input{../results/hedonic_tableA.tex}
 
 
 # Methods and Data
@@ -208,9 +236,39 @@ Machine learning in fisheries has become increasingly popular [@Malde2020]; the 
 
 ## Our approach
 
-We train a multinomial Random Forest 2018-2024 black sea bass sales from the Small, Medium, Large, and Jumbo market categories.  We use the  multinomial log-loss to do model tuning.  We use 80% of our dataset to train and tune the model, further dividing this into 10 folds for selecting optimal hyperparameters.  After tuning, we train the model on the entire 80% training sample and validate on the remaining 20\%. We use the finalized model to perform out-of-sample prediction to recover the true but unobserved combination of the other market categories.  Finally, we aggregate up to construct the new length structures of caught fish at the stockarea-semester level. 
+We use data from 2015 to 2024 to train our data. We set aside 20% of our
+data as a hold out sample to validate model fit.  Dealers are the entities that
+classify the fish and dealers are likely to have an unobserved propensity to 
+grade fish into particular classes. In our preferred specification, we
+group by "dealer identifier" so that all of a dealer's observations are contained
+in either the training dataset or the validation dataset.  This ensures that the
+validation fold does not inadvertently contain "training data", which would lead
+to overly optimistic model fit.  Keeping the entirety of dealer's
+observations in either the training or validation datasets reduces the likelihood
+of information leakage^[Information leakage occurs when the ml model essentially 
+memorizes the input data, leading to validation metrics that are overly-optimistic.  
+This can cause poor out of sample predictions.]
 
-Dealers are the entities that classify the fish and dealers are likely to have an unobserved propensity to grade fish into particular classes.  This poses minor problems for We cluster-sample during the tuning process; all observations from a single dealer are allocated to exactly one fold.  This ensures that the validation fold does not inadvertently contain "training data", which would lead to overly optimistic model fit.  Including a full set of binary indicator variables to account dealer-specific effects ("one-hot" encoding) can lead to both overfitting [@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. Instead we use a variation of target encoding.
+
+We divide the remaining 80\% of the data into 10 approximately equal folds, again
+keeping all observations from a dealer in exactly one fold.  We use the 10-fold
+cross validation to select the optimal *mtry* parameter for the random forest. 
+We use the mean log-loss function to do model tuning.  After tuning, we train 
+the model on the entire 80% training sample and validate
+on the remaining 20\%. This provides some assurance that the model has good 
+out-of-sample prediction. Finally, we train the model on the entire dataset to 
+use in out-of-sample prediction.  
+
+Including a full set of binary indicator variables to account dealer-specific 
+effects ("one-hot" encoding) can lead to both overfitting
+[@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. 
+Instead we use a variation of target encoding.  Application of a standard
+target-encoding system would involve computing dealer-specific class probabilities
+over the 2015-2025 and including those probabilities as factors. This feels 
+somewhat troubling to an economist concerned about simultaneity, a concern which
+may be misplaced. Nevertheless, we compute dealer-specific class probabilities
+over the **2010-2014** time period and enter these as predictors instead. Dealers 
+that did not buy or sell black sea bass during this time have missing values.
 
 <!---  
 
@@ -294,9 +352,10 @@ TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,Transaction
 
 ## Random Forest 
 
-Here is the call to the BSB classification recipe that defines the outcome, predictors, identification variables.  Not shown is the command that sets the ``case_weights=frequency_weights()`` using landed pounds for a row of data. Price and lndlb are the only continuous variables, all the others are factors. The dataset does not have any rows where ``market_desc==Unclassified`` 
+Random Forest  CART. RF. Applications in fisheries and economics?
 
-```{r BSB_data, eval=F, echo=T}
+```{r BSB_data, eval=F, echo=F}
+# Here is the call to the BSB classification recipe that defines the outcome, predictors, identification variables.  Not shown is the command that sets the ``case_weights=frequency_weights()`` using landed pounds for a row of data. Price and lndlb are the only continuous variables, all the others are factors. The dataset does not have any rows where ``market_desc==Unclassified`` 
 
 # Use a recipe on the training data. 
 
@@ -349,20 +408,6 @@ recipe_summary
 
 ```
 
-I use the ``dlrid`` to control the way the k-fold cross validation is performed.  
-
-Other predictors that could be available
-  1. CAMS derived data
-      A. STATUS, although it's probably better to put in "state permit" or "no federal permit"
-  2. ``dlrid`` and or permit/vessel id.
-  3. Landings of other things (that are caught along with particular market categories?). Like, do we tend to catch lots of smalls when also catching squid or summer flounder?
-  4. Mesh size?  Or an interaction of mesh size and gear?  I'm not sure how to construct this for something like "other" or "hook" gears.
-  5. Trip length. You might go farther to catch larger fish.
-
-The Status==PZERO observations will have most of the typical "vtr" things missing (landings of other species, mesh size, trip length). 
-
-
-Probably going to need to move this into the Rcontainer.
 
 
 # Results
