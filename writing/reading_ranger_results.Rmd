@@ -26,7 +26,7 @@ fontsize: 12pt
 ```{r global_options, include=FALSE}
 
 modeltype<-"fiveclass"
-# OR "nocluster", or "fiveclass"
+# OR "nocluster", or "fiveclass", or "noc5class"
 
 library("here")
 
@@ -78,10 +78,13 @@ if (modeltype=="standard"){
   data_pattern<-"five_class_data_split"
   tuning_pattern<-"BSB_ranger_5class_tune"
   final_pattern<-"BSB_ranger_5class_results"
+} else if (modeltype=="noc5class"){
+  data_pattern<-"data_split_5_NOC_class"
+  tuning_pattern<-"BSB_ranger_5_NOC_class_tune"
+  final_pattern<-"BSB_ranger_5_NOC_class_results"
 } else {
   stop("Unknown modeltype")
 }
-
 
 
 
