@@ -1,0 +1,235 @@
+---
+title: "Black Sea Bass:Predicting out of sample"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+---
+
+# Summary and Housekeeping
+
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+modeltype<-"fiveclass"
+# OR "nocluster", or "fiveclass", or "noc5class"
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+
+# load tidyverse and related
+library("tidymodels")
+
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("conflicted")
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+
+here::i_am("writing/predict_out_of_sample.Rmd")
+
+
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+}else if (modeltype=="fiveclass"){
+  data_pattern<-"five_class_data_split"
+  tuning_pattern<-"BSB_ranger_5class_tune"
+  final_pattern<-"BSB_ranger_5class_results"
+} else if (modeltype=="noc5class"){
+  data_pattern<-"data_split_5_NOC_class"
+  tuning_pattern<-"BSB_ranger_5_NOC_class_tune"
+  final_pattern<-"BSB_ranger_5_NOC_class_results"
+} else {
+  stop("Unknown modeltype")
+}
+
+
+
+
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(paste0(data_pattern,"*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+unclassified_data_vintage_string<-list.files(here("data_folder","main","commercial"),  pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+unclassified_data_vintage_string<-gsub("BSB_unclassified_dataset","",unclassified_data_vintage_string)
+unclassified_data_vintage_string<-gsub(".Rds","",unclassified_data_vintage_string)
+unclassified_data_vintage_string<-max(unclassified_data_vintage_string)
+
+finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(paste0(final_pattern,"*Rds")))
+finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
+finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
+finalfit_vintage<-max(finalfit_vintage)
+
+
+```
+
+Data vintage is `r unclassified_data_vintage_string`. Final fit vintage is `r finalfit_vintage`.
+
+```{r load_final_fit_and_prediction_dataset, include=FALSE}
+
+final_fit<-read_rds(file=here("results","ranger",paste0(final_pattern,tuning_vintage,".Rds")))
+
+# What is the workflow
+final_workflow<-extract_workflow(final_fit)
+
+# And the recipe
+extract_recipe(final_fit)
+
+preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
+ dplyr::filter(role=="predictor")
+
+num_preds<-nrow(preds)
+
+# Load prediction dataset
+unclassified_dataset<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",data_vintage_string,".Rds")))
+
+```
+
+
+
+```{r process_unclassified}
+ # Add frequency weights to the unclassifed dataset, but I don't think it matters much
+ unclassified_dataset<-unclassified_dataset %>%
+     mutate(weighting = frequency_weights(weighting))
+
+```
+
+
+
+```{r final_predictions}
+
+# Make predictions on the new data
+predictions <- predict(final_workflow, unclassified_dataset)
+ #final_workflow might just be final_fit
+# If you want class probabilities as well
+predicted_prob <- predict(final_workflow, unclassified_dataset, type = "prob")
+
+
+# 1: Novel levels found in column "state": "FL", "ME", "NH", "PA", "SC", and "CN".
+# ℹ The levels have been removed, and values have been coerced to <NA>. 
+# 2: Novel levels found in column "dlrid": "5", "324", "530", "632", "643", "649", "664", "732", "742", "764", "791", "800", "835", "879", "893", "903", "916", #"967", …,
+#"10595", and "99999".
+# The levels have been removed, and values have been coerced to <NA>. 
+
+
+
+# Combine predictions with the original data for analysis
+results <- bind_cols(
+  predicted_class = predictions$.pred_class,
+  predicted_prob,
+  unclassified_dataset,
+# need to modify this
+)
+
+results<-results %>%
+  relocate(weighting, lndlb, .before=camsid)
+# View the results
+head(results)
+
+```
+
+
+```{r predicted_pounds}
+# Compute predicted pounds for the validation dataset
+#pull the test data, merge it with the predictions
+
+# keep just a few columns
+aggregate_results<-results %>%
+  select(c(camsid, weighting, market_desc, lndlb, stockarea, year, market_descOG, any_of(prob_names), .pred_class))
+
+
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    aggregate_results[[paste0("pred_", l)]] <- aggregate_results[[paste0(".pred_", l)]] * aggregate_results$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+# This is basically a confusion matrix at the stockarea-year level.
+aggregate_predictions<-test_data %>%
+   group_by(stockarea, year,market_desc) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+   ungroup()
+aggregate_predictions$modeltype<-modeltype
+ 
+write_rds(aggregate_predictions, file=here("results","ranger",paste0("out_of_sample_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+```
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
