@@ -75,7 +75,7 @@ if (modeltype=="standard"){
   tuning_pattern<-"BSB_ranger_nocluster_tune"
   final_pattern<-"BSB_ranger_nocluster_results"
 }else if (modeltype=="fiveclass"){
-  data_pattern<-"five_class_data_split"
+  data_pattern<-"data_split_5_class"
   tuning_pattern<-"BSB_ranger_5class_tune"
   final_pattern<-"BSB_ranger_5class_results"
 } else if (modeltype=="noc5class"){
@@ -135,7 +135,7 @@ tune_res<-readr::read_rds(file=here("results","ranger",paste0(tuning_pattern,tun
 
 ```
 
-Brier classification suggests an mtry around 12 to 14.  Number of trees doesn't matter much.
+Brier classification suggests an mtry around 12 to 14.
 
 ```{r brier_class}
 
@@ -144,7 +144,6 @@ all.metrics<-tune_res %>%
   collect_metrics() 
 
 best_tree <- tune_res %>%
-  select_best(metric = "mn_log_loss")
 
 brier<-all.metrics %>%
   filter(.metric == "brier_class") %>%
@@ -156,6 +155,19 @@ brier<-all.metrics %>%
 
  ggsave(here("results","ranger","tune",paste0("brier_class",modeltype,tuning_vintage,".png")), plot=last_plot())
 
+
+ 
+  
+brier<-tune_res %>%
+  collect_metrics(summarize=FALSE) %>%
+  filter(.metric == "brier_class") 
+
+brier %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
+  geom_boxplot(show.legend = TRUE) 
+
+  ggsave(here("results","ranger","tune",paste0("brier_class_indivd_",modeltype,tuning_vintage,".png")), plot=last_plot())
+
+ 
 ```
 
 Multinomial log-loss suggests mtry of 9 and that 1000 trees is a little better than 500.
