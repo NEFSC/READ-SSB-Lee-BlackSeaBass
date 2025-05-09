@@ -16,6 +16,9 @@
 testing<-FALSE
 testing_fraction<-0.30
 
+modeltype<-"noc5class"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
+
 
 library("here")
 
