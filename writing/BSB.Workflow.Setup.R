@@ -68,16 +68,30 @@ BSB.Ranger.Workflow <-
 
 ## Tuning
 # 
-# Set up a set of mtry to search over. This is not a great grid, but it's fine for now
+# Set up a set of mtry to search over. The nocluster grid needs to be a little bigger.
 
+if (modeltype %in%c("standard","fiveclass")){
+    mtry<-1:20
+    mtry<-c(mtry,25,npredict)
+    rf_grid<-as.data.frame(mtry)
+  } else if  (modeltype %in%c("nocluster","noc5class")){
+    mtry<-5:npredict
+    rf_grid<-as.data.frame(mtry)
+} else {
+ stop("Unrecognized modeltype") 
+}
+
+# Overwite mtry rf_grid for testing=true to speed prototyping
 if (testing==TRUE){
   mtry<-1:3
   rf_grid<-as.data.frame(mtry)
-} else if (testing==FALSE) {
-  mtry<-1:20
-  mtry<-c(mtry,25,npredict)
-  rf_grid<-as.data.frame(mtry)
 }
+  
+  
+
+
+
+
 
 
 # configure the tuning part of the model.
