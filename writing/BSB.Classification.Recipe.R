@@ -12,7 +12,7 @@
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(dlrid,camsid), new_role = "ID variable") %>%
-  update_role(c(mygear,price,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB), new_role = "predictor")
+  update_role(c(mygear,priceR_CPI,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB), new_role = "predictor")
 
 # State-level daily Landings on "other" trips, by market category  
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
