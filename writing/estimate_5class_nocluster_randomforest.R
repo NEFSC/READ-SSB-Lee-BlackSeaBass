@@ -16,6 +16,9 @@
 testing<-FALSE
 testing_fraction<-0.30
 
+# how much of the data to hold out for final validation
+training_fraction<-0.90
+start_time<-Sys.time()
 modeltype<-"noc5class"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
@@ -61,11 +64,10 @@ here::i_am("writing/estimate_5class_randomforest.R")
 platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
-  if(Sys.info()['effective_user'] %in% c("mlee")){
-      runClass<-'Container'
-    }
-    else{
-      runClass <- 'Local'
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
     }
   }
 
@@ -77,8 +79,10 @@ if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-6
 } else if (runClass %in% c('Container')){ 
   my.ranger.threads<-8
+}else if (runClass %in% c('DynamicContainer')){ 
+  my.ranger.threads<-50
 
-  }
+}
 
 
 lbs_per_mt<-2204.62
@@ -93,6 +97,15 @@ vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
+data_save_name<-paste0("data_split_5_NOC_class",estimation_vintage,".Rds")
+tune_file_name<-paste0("BSB_ranger_5_NOC_class_tune",estimation_vintage,".Rds")
+final_fit_file_name<-paste0("BSB_ranger_5_NOC_class_results",estimation_vintage,".Rds")
+if(testing==TRUE){
+  data_save_name<-paste0("data_split_5_NOC_class_TEST",estimation_vintage,".Rds")
+  tune_file_name<-paste0("BSB_ranger_5_NOC_class_tune_TEST",estimation_vintage,".Rds")
+  final_fit_file_name<-paste0("BSB_ranger_5_NOC_class_results_TEST",estimation_vintage,".Rds")
+  
+}
 # 
 # Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
 # 
@@ -163,10 +176,10 @@ estimation_dataset<- estimation_dataset %>%
 set.seed(2824)
 # 80% of the data in the training, and 20% in the holdout sample, not weighted.
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
-data_split <- initial_split(data=estimation_dataset, prop=0.8, strata=market_desc) 
+data_split <- initial_split(data=estimation_dataset, prop=training_fraction) 
 train_data <- training(data_split)
 test_data <- testing(data_split)
-readr::write_rds(data_split, file=here("results","ranger",paste0("data_split_5_NOC_class",estimation_vintage,".Rds")))
+readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
 nrow(train_data)
 nrow(test_data)
@@ -243,7 +256,7 @@ tune_res <- tune_grid(
 # 
 # 
 
-write_rds(tune_res, file=here("results","ranger",paste0("BSB_ranger_5_NOC_class_tune",estimation_vintage,".Rds")))
+write_rds(tune_res, file=here("results","ranger", tune_file_name))
 end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
@@ -266,12 +279,18 @@ final_fit <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
-write_rds(final_fit, file=here("results","ranger",paste0("BSB_ranger_5_NOC_class_results",estimation_vintage,".Rds")))
+
+
+write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 
 # print out the metrics
 final_fit %>%
   collect_metrics()
 
-Sys.time()
+end_time<-Sys.time()
+end_time
+
+end_time-start_time
+
 sessionInfo()
