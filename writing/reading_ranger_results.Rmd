@@ -25,8 +25,8 @@ fontsize: 12pt
  --->
 ```{r global_options, include=FALSE}
 
-modeltype<-"fiveclass"
-# OR "nocluster", or "fiveclass", or "noc5class"
+modeltype<-"standard"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
 library("here")
 
@@ -144,6 +144,7 @@ all.metrics<-tune_res %>%
   collect_metrics() 
 
 best_tree <- tune_res %>%
+  select_best(metric = "brier_class")
 
 brier<-all.metrics %>%
   filter(.metric == "brier_class") %>%
@@ -213,7 +214,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
 predictions %>%
-  dplyr::filter(mtry==9) %>%
+  dplyr::filter(mtry==11) %>%
   group_by(id, mtry) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc, any_of(prob_names)) %>%
@@ -223,7 +224,7 @@ predictions %>%
 
 test2<-predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==9) %>%
+  dplyr::filter(mtry==11) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc,any_of(prob_names))
 
