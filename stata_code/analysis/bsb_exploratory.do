@@ -2,7 +2,7 @@
 
 This code is exploratory and makes some figures and tables. */
 graph drop _all
-global in_string 2024_12_20
+global in_string 2025_02_27
 use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
@@ -20,9 +20,10 @@ replace questionable_status=1 if  status=="PZERO" & state=="DE" & day==1 & port=
 
 
 
+global gear_string 2024_12_20
 
 /* merge gearcodes */
-merge m:1 negear using "${data_main}\commercial\cams_gears_${in_string}.dta", keep(1 3)
+merge m:1 negear using "${data_main}\commercial\cams_gears_${gear_string}.dta", keep(1 3)
 
 assert _merge==3
 drop _merge
@@ -59,8 +60,6 @@ replace mygear="Unknown" if inlist(negear,999)
 replace mygear="Misc" if inlist(mygear,"Dredge","Unknown", "Seine")
 
 
-
-
 /* rebin Mixed or unsized to unclassified*/ 
 
 replace market_desc="UNCLASSIFIED" if market_desc=="MIXED OR UNSIZED"
@@ -68,16 +67,22 @@ replace market_code="UN" if market_code=="MX"
 
 
 /* bin Extra Small and PeeWee into Small */
-replace market_code="SQ" if inlist(market_code,"PW")
+replace market_code="SQ" if inlist(market_code,"PW", "ES")
 replace market_desc="SMALL" if inlist(market_desc,"PEE WEE (RATS)")
+replace market_desc="SMALL" if inlist(market_desc,"EXTRA SMALL")
+
+/* bin extra large into Jumbo */
+replace market_desc="JUMBO" if inlist(market_desc,"EXTRA LARGE")
+replace market_code="JB" if inlist(market_code,"XG")
+
 
 replace market_desc=proper(market_desc)
+/*recode Medium or select into medium */
 replace market_desc="Medium" if inlist(market_desc,"Medium Or Select")
 label def market_category 1 "Jumbo" 2 "Large" 3 "Medium" 4 "Small" 5 "Extra Small" 6 "Unclassified"
 
 rename market_desc market_desc_string
 encode market_desc_string, gen(market_desc) label(market_category) 
-
 
 
 /* encode grade */
@@ -156,11 +161,11 @@ bysort dlr_date: egen QJumbo=total(_SmarXlndlb_1)
 bysort dlr_date: egen QLarge=total(_SmarXlndlb_2)
 bysort dlr_date: egen QMedium=total(_SmarXlndlb_3)
 bysort dlr_date: egen QSmall=total(_SmarXlndlb_4)
-bysort dlr_date: egen QXSmall=total(_SmarXlndlb_5)
+*bysort dlr_date: egen QXSmall=total(_SmarXlndlb_5)
 
 bysort dlr_date: egen QUnc=total(_SmarXlndlb_6)
 
-gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc  + _Smarket_de_5*QXSmall
+gen ownQ=_Smarket_de_1*QJumbo +  _Smarket_de_2*QLarge + _Smarket_de_3*QMedium + _Smarket_de_4*QSmall +_Smarket_de_6*QUnc 
 
 /* this is not right unclassified never gets filled in.*/ 
 gen largerQ=0
@@ -173,7 +178,7 @@ replace largerQ=QSmall+largerQ if inlist(market_desc,5)
 
 gen smallerQ=0
 replace smallerQ=0 if inlist(market_desc,5) 
-replace smallerQ=smallerQ+ QXSmall if inlist(market_desc,4,6) 
+replace smallerQ=smallerQ if inlist(market_desc,4,6) 
 replace smallerQ=QSmall+smallerQ if market_desc==3
 replace smallerQ=QMedium+smallerQ if market_desc==2
 replace smallerQ=QLarge+smallerQ if market_desc==1
@@ -195,23 +200,52 @@ label var total "Total"
 
 /*******************************Investigate Prices ********************************************/
 /* there are definitely more common prices at the $1, $0.50, $0.25, and even $0.05 per pound */
-hist price if price<=10, width(.05) xlabel(0(1)10) xmtick(##2)
+hist priceR_CPI if priceR_CPI<=10, width(.05) xlabel(0(1)10) xmtick(##2)
+
+
+label copy market_category mc2
+label define mc2 4 "Small_Comb", modify
+label values market_desc mc2
 
 decode market_desc, gen(market_string)
 levelsof market_string, local(sizes)
 	local j=1
 
 foreach l of local sizes{
-	hist price if market_string=="`l'" & price<=10, width(.25) xlabel(0(1)8) xmtick(##2) title("`l'") name(p`j', replace)
-	hist price if market_string=="`l'" & price<=10 [fweight=weighting], width(.25) xlabel(0(1)8) xmtick(##2) title("`l' (weighted)") name(wp`j', replace)
+	hist priceR_CPI if market_string=="`l'" & priceR_CPI<=10, width(.25) xlabel(0(1)10) xmtick(##2) title("`l'") name(p`l', replace) fraction
+	hist priceR_CPI if market_string=="`l'" & priceR_CPI<=10 [fweight=weighting], width(.25) xlabel(0(1)10) xmtick(##2) title("`l' (weighted)") name(wp`l', replace) fraction
 
 	local ++ j 
 }
 
-graph combine p1 p2 p3 p4 p5 p6, name(price_hist, replace)
+graph combine pJumbo pLarge pMedium pSmall_Comb pUnclassified, name(price_hist, replace)
 graph export ${exploratory}\price_histograms.png, as(png) width(2000) replace
-graph combine wp1 wp2 wp3 wp4 wp5 wp6, name(wprice_hist, replace)
+graph combine wpJumbo wpLarge wpMedium wpSmall_Comb wpUnclassified, name(wprice_hist, replace)
 graph export ${exploratory}\wprice_histograms.png, as(png) width(2000) replace
+
+
+
+/* graphs in vertical format */
+local j=1
+
+foreach l of local sizes{
+	hist priceR_CPI if market_string=="`l'" & priceR_CPI<=10 [fweight=weighting], width(.25) xlabel(0(1)10) xmtick(##2)  title("") note("`l'", size(medium) pos(3) orientation(rvertical)) name(wp`l', replace) fraction xtitle("") xlabel(none) graphregion(margin(tiny))
+
+	local ++ j 
+}
+
+local l="Jumbo"
+
+	hist priceR_CPI if market_string=="`l'" & priceR_CPI<=10 [fweight=weighting], width(.25) xlabel(0(1)10) xmtick(##2)  title("") note("`l'", size(medium) pos(3) orientation(rvertical)) name(wp`l', replace) fraction graphregion(margin(tiny))
+
+
+
+
+graph combine wpUnclassified wpSmall_Comb wpMedium wpLarge wpJumbo, name(wprice_histV, replace) cols(1) xcommon imargin(tiny)
+graph export ${exploratory}\wprice_histograms_vertical.png, as(png) width(2000) replace
+
+/* unlabel */
+label values market_desc market_category
 
 
 
@@ -220,7 +254,7 @@ graph export ${exploratory}\wprice_histograms.png, as(png) width(2000) replace
 gen mygrade_short="R" if grade_desc==1
 replace mygrade_short="L" if grade_desc==2
 replace mygrade_short="U" if grade_desc==3
-vioplot price if price<=10, over(mygrade_short) over(market_desc)
+vioplot priceR_CPI if priceR_CPI<=10, over(mygrade_short) over(market_desc)
 
 graph export ${exploratory}\vio_grades.png, as(png) width(2000) replace
 
@@ -236,10 +270,10 @@ levelsof year, local(yearlist)
 sort year market_desc
 foreach y of local yearlist{
 
-	graph box price if price<=10 & year==`y'& market_desc~=5, nooutside over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(price_box`y') title("`y' ")
+	graph box priceR_CPI if priceR_CPI<=10 & year==`y'& market_desc~=5, nooutside over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(price_box`y') title("`y' ")
 	graph export ${exploratory}\price_box`y'.png, as(png) width(2000) replace
 
-	graph box price if price<=10 & year==`y'& market_desc~=5  [fweight=weighting], nooutside  over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(Wprice_box`y') title("`y' ")
+	graph box priceR_CPI if priceR_CPI<=10 & year==`y'& market_desc~=5  [fweight=weighting], nooutside  over(grade_desc, label(labsize(vsmall) angle(45))) over(market_desc, label(labsize(tiny) angle(45))) name(Wprice_box`y') title("`y' ")
 	graph export ${exploratory}\Wprice_box`y'.png, as(png) width(2000) replace
 
 }
@@ -526,7 +560,7 @@ bysort state_string: egen tl=total(lndlb)
 gen frac=lndlb/tl
 gen price=value/(lndlb*1000)
 
-gen priceR=valueR/(lndlb*1000)
+gen priceR_CPI=valueR/(lndlb*1000)
 
 
 levelsof state_string, local(state_names)
@@ -541,7 +575,7 @@ foreach l of local state_names{
 		xtline price if inlist(market_desc,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
 		graph export ${exploratory}\price_overtime_`l'.png, as(png) width(2000) replace
 		
-		xtline priceR if inlist(market_desc,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
+		xtline priceR_CPI if inlist(market_desc,1,2,3,4)==1, overlay xlabel(1995(5)2025) xmtick(##5) title("`l'")
 		graph export ${exploratory}\priceR_overtime_`l'.png, as(png) width(2000) replace
 
 
@@ -556,7 +590,7 @@ collapse (sum) lndlb value valueR, by(state market_desc year)
 
 
 gen price=value/(lndlb*1000)
-gen priceR=valueR/(lndlb*1000)
+gen priceR_CPI=valueR/(lndlb*1000)
 
 levelsof market_desc, local(sizes)
 
@@ -569,7 +603,7 @@ foreach l of local sizes{
 		xtline price, overlay xlabel(1995(5)2025) xmtick(##5) title("`f0'") legend(rows(2))
 		graph export ${exploratory}\price_overstate_`l'.png, as(png) width(2000) replace
 		
-		xtline priceR, overlay xlabel(1995(5)2025) xmtick(##5) title("`f0'") legend(rows(2))
+		xtline priceR_CPI, overlay xlabel(1995(5)2025) xmtick(##5) title("`f0'") legend(rows(2))
 		graph export ${exploratory}\priceR_overstate_`l'.png, as(png) width(2000) replace
 
 
