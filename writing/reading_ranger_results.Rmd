@@ -25,7 +25,7 @@ fontsize: 12pt
  --->
 ```{r global_options, include=FALSE}
 
-modeltype<-"standard"
+modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
 library("here")
@@ -123,6 +123,14 @@ finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
 finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
 finalfit_vintage<-max(finalfit_vintage)
 
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
+
 
 ```
 
@@ -133,9 +141,12 @@ Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  
 data_split<-readr::read_rds(file=here("results","ranger",paste0(data_pattern,data_vintage_string,".Rds")))
 tune_res<-readr::read_rds(file=here("results","ranger",paste0(tuning_pattern,tuning_vintage,".Rds")))
 
+oos_data<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",raw_oos_data_vintage_string,".Rds")))
+
+
 ```
 
-Brier classification suggests an mtry around 12 to 14.
+Brier classification. best  depends on the type of model.
 
 ```{r brier_class}
 
@@ -171,7 +182,7 @@ brier %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
  
 ```
 
-Multinomial log-loss suggests mtry of 9 and that 1000 trees is a little better than 500.
+Multinomial log-loss best depends on the type of model.
 
 ```{r log_loss}
 mn_log_loss<-all.metrics %>%
@@ -302,8 +313,8 @@ ggsave(here("results","ranger","final",paste0("pr_curve",modeltype,finalfit_vint
 ```
 
 
-```{r predicted_pounds}
-# Compute predicted pounds for the validation dataset
+```{r predicted_testing_pounds}
+# Compute predicted pounds for the testing dataset
 #pull the test data, merge it with the predictions
 test_data <- testing(data_split)
 test_data<-test_data %>%
@@ -332,7 +343,89 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
    ungroup()
 aggregate_predictions$modeltype<-modeltype
  
-write_rds(aggregate_predictions, file=here("results","ranger",paste0("aggregate_predictions_",modeltype,finalfit_vintage,".Rds")))
+write_rds(aggregate_predictions, file=here("results","ranger",paste0("aggregate_test_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+
+```
+
+```{r all_predictions}
+full_data<-data_split$data
+full_predictions<-predict(final_workflow, full_data, type="prob")
+
+write_rds(full_predictions, file=here("results","ranger",paste0("full_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+
+
+full_predictions<-cbind(full_predictions, full_data)
+
+
+#predicted pounds per transaction in the validation dataset.
+
+for (l in c("Jumbo", "Large", "Medium", "Small")) {
+  tryCatch({
+    full_predictions[[paste0("pred_", l)]] <- test_data[[paste0(".pred_", l)]] * full_predictions$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+
+ aggregate_full_predictions<-full_predictions %>%
+   group_by(stockarea, year,market_desc) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+   ungroup()
+aggregate_full_predictions$modeltype<-modeltype
+ 
+write_rds(aggregate_full_predictions, file=here("results","ranger",paste0("aggregate_full_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+
+```
+
+
+```{r out_of_sample_predictions}
+# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
+oos_data<-oos_data %>%
+     mutate(weighting = frequency_weights(weighting),
+            market_desc=fct_drop(market_desc))
+
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
+keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
+keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
+keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
+keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
+keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+
+
+oos_data<- oos_data %>%
+  select(all_of(keep_cols))
+  
+  
+oos_predictions<-predict(final_workflow, oos_data, type="prob")
+write_rds(oos_predictions, file=here("results","ranger",paste0("out_of_sample_predictions_",modeltype,finalfit_vintage,".Rds")))
+
+oos_data<-cbind(oos_predictions, oos_data)
+
+
+#predicted pounds per transaction in the validation dataset.
+
+for (l in c("Jumbo", "Large", "Medium", "Small")) {
+  tryCatch({
+    oos_data[[paste0("pred_", l)]] <- oos_data[[paste0(".pred_", l)]] * oos_data$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+
+ aggregate_oos_predictions<-oos_data %>%
+   group_by(stockarea, year,market_desc) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+   ungroup()
+aggregate_oos_predictions$modeltype<-modeltype
+ 
+write_rds(aggregate_oos_predictions, file=here("results","ranger",paste0("aggregate_oos_predictions_",modeltype,finalfit_vintage,".Rds")))
 
 
 ```
