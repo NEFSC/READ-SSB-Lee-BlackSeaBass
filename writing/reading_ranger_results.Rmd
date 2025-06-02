@@ -339,7 +339,7 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 # This is basically a confusion matrix at the stockarea-year level.
  aggregate_predictions<-test_data %>%
    group_by(stockarea, year,market_desc) %>%
-  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
    ungroup()
 aggregate_predictions$modeltype<-modeltype
  
@@ -372,7 +372,7 @@ for (l in c("Jumbo", "Large", "Medium", "Small")) {
 
  aggregate_full_predictions<-full_predictions %>%
    group_by(stockarea, year,market_desc) %>%
-  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
    ungroup()
 aggregate_full_predictions$modeltype<-modeltype
  
@@ -421,7 +421,7 @@ for (l in c("Jumbo", "Large", "Medium", "Small")) {
 
  aggregate_oos_predictions<-oos_data %>%
    group_by(stockarea, year,market_desc) %>%
-  summarise(across(c(starts_with("pred"),"lndlb"), \(x) mean(x, na.rm = TRUE))) %>%
+  summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
    ungroup()
 aggregate_oos_predictions$modeltype<-modeltype
  
