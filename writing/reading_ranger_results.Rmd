@@ -140,9 +140,7 @@ Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  
 # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",paste0(data_pattern,data_vintage_string,".Rds")))
 tune_res<-readr::read_rds(file=here("results","ranger",paste0(tuning_pattern,tuning_vintage,".Rds")))
-
 oos_data<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",raw_oos_data_vintage_string,".Rds")))
-
 
 ```
 
@@ -337,13 +335,52 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 
 
 # This is basically a confusion matrix at the stockarea-year level.
- aggregate_predictions<-test_data %>%
+ test_predictions<-test_data %>%
    group_by(stockarea, year,market_desc) %>%
   summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
    ungroup()
-aggregate_predictions$modeltype<-modeltype
+test_predictions$modeltype<-modeltype
  
-write_rds(aggregate_predictions, file=here("results","ranger",paste0("aggregate_test_predictions_",modeltype,finalfit_vintage,".Rds")))
+write_rds(test_predictions, file=here("results","ranger",paste0("aggregate_test_predictions_",modeltype,finalfit_vintage,".Rds")))
+```
+
+```{r table_of_Test_predictions}
+
+# Aggregate to the stockarea- market category
+
+ aggregate_test_predictions<-test_predictions %>%
+  group_by(stockarea,market_desc) %>%
+    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum))
+
+# true landings by stockarea and market_category
+trueTest<-test_predictions %>%
+  mutate(market_desc=as.character(market_desc))%>%
+    group_by(stockarea,market_desc) %>%
+    summarise(lndlb=sum(lndlb))
+
+
+# aggregate predictions, in pounds, by stockarea and market_category
+Tp1<-test_predictions %>%
+  group_by(stockarea) %>%
+    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum))
+
+Tp2<-Tp1 %>%
+  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+Testmkt_preds<-Tp2 %>%
+  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted)%>%
+  mutate(error=floor(100*(predicted_mt-true_mt)/true_mt))
+
+Testmkt_preds$error=paste0(Testmkt_preds$error,"%")
+
+ knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))
 
 
 ```
@@ -352,24 +389,24 @@ write_rds(aggregate_predictions, file=here("results","ranger",paste0("aggregate_
 full_data<-data_split$data
 full_predictions<-predict(final_workflow, full_data, type="prob")
 
-write_rds(full_predictions, file=here("results","ranger",paste0("full_predictions_",modeltype,finalfit_vintage,".Rds")))
+class_predictions<-predict(final_workflow, full_data)
 
-
+full_predictions<-cbind(full_predictions, class_predictions)
 
 full_predictions<-cbind(full_predictions, full_data)
-
+write_rds(full_predictions, file=here("results","ranger",paste0("full_predictions_",modeltype,finalfit_vintage,".Rds")))
 
 #predicted pounds per transaction in the validation dataset.
 
 for (l in c("Jumbo", "Large", "Medium", "Small")) {
   tryCatch({
-    full_predictions[[paste0("pred_", l)]] <- test_data[[paste0(".pred_", l)]] * full_predictions$lndlb
+    full_predictions[[paste0("pred_", l)]] <- full_predictions[[paste0(".pred_", l)]] * full_predictions$lndlb
   }, error = function(e) {
     # R will just silently continue to the next iteration
   })
 }
 
-
+# Aggregate to the stockarea-year-market category
  aggregate_full_predictions<-full_predictions %>%
    group_by(stockarea, year,market_desc) %>%
   summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
@@ -378,58 +415,52 @@ aggregate_full_predictions$modeltype<-modeltype
  
 write_rds(aggregate_full_predictions, file=here("results","ranger",paste0("aggregate_full_predictions_",modeltype,finalfit_vintage,".Rds")))
 
-
 ```
 
 
-```{r out_of_sample_predictions}
-# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
-oos_data<-oos_data %>%
-     mutate(weighting = frequency_weights(weighting),
-            market_desc=fct_drop(market_desc))
+```{r table_of_Full_predictions}
 
-keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
-keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
-keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
-keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
-keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
-keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
-keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
-keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+# Aggregate to the stockarea- market category
 
+ full_predictions<-aggregate_full_predictions %>%
+  group_by(stockarea,market_desc) %>%
+    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum))
 
-oos_data<- oos_data %>%
-  select(all_of(keep_cols))
-  
-  
-oos_predictions<-predict(final_workflow, oos_data, type="prob")
-write_rds(oos_predictions, file=here("results","ranger",paste0("out_of_sample_predictions_",modeltype,finalfit_vintage,".Rds")))
-
-oos_data<-cbind(oos_predictions, oos_data)
+# true landings by stockarea and market_category
+true<-aggregate_full_predictions %>%
+  mutate(market_desc=as.character(market_desc))%>%
+    group_by(stockarea,market_desc) %>%
+    summarise(lndlb=sum(lndlb))
 
 
-#predicted pounds per transaction in the validation dataset.
+# aggregate predictions, in pounds, by stockarea and market_category
+p1<-full_predictions %>%
+  group_by(stockarea) %>%
+    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum))
 
-for (l in c("Jumbo", "Large", "Medium", "Small")) {
-  tryCatch({
-    oos_data[[paste0("pred_", l)]] <- oos_data[[paste0(".pred_", l)]] * oos_data$lndlb
-  }, error = function(e) {
-    # R will just silently continue to the next iteration
-  })
-}
+p2<-p1 %>%
+  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
 
- aggregate_oos_predictions<-oos_data %>%
-   group_by(stockarea, year,market_desc) %>%
-  summarise(across(c(starts_with("pred"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
-   ungroup()
-aggregate_oos_predictions$modeltype<-modeltype
- 
-write_rds(aggregate_oos_predictions, file=here("results","ranger",paste0("aggregate_oos_predictions_",modeltype,finalfit_vintage,".Rds")))
+mkt_preds<-p2 %>%
+  left_join(true, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+mkt_preds<-mkt_preds %>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted)%>%
+  mutate(error=floor(100*(predicted_mt-true_mt)/true_mt))
+
+mkt_preds$error=paste0(mkt_preds$error,"%")
+
+ knitr::kable(mkt_preds, caption='Predictions on the Full Dataset (mt)',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))
+
+
+
 
 
 ```
-
 
 
 
