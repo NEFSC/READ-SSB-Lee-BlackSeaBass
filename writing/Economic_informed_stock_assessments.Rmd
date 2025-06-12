@@ -92,6 +92,21 @@ stat_areas<-stat_areas %>%
    dplyr::filter(Id<=711) %>% # SERO
   dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
 
+
+options(scipen=0)
+
+lbs_per_mt<-2204.62
+
+imagefolder<-here("images")
+
+pred_vintage<-"2025-05-24"
+
+nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_nocluster",pred_vintage, ".Rds")))
+nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster",pred_vintage, ".Rds")))
+aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster",pred_vintage, ".Rds")))
+
+
+
 ```
 
 # Introduction
@@ -106,7 +121,7 @@ fishing vessels catch fish and sell their landed fish to fish dealers, who sort
 the catch into market categories.   The National Marine Fisheries Service
 deploys biological samplers to measure the length of commercially landed fish. 
 Otoliths are collected from a subset of measured fish; this information is used
-to convert the landed weight of all market categories into a vector of numbers-at-age
+to convert the landed weight of all market categories into numbers-at-age
 of commercial landings. 
 
 The stock assessment enterprise in the Northeast U.S. has a series of business 
@@ -116,24 +131,26 @@ typically involves borrowing from neighboring strata.
 
 In this article, we propose an alternative approach that involves using the 
 information contained in fish prices to fill in information about the size of
-these unmeasured fish. The Black Sea Bass fishery in the Northeast United States
+these unmeasured fish. The Black Sea Bass (*Centropristis striata*) fishery in the Northeast United States
 is to illustrate our approach to using economic data to inform stock assessments.
-There are 5 common market categories: Jumbo, Large, Medium, Small, and 
-Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the 
-“Unclassified” market category; however no fish in this category were measured. 
+The Mid-Atlantic black sea bass is assessed using a spatially explicit model;
+there is a Northern and Southern stock.  The time step is divided into half years. 
+Ideally input data, like the numbers-at-age of commercial landings, is also constructed
+using North-South data in half years. 
 
-General approach. Verify this will work by estimating a not-too-complicated hedonic
-model.  Look at the coefficients on sizes. Train a random forest model to classify
-using data containing four classes. Predict out of sample on data that is Unclassified.
+Dealers sort landings into 4 primary market categories: Jumbo, Large, Medium, and Small. 
+There is also an Unclassified or Mixed category.  From 2020 to 2023, 5 to 10% of
+commercial landings were in the “Unclassified” market category; however no fish 
+in this category were measured. The stock assesment used some data to convert 
+the weights of these fish into an age structure.
+
+The general approach is as follows (terrible writing).  As part of our exploratory data analysis, we estimate a simple hedonic model, and verify that prices vary by market category. We  train a random forest model to classify fish into one of the four primary market categories.
+Finally, we conduct out-of-sample prediction on fish that are reported as Unclassified.
 
 Our ultimate goal is to improve the stock assessment enterprise through a better
 estimate of the true size of the un-measured "Unclassified" fish. This requires 
-predictions of the Unclassified fish to be aggregated to the year-stock unit level. The accuracy of
-an individual prediction is of limited interest. Therefore, we adapt the model training step and use training measures that are closely 
-tied to this.  We predict the probabilities of class membership, that is "Small", 
-"Medium", "Large", or "Jumbo", for the un-measures "Unclassified" 
-fish.  We then use the length- and age-data for those market categories to make 
-a prediction about the Unclassified fish. 
+predictions of the Unclassified fish to be aggregated to the year-stock unit level andt the accuracy of
+an individual prediction is of no interest. 
 
 This method is good because it can be applied to existing streams of historical data.
 It can also be used to allocated sampling coverage.
@@ -144,22 +161,30 @@ It can also be used to allocated sampling coverage.
 ```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=FALSE}
 ```
 
-## Catching, Selling, and Classifying Fish
+## Catching, Classifying, and Selling  Fish
 
 Black sea bass are caught by fishing vessels that typically use bottom trawl and
 pot/trap gear; gillnets and lines are less commonly used. Firms can target both
 sizes of fish and their catch of other species, but cannot perfectly control 
 what they catch and land.  For example, the seasonal inshore movement during 
-the spring and offshore movement affects things.  When fish offshore, they are
+the spring and offshore movement affects things.  When fish are offshore, they are
 less available to smaller vessels or those that are registered in states that 
 manage with stringent possession limits.  Strong year classes can make a size 
 class more available during certain years.   
 
-After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.]  Fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).  Fish dealers may act as middlemen, simply selling fish to processors, restaurants, or final consumers.  They may do some processing themselves and sell filleted fish to entities farther along the value chain.
+
+```{r length-histograms,echo=FALSE,out.width="44%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories."}
+knitr::include_graphics(c(here("images","background","length_frequencies_by_market_categories.png"),here("images","exploratory","wprice_histograms_vertical.png")))
+```
+
+
+After landing, fish are delivered to buyers (fish dealer), where they classified into market categories by the *dealer*.  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[There is a "Mixed or Unsized" market category (combined with the "Unclassified" market category). The Extra Small and PeeWee are combined with the Small category.].  Figure \@ref(fig:length-histograms) illustrates that fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. The definitions of the size classes may vary over time (year-to-year, month-to-month) or space (state-to-state or stock area to stock area).  Fish dealers may act as middlemen, simply selling fish to processors, restaurants, or final consumers.  They may do some processing themselves and sell filleted fish to entities farther along the value chain.
 
 Prices of fish depend on the size of fish; the fact consumers typically prefer larger fish both motivates and necessitates the collection of size information by disaggregated by market category.  Prices are also influenced by other attributes, including freshness, fat content, water content,buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.] 
 
-Using prices to predict market category would only be possible if prices did vary by market category. A simple hedonic model confirms that they do.  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50 (Table \ref{HedonicTableA}).  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
+
+Using prices to predict market category would only be possible if prices did vary by market category. Figure  \@ref(fig:length-histograms) suggests that prices vary by market category.  A simple hedonic model confirms that these prices do indeed vary by market category (Table \ref{HedonicTableA}) .  The price of Jumbo Black Sea Bass is approximately \$6 per pound, while the price of small Black Sea Bass is closer to \$3.50.  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories. ^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.] 
+
 
 \input{../results/hedonic_tableA.tex}
 
@@ -185,6 +210,10 @@ possession limits while Massachusetts and Rhode Island use seasonally varying
 limits that have been as strict as 50 lbs/day or as loose as 1,500 lbs per week.
 Nearly all states require a vessel operator to have a limited access permit to 
 land black sea bass in that state.
+
+
+
+
 
 ## Black Sea Bass and the Stock Assessment Enterprise 
 Analysts request coverage levels of different market categories. 
@@ -237,38 +266,10 @@ Machine learning in fisheries has become increasingly popular [@Malde2020]; the 
 
 ## Our approach
 
-We use data from 2015 to 2024 to train our data. We set aside 20% of our
-data as a hold out sample to validate model fit.  Dealers are the entities that
-classify the fish and dealers are likely to have an unobserved propensity to 
-grade fish into particular classes. This unobserved heterogeneity poses two challenges.  
+We use CAMS data from 2015 to 2024 to train our data. We set aside 10% of our
+data as a hold out sample to validate model fit.  
 
-First, including a full set of binary indicator variables to account dealer-specific 
-effects ("one-hot" encoding) can lead to both overfitting
-[@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. 
-Instead we use a variation of target encoding.  Application of a standard
-target-encoding system would involve computing dealer-specific class probabilities
-over the 2015-2025 and including those probabilities as factors. This feels 
-somewhat troubling to an economist concerned about simultaneity, a concern which
-may be misplaced. Nevertheless, we compute dealer-specific class probabilities
-over the **2010-2014** time period and enter these as predictors instead. Dealers 
-that did not buy or sell black sea bass during this time have missing values.
-
-Second, @Roberts2017 note that standard cross-validation techniques can be overly optimistic
-when observations are dependent but are implicitly treated as independent during a random cross-validation.   This occurs because 
-the hold out data used for cross-validation is not actually independent. @Roberts2017 suggest
-that the practical implications of this depend on the purposes of the model; if prediction on 
-"similar" data is the goal, then a standard cross-validation may be appropriate.
-We try two methods of cross validation in our training.  The first is the standard random cross-validation; observations are assigned randomly into folds.  In the second method, we group by "dealer identifier" so that all of a dealer's observations are contained
-in either the training dataset or the validation dataset.  This ensures that the
-validation fold does not inadvertently contain "training data", which would lead
-to overly optimistic model fit.  Keeping the entirety of dealer's
-observations in either the training or validation datasets reduces the likelihood
-of information leakage^[Information leakage occurs when the ml model essentially 
-memorizes the input data, leading to validation metrics that are overly-optimistic.  
-This can cause poor out of sample predictions.]
-
-
-We divide the remaining 80\% of the data into 10 approximately equal folds, again
+We divide the remaining 90\% of the data into 10 approximately equal folds, again
 keeping all observations from a dealer in exactly one fold.  We use the 10-fold
 cross validation to select the optimal *mtry* parameter for the random forest. 
 We use the Briar classification score to tune the mtry hyperparameter [@Kruppa2014].  After tuning, we train 
@@ -293,10 +294,10 @@ need to blend in the data to make this a little easier to follow.
 
 ## Data
 
-Matched dealer and vessel trip report data from 1996-2024 is available.  Vessel trip report data are trip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer. Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.
+Matched dealer and vessel trip report data from 2014-2024 is available.  Vessel trip report data are trip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer. Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.
 
   - VTRs are sub-trip.
-  _ We cannot match the dealer landings to a subtrip, so if a vessel fished in multiple statistical areas or used multiple gears, it's we have some measurement error here.
+  - We cannot match the dealer landings to a subtrip, so if a vessel fished in multiple statistical areas or used multiple gears, it's we have some measurement error here.
 
 There are two empirical challenges.  First, what to do with these "multi-subtrip" transactions that do not match? Second, what to do with aggregates? 
 
@@ -355,7 +356,34 @@ ShareJumbo, ShareLarge, ShareMedium,ShareSmall, ShareUnclassified
 Dealer total transactions by market category from 2010-2014   
 TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified
 
+Dealers are the entities that
+classify the fish and dealers are likely to have an unobserved propensity to 
+grade fish into particular classes. This unobserved heterogeneity poses two challenges.  
 
+First, including a full set of binary indicator variables to account dealer-specific 
+effects ("one-hot" encoding) can lead to both overfitting
+[@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. 
+Instead we use a variation of target encoding.  Application of a standard
+target-encoding system would involve computing dealer-specific class probabilities
+over the 2015-2025 and including those probabilities as factors. This feels 
+somewhat troubling to an economist concerned about simultaneity, a concern which
+may be misplaced. Nevertheless, we compute dealer-specific class probabilities
+over the **2010-2014** time period and enter these as predictors instead. Dealers 
+that did not buy or sell black sea bass during this time have missing values.
+
+Second, @Roberts2017 note that standard cross-validation techniques can be overly optimistic
+when observations are dependent but are implicitly treated as independent during a random cross-validation.   This occurs because 
+the hold out data used for cross-validation is not actually independent. @Roberts2017 suggest
+that the practical implications of this depend on the purposes of the model; if prediction on 
+"similar" data is the goal, then a standard cross-validation may be appropriate.
+We try two methods of cross validation in our training.  The first is the standard random cross-validation; observations are assigned randomly into folds.  In the second method, we group by "dealer identifier" so that all of a dealer's observations are contained
+in either the training dataset or the validation dataset.  This ensures that the
+validation fold does not inadvertently contain "training data", which would lead
+to overly optimistic model fit.  Keeping the entirety of dealer's
+observations in either the training or validation datasets reduces the likelihood
+of information leakage^[Information leakage occurs when the ml model essentially 
+memorizes the input data, leading to validation metrics that are overly-optimistic.  
+This can cause poor out of sample predictions.]
 
 
 ## Random Forest 
@@ -378,6 +406,12 @@ source(here("writing","BSB.Classification.Recipe.R"))
 
 
 # Machine Learning Results
+
+The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip))
+
+```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
+knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster", pred_vintage, ".png")))
+```
 
 ## Goodness of Fit
 
