@@ -1,0 +1,86 @@
+library("glue")
+library("tidyverse")
+library("forcats")
+library("here")
+
+here::i_am("R_code/analysis/market_category_price_plots.R")
+
+vintage_string<-"2025-06-18"
+
+landings<-readRDS(file=here("data_folder","main",glue("landings_{vintage_string}.Rds")))
+
+#There is no point in looking at scallop, surfclam, or ocean quahog.
+
+landings<-landings %>%
+  mutate(price=value/lndlb) %>%
+    filter(!itis_tsn %in% c("079718", "080944","081343")) %>%
+  mutate(species_factor=factor(itis_sci_name))
+
+
+# Loop over the levels of species factor
+
+unique_itis <- unique(landings$itis_tsn)
+unique_itis <- unique_itis[!is.na(unique_itis)]
+
+
+for (tsn in unique_itis) {
+
+working_dataset<-landings %>%
+  filter(itis_tsn==tsn) %>%
+  mutate(market_desc_factor=factor(market_desc))
+
+
+price_95th_percentile <- working_dataset %>%
+     summarise(price_95th = quantile(price, 0.95, na.rm = TRUE)) %>%
+     pull(price_95th)
+
+
+working_dataset<-working_dataset %>%
+  filter(price<=price_95th_percentile) %>%
+  filter(price>0)
+  
+
+
+
+market_mean_prices <- working_dataset %>%
+  group_by(market_desc_factor) %>%
+  summarise(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE), .groups = 'drop') %>%
+  arrange(desc(weighted_mean_price))
+
+
+working_dataset <- working_dataset %>%
+  # First calculate the mean price for each market factor
+  group_by(market_desc_factor) %>%
+  mutate(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # Reorder the factor levels based on descending mean price
+  mutate(market_desc_factor_ordered = fct_reorder(market_desc_factor, 
+                                                  weighted_mean_price, 
+                                                  .desc = TRUE)) %>%
+  # Remove the temporary weighted_mean_price column
+  select(-weighted_mean_price)
+
+species_name <- working_dataset %>%
+  slice(1) %>%
+  pull(itis_sci_name)
+
+
+if (nrow(working_dataset)>=1) {
+  
+wp<-ggplot(working_dataset, aes(x = price)) + 
+  geom_histogram(aes(weight = lndlb), boundary = 0) + 
+   labs(, x = glue("Nominal Price of {species_name}"), y = "Pounds") +
+  #    theme_minimal() + 
+  facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
+
+ggsave(here("images","descriptive",glue("price_hist_{species_name}.png")), 
+       plot = wp,
+       width = 12, 
+       height = 8, 
+       dpi = 300,
+       units = "in")
+  }
+
+}
+
+
