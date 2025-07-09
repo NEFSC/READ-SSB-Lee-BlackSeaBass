@@ -362,7 +362,7 @@ Dealer total transactions by market category from 2010-2014
 TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified
 --->
 
-Machine learning algorithms can often benefit from preprocessing of data. We have centered and scaled the continuous predictors so they have mean zero and a standard deviation of unity. More modeling choices are necessary. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the decrease in impurity.   We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.
+Machine learning algorithms can often benefit from preprocessing of data. We have centered and scaled the continuous predictors so they have mean zero and a standard deviation of unity. More modeling choices are necessary. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the decrease in impurity.   We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  We grow 500 trees for each value of *mtry* when tuning the model; we do the same for training the final model. We stop splitting when there are five or fewer observations in a node.
 
 ```{r BSB_data, eval=F, echo=F}
 source(here("writing","BSB.Classification.Recipe.R"))
