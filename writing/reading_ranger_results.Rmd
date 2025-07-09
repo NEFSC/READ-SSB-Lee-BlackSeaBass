@@ -155,6 +155,8 @@ all.metrics<-tune_res %>%
 best_tree <- tune_res %>%
   select_best(metric = "brier_class")
 
+opt_mtry<-best_tree$mtry
+
 brier<-all.metrics %>%
   filter(.metric == "brier_class") %>%
   select(mean, mtry) %>%
@@ -223,7 +225,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
 predictions %>%
-  dplyr::filter(mtry==11) %>%
+  dplyr::filter(mtry==opt_mtry) %>%
   group_by(id, mtry) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc, any_of(prob_names)) %>%
@@ -233,7 +235,7 @@ predictions %>%
 
 test2<-predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==11) %>%
+  dplyr::filter(mtry==opt_mtry) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(market_desc,any_of(prob_names))
 
@@ -297,7 +299,7 @@ final_fit %>%
   vip(num_features = num_preds)
 ggsave(here("results","ranger","final",paste0("vip",modeltype,finalfit_vintage,".png")), plot=last_plot())
 
-# Reciever operator curve (True positive vs False Positive) for the final model applied to the hold-out sample
+# Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
 final_predictions %>%
   roc_curve(market_desc, any_of(prob_names))  %>%
   autoplot()
