@@ -19,4 +19,5 @@ library.bib
 *.png
 *.tex
 */Thumbs.db
-images/*/Thumbs.db
+*/*/Thumbs.db
+*/*/*/Thumbs.db
