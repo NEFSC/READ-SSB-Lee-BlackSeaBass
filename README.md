@@ -1,11 +1,8 @@
 # Black Sea Bass
 
-This repository holds code for Min-Yang's black sea bass projects.  
+This repository holds code for "Economic-informed stock assessments".  
 
-1. "Data pull and exploration": This is a data pull and prep portion. It includes a datapull from CAMS and other sources, data exploration, and 
-moderate amounts of data processing that is (hopefully) general to all projects. 
-
-2. "Economic-informed stock assessments": Because the 
+Because the 
 size of an individual fish determines the price of fish, we can invert this 
 relationship to help fill in gaps when we do not sample the lengths of those fish.
 There are 5 prevailing BSB market categories: Jumbo, Large, Medium, Small, and
@@ -14,7 +11,14 @@ Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the
 train a Random Forest model to transactions data from 2015-2024 and use the results
 to predict the class of the Unclassified market category.
 
-3. "Catch shares, Environmental variation, and Port choice": There are different
+
+
+Related projects include 
+"Data pull and exploration": This is a data pull and prep portion. It includes a datapull from CAMS and other sources, data exploration, and 
+moderate amounts of data processing that is (hopefully) general to all projects.
+
+
+"Catch shares, Environmental variation, and Port choice": There are different
 regulations in each state.  Three states have a catch share program. The others 
 do not; these states have a wide range of possession limits. Gear restrictions, 
 mostly mesh size (trawl) or vent size (pot), are similar, but also vary by state.
@@ -22,11 +26,45 @@ How does the intersection of these regulations and changes in biomass due to
 environmental variation affect where people fish, how productive they are, and 
 where they land their catch?  This may be 2 or 3 projects.
 
- 
-#  Folder structure
+ #  Folder structure
 
 Folder structure is mostly borrowed from the world bank's EDB. https://dimewiki.worldbank.org/wiki/Stata_Coding_Practices
 Try to use forward slashes (that is C:/path/to/your/folder) instead of backslashes for unix/mac compatability. 
+
+Your life will be easier if you organize things into a BSB_mega_folder because there are a few linked projects.
+
+```
+BSB_mega_folder/
+├── READ-SSB-Lee-BSB-DataPull/  #Data pull, explore, background. 
+│   ├── data_folder/              # Shared data
+│ 	  ├── data_raw/	   
+│ 	  ├── data_external/
+│ 	  └── data_main/
+│   ├── R_code/
+│   ├── stata_code/
+│   ├── more stuff/
+├── READ-SSB-Lee-BlackSeaBass/  #Prices in stock assessment Repository
+│   ├── READ-SSB-Lee-BlackSeaBass.Rproj
+│   ├── data_folder
+│   	├── data_raw/              # Raw data (minimal)
+│ 	  ├── data_main/             # Final Data specific to this project
+│   ├── results/
+│   ├── R_code/
+│   ├── stata_code/
+│   └── README.md
+├── PortChoice/                  #Port Choice  Repository
+│   ├── PortChoice.Rproj  
+│   ├── data_folder
+│   	├── data_raw/              # Raw data (minimal)
+│ 	  ├── data_main/             # Final Data specific to this project
+│   ├── results/
+│   ├── R_code/
+│   ├── stata_code/
+│   └── README.md
+```
+
+
+
 
 I keep each project in a separate folder.  A stata do file containing folder names get stored as a macro in stata's startup profile.do.  This lets me start working on any of my projects by opening stata and typing: 
 ```
