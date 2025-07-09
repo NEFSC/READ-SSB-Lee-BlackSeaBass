@@ -4,6 +4,8 @@ library("forcats")
 library("here")
 
 here::i_am("R_code/analysis/market_category_price_plots.R")
+year_start<-2020
+year_end<-2024
 
 vintage_string<-"2025-06-18"
 
@@ -69,7 +71,7 @@ if (nrow(working_dataset)>=1) {
   
 wp<-ggplot(working_dataset, aes(x = price)) + 
   geom_histogram(aes(weight = lndlb), boundary = 0) + 
-   labs(, x = glue("Nominal Price of {species_name}"), y = "Pounds") +
+   labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end} combined"), y = "Pounds") +
   #    theme_minimal() + 
   facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
 
@@ -82,5 +84,85 @@ ggsave(here("images","descriptive",glue("price_hist_{species_name}.png")),
   }
 
 }
+
+########################Prices by aggregate market category, eventually this completely replaces the previous code. All I've done 
+# is merge in the category aggregations and change the definition of market_desc_factor to be based on category combined 
+
+
+# read in market_cat keyfile aggregations and ensure it is unique
+market_cat_aggregations<-readRDS(market_cat_aggregations, file=here("data_folder","main",glue("market_cat_aggregations_{vintage_string}.Rds")))
+
+market_cat_aggregations<-market_cat_aggregations %>%
+  select(itis_tsn,dlr_mkt,category_combined)%>%
+  group_by(itis_tsn,dlr_mkt,category_combined) %>%
+  slice(1) %>%
+  ungroup()
+
+# Repeat after aggregating
+
+landings<-landings %>%
+  left_join(market_cat_aggregations, by=join_by(itis_tsn==itis_tsn, dlr_mkt==dlr_mkt))
+
+
+for (tsn in unique_itis) {
+  
+  working_dataset<-landings %>%
+    filter(itis_tsn==tsn) %>%
+    mutate(market_desc_factor=factor(category_combined))
+  
+  
+  price_95th_percentile <- working_dataset %>%
+    summarise(price_95th = quantile(price, 0.95, na.rm = TRUE)) %>%
+    pull(price_95th)
+  
+  
+  working_dataset<-working_dataset %>%
+    filter(price<=price_95th_percentile) %>%
+    filter(price>0)
+  
+  
+  
+  
+  market_mean_prices <- working_dataset %>%
+    group_by(market_desc_factor) %>%
+    summarise(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE), .groups = 'drop') %>%
+    arrange(desc(weighted_mean_price))
+  
+  
+  working_dataset <- working_dataset %>%
+    # First calculate the mean price for each market factor
+    group_by(market_desc_factor) %>%
+    mutate(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE)) %>%
+    ungroup() %>%
+    # Reorder the factor levels based on descending mean price
+    mutate(market_desc_factor_ordered = fct_reorder(market_desc_factor, 
+                                                    weighted_mean_price, 
+                                                    .desc = TRUE)) %>%
+    # Remove the temporary weighted_mean_price column
+    select(-weighted_mean_price)
+  
+  species_name <- working_dataset %>%
+    slice(1) %>%
+    pull(itis_sci_name)
+  
+  
+  if (nrow(working_dataset)>=1) {
+    
+    wp<-ggplot(working_dataset, aes(x = price)) + 
+      geom_histogram(aes(weight = lndlb), boundary = 0, binwidth=0.10) + 
+      labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end} combined"), y = "Pounds") +
+      #    theme_minimal() + 
+      facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
+    
+    ggsave(here("images","descriptive",glue("price_hist_AGG_{species_name}.png")), 
+           plot = wp,
+           width = 12, 
+           height = 8, 
+           dpi = 300,
+           units = "in")
+  }
+  
+}
+
 
 
