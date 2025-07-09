@@ -13,6 +13,8 @@ here::i_am("R_code/analysis/market_category_aggregations.R")
 vintage_string<-"2025-06-18"
 
 #There is no point in looking at scallop, surfclam, or ocean quahog.
+landings<-readRDS(file=here("data_folder","main",glue("landings_{vintage_string}.Rds")))
+
 
 market_cat_aggregations<-landings %>%
     filter(!itis_tsn %in% c("079718", "080944","081343")) %>%
