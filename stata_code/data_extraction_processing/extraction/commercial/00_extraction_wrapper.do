@@ -3,6 +3,7 @@ do "$extraction_code/commercial/commercial_BSB.do"
 do "$extraction_code/commercial/cams_gears.do"
 do "$extraction_code/commercial/bsb_weekly.do"
 do "$extraction_code/commercial/dealers.do"
+do "$extraction_code/commercial/sfbsb_daily.do"
 
 
 do "$extraction_code/commercial/bsb_price_categories.do"
