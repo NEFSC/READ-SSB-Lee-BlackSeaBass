@@ -9,8 +9,8 @@ library("ROracle")
 
 here::i_am("R_code/analysis/market_category_aggregations.R")
 
+#vintage_string<-format(Sys.Date())
 vintage_string<-"2025-06-18"
-vintage_string<-format(Sys.Date())
 
 #There is no point in looking at scallop, surfclam, or ocean quahog.
 
