@@ -18,3 +18,5 @@ library.bib
 *.dta
 *.png
 *.tex
+*/Thumbs.db
+images/*/Thumbs.db
