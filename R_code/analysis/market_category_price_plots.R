@@ -8,6 +8,7 @@ year_start<-2020
 year_end<-2024
 
 vintage_string<-"2025-06-18"
+options(scipen=999)
 
 landings<-readRDS(file=here("data_folder","main",glue("landings_{vintage_string}.Rds")))
 
@@ -41,14 +42,6 @@ working_dataset<-working_dataset %>%
   filter(price<=price_95th_percentile) %>%
   filter(price>0)
   
-
-
-
-market_mean_prices <- working_dataset %>%
-  group_by(market_desc_factor) %>%
-  summarise(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE), .groups = 'drop') %>%
-  arrange(desc(weighted_mean_price))
-
 
 working_dataset <- working_dataset %>%
   # First calculate the mean price for each market factor
@@ -90,7 +83,7 @@ ggsave(here("images","descriptive",glue("price_hist_{species_name}.png")),
 
 
 # read in market_cat keyfile aggregations and ensure it is unique
-market_cat_aggregations<-readRDS(market_cat_aggregations, file=here("data_folder","main",glue("market_cat_aggregations_{vintage_string}.Rds")))
+market_cat_aggregations<-readRDS(file=here("data_folder","main",glue("market_cat_aggregations_{vintage_string}.Rds")))
 
 market_cat_aggregations<-market_cat_aggregations %>%
   select(itis_tsn,dlr_mkt,category_combined)%>%
@@ -121,14 +114,6 @@ for (tsn in unique_itis) {
     filter(price>0)
   
   
-  
-  
-  market_mean_prices <- working_dataset %>%
-    group_by(market_desc_factor) %>%
-    summarise(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE), .groups = 'drop') %>%
-    arrange(desc(weighted_mean_price))
-  
-  
   working_dataset <- working_dataset %>%
     # First calculate the mean price for each market factor
     group_by(market_desc_factor) %>%
@@ -146,11 +131,14 @@ for (tsn in unique_itis) {
     pull(itis_sci_name)
   
   
+  working_dataset <- working_dataset %>%
+    mutate(lndlb=lndlb/1000)
+  
   if (nrow(working_dataset)>=1) {
     
     wp<-ggplot(working_dataset, aes(x = price)) + 
       geom_histogram(aes(weight = lndlb), boundary = 0, binwidth=0.10) + 
-      labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end} combined"), y = "Pounds") +
+      labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end} combined"), y = "Pounds (000s)") +
       #    theme_minimal() + 
       facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
     
