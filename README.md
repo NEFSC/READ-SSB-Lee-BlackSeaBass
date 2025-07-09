@@ -1,17 +1,20 @@
 # Black Sea Bass
 
-This repository holds code for Min-Yang's black sea bass projects. Hopefully there is more than one.  
+This repository holds code for Min-Yang's black sea bass projects.  
 
-1. "Economic-informed stock assessments": Because the 
-size of and individual fish determines the price of fish, we can invert this 
+1. "Data pull and exploration": This is a data pull and prep portion. It includes a datapull from CAMS and other sources, data exploration, and 
+moderate amounts of data processing that is (hopefully) general to all projects. 
+
+2. "Economic-informed stock assessments": Because the 
+size of an individual fish determines the price of fish, we can invert this 
 relationship to help fill in gaps when we do not sample the lengths of those fish.
-There are 5 prevailing market categories: Jumbo, Large, Medium, Small, and
+There are 5 prevailing BSB market categories: Jumbo, Large, Medium, Small, and
 Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the 
 “Unclassified” market category; but no fish in this category were measured. We 
 train a Random Forest model to transactions data from 2015-2024 and use the results
 to predict the class of the Unclassified market category.
 
-2. "Catch shares, Environmental variation, and Port choice": There are different
+3. "Catch shares, Environmental variation, and Port choice": There are different
 regulations in each state.  Three states have a catch share program. The others 
 do not; these states have a wide range of possession limits. Gear restrictions, 
 mostly mesh size (trawl) or vent size (pot), are similar, but also vary by state.
@@ -19,7 +22,7 @@ How does the intersection of these regulations and changes in biomass due to
 environmental variation affect where people fish, how productive they are, and 
 where they land their catch?  This may be 2 or 3 projects.
 
-
+ 
 #  Folder structure
 
 Folder structure is mostly borrowed from the world bank's EDB. https://dimewiki.worldbank.org/wiki/Stata_Coding_Practices
