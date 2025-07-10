@@ -1,0 +1,282 @@
+---
+title: "Black Sea Bass: Estimation Datset QA"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+---
+
+# Exploring Unclassifieds and CAMS status
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+
+# load tidyverse and related
+library("tidymodels")
+
+# load machine learning and estimation tools
+# ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
+# you might want to install Rcpp, then RcppEigen, then ranger
+
+library("nnet")
+library("ranger")
+
+library("partykit")
+library("bonsai")
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("conflicted")
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+here::i_am("writing/data_qa.Rmd")
+
+#traverse over to the DataPull repository
+mega_dir<-dirname(here::here())
+data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+estimation_vintage<-as.character(Sys.Date())
+
+
+
+
+
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.ranger.threads<-6
+} else if (runClass %in% c('Container')){ 
+  my.ranger.threads<-8
+}else if (runClass %in% c('DynamicContainer')){ 
+  my.ranger.threads<-50
+
+}
+
+
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+```
+
+```{r load_in_data and results, include=FALSE}
+# this was created with data_prep_ml.Rmd
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+
+unclassified_dataset<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
+
+combined_dataset<-rbind(estimation_dataset,unclassified_dataset)
+
+ # for reproducibility
+ set.seed(4587315)
+
+# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
+combined_dataset<-combined_dataset %>%
+     mutate(weighting = frequency_weights(weighting),
+            market_desc=fct_drop(market_desc))
+
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
+keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
+keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
+keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
+keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
+keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+
+keep_cols<-c(keep_cols,"status" )
+
+combined_dataset<- combined_dataset %>%
+  select(all_of(keep_cols))
+
+```
+
+The raw looks okay
+```{r investigate_cams_status}
+
+status_check<-combined_dataset %>%
+  group_by(status,year,market_desc) %>%
+  summarise(landed_mt=sum(lndlb)/lbs_per_mt)
+
+
+ggplot(status_check, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_wrap(~market_desc) 
+
+```
+
+But the percentage based graphs show that more of the "Unclassifieds" are PZERO. 
+
+```{r investigate_status2}
+ggplot(status_check, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="fill", stat="identity") +
+    facet_wrap(~market_desc) 
+
+```
+
+Some states are really good for matching. Some (MA) are not.
+```{r status-check2}
+status_check2<-combined_dataset %>%
+  group_by(status,year,state) %>%
+  summarise(landed_mt=sum(lndlb)/lbs_per_mt)
+
+ggplot(status_check2, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_wrap(~state) 
+```
+
+In percentage terms
+```{r stat2_in_pct}
+ggplot(status_check2, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="fill", stat="identity") +
+    facet_wrap(~state) 
+```
+
+```{r status-check3}
+status_check3<-combined_dataset %>%
+  group_by(status,year,state, market_desc) %>%
+  summarise(landed_mt=sum(lndlb)/lbs_per_mt)
+
+ggplot(status_check3, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_grid(rows=vars(state), cols=vars(market_desc)) 
+
+```
+
+After conditioning for state, the Unclassified seem to "match" at a similar rate to the other cats.
+
+```{r subset3}
+status_check3 %>%
+  dplyr::filter(state %in% c('MA','NY', 'RI') ) %>%
+  ggplot( aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_grid(rows=vars(state), cols=vars(market_desc)) 
+```
+
+
+The percentage bar graphs confirm. 
+
+```{r subset3_pct}
+status_check3 %>%
+  dplyr::filter(state %in% c('MA','NY', 'RI') ) %>%
+  ggplot( aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="fill", stat="identity") +
+    facet_grid(rows=vars(state), cols=vars(market_desc)) 
+```
+
+The proportion of PZEROs is consistent across the market categories. I'm setting aside 2024 as potentially "not complete."  It would be concerning if there were more Unclassifieds that did not match compared to the other market categories. But that doesn't seem to be happening.  However, lots of MA does not match.   The fraction of PZERO for NY and RI is less than the other cats. 
+
+I was concerned that the unclassifieds were more likely to be PZERO if they are coming from state vessels that do not sort catch. "Real" prices remain a concern.
+
+# Low Prices
+
+In my ML data prep, I've dropped observations where prices are <$0.15. This is reasonable, but they are disproportionately Unclassified. I suspect something different is going on with those observations, or we have a CAMS allocation issue intersecting with integer values. 
+
+```{r}
+
+  price_95th_percentile <- combined_dataset %>%
+    summarise(price_95th = quantile(price, 0.95, na.rm = TRUE)) %>%
+    pull(price_95th)
+  
+  
+  working_dataset<-combined_dataset %>%
+    filter(price<=price_95th_percentile) %>%
+    filter(price>0)
+
+working_dataset <- working_dataset %>%
+  # First calculate the mean price for each market factor
+  group_by(market_desc) %>%
+  mutate(weighted_mean_price = weighted.mean(price, w = lndlb, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # Reorder the factor levels based on descending mean price
+  mutate(market_desc_factor_ordered = fct_reorder(market_desc, 
+                                                  weighted_mean_price, 
+                                                  .desc = TRUE)) %>%
+  # Remove the temporary weighted_mean_price column
+  select(-weighted_mean_price)
+
+
+wp<-ggplot(working_dataset, aes(x = priceR_CPI)) + 
+      geom_histogram(aes(weight = lndlb), boundary = 0, binwidth=0.20) + 
+   labs(, x = glue("Real Price of Black Sea Bass, 2014-2020"), y = "Pounds") +
+  #    theme_minimal() + 
+  facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
+
+wp
+```
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
