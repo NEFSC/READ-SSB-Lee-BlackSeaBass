@@ -8,17 +8,17 @@ version 15.1
 /*One of these
 global user minyangWin; 
 */
+global my_megadir  "${mynetwork}/PricesInStockAssessment" ;
+global my_projdir  "${my_megadir}/READ-SSB-Lee-BlackSeaBass" ;
+global my_datapull  "${my_megadir}/READ-SSB-Lee-BSB-DataPull" ;
 
-global my_projdir  "${mynetwork}\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass" ;
 
-
-
-global my_codedir "${my_projdir}\stata_code";
-global extract_process "${my_codedir}\data_extraction_processing";
-global extraction_code "${extract_process}\extraction";
-global processing_code "${extract_process}\processing";
-global analysis_code "${my_codedir}\analysis";
-global R_code "${my_projdir}\R_code";
+global my_codedir "${my_projdir}/stata_code";
+global extract_process "${my_codedir}/data_extraction_processing";
+global extraction_code "${extract_process}/extraction";
+global processing_code "${extract_process}/processing";
+global analysis_code "${my_codedir}/analysis";
+global R_code "${my_projdir}/R_code";
 global my_adopath ${my_codedir}/ado;
 
 
