@@ -10,7 +10,7 @@ Everything else is data creation or labeling. I prefer to do any 'dropping' as c
 
 
 
-use "${data_raw}\commercial\landings_all_${in_string}.dta", replace
+use "${my_datapull}/data_folder/raw/commercial/landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
 format dlr_date %td
@@ -54,7 +54,7 @@ drop if lndlb==0
 
 
 /* merge gearcodes */
-merge m:1 negear using "${data_main}\commercial\cams_gears_${in_string}.dta", keep(1 3)
+merge m:1 negear using "${my_datapull}/data_folder/raw/commercial/cams_gears_${in_string}.dta", keep(1 3)
 
 assert _merge==3
 drop _merge
@@ -79,7 +79,8 @@ replace mygear="Seine" if negear>=120 & negear<=124
 replace mygear="Seine" if inlist(negear,70, 71,160,360) 
 replace mygear="PotTrap" if negear>=180 & negear<=212 
 replace mygear="PotTrap" if negear>=300 & negear<=301
-replace mygear="PotTrap" if inlist(negear,80, 140, 142, 240, 260, 270, 320, 322) /* includes weirs and pounds */ 
+replace mygear="PotTrap" if inlist(negear,80, 140, 142, 240, 260, 270, 320, 322)
+ /* includes weirs and pounds */ 
 
 
 
@@ -150,13 +151,12 @@ replace stockarea=2 if area<=613
 assert stockarea>=1
 label values stockarea stockunit
 
-
 /* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
 do these camsids really correspond to a single "trip" or are they just state aggregated data?
 */
 /* merge deflators _merge=1 has been the current month */ 
-merge m:1 dateq using "$data_external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2024 & month>=9 if _merge==1
+merge m:1 dateq using "${my_datapull}/data_folder/external/deflatorsQ_${in_string}.dta", keep(1 3)
+assert year==2025 & month>=5 if _merge==1
 drop if _merge==1
 drop _merge
 gen valueR_CPI=value/fCPIAUCSL_2023Q1
