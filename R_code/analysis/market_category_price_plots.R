@@ -4,13 +4,19 @@ library("forcats")
 library("here")
 
 here::i_am("R_code/analysis/market_category_price_plots.R")
+
+
+#traverse over to the DataPull repository
+mega_dir<-dirname(here::here())
+data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
+
 year_start<-2020
 year_end<-2024
 
-vintage_string<-"2025-06-18"
+vintage_string<-"2025-07-10"
 options(scipen=999)
 
-landings<-readRDS(file=here("data_folder","main",glue("landings_{vintage_string}.Rds")))
+landings<-readRDS(file=file.path(data_pull_dir,"data_folder","raw","commercial", glue("all_marketcategory_landings_{vintage_string}.Rds")))
 
 #There is no point in looking at scallop, surfclam, or ocean quahog.
 
@@ -83,7 +89,7 @@ ggsave(here("images","descriptive",glue("price_hist_{species_name}.png")),
 
 
 # read in market_cat keyfile aggregations and ensure it is unique
-market_cat_aggregations<-readRDS(file=here("data_folder","main",glue("market_cat_aggregations_{vintage_string}.Rds")))
+market_cat_aggregations<-readRDS(file=here("data_folder","main","commercial",glue("market_cat_aggregations_{vintage_string}.Rds")))
 
 market_cat_aggregations<-market_cat_aggregations %>%
   select(itis_tsn,dlr_mkt,category_combined)%>%
