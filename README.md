@@ -47,7 +47,7 @@ BSB_mega_folder/
 │   ├── READ-SSB-Lee-BlackSeaBass.Rproj
 │   ├── data_folder
 │   	├── data_raw/              # Raw data (minimal)
-│ 	  ├── data_main/             # Final Data specific to this project
+│ 	├── data_main/             # Final Data specific to this project
 │   ├── results/
 │   ├── R_code/
 │   ├── stata_code/
@@ -56,7 +56,7 @@ BSB_mega_folder/
 │   ├── PortChoice.Rproj  
 │   ├── data_folder
 │   	├── data_raw/              # Raw data (minimal)
-│ 	  ├── data_main/             # Final Data specific to this project
+│ 	├── data_main/             # Final Data specific to this project
 │   ├── results/
 │   ├── R_code/
 │   ├── stata_code/
