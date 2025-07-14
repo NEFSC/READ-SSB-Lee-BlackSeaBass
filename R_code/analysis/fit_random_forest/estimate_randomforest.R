@@ -72,7 +72,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-here::i_am("writing/estimate_randomforest.R")
+here::i_am("analysis/fit_random_forest/estimate_randomforest.R")
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -204,11 +204,10 @@ nrow(test_data)
 # 
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
-source(here("writing","BSB.Classification.Recipe.R"))
+source(here("analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
 
-
-source(here("writing","BSB.Workflow.Setup.R"))
+source(here("analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 set.seed(457)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
