@@ -1,7 +1,16 @@
-/* code to estimate more complex  classification models */
+**********************************************************************
+* Purpose: 	code to estimate more complex  classification models.
+* Inputs:
+*   - landings_cleaned_$date.dta (from wrappers)
+*
+* Outputs:
+*   -  hedonic models by ols and classification models by mlogit 
+
+**********************************************************************
+
+/*  */
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
-global in_string 2024_12_20
 use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 
 /**********************************************************************************************************************/
@@ -284,40 +293,3 @@ est store simple_weighted
 
 
 
-
-
-
-/*
-
-
-* K-fold cross validation: estimation
-	foreach gear in $gear {
-		splitsample if gear == "`gear'", ///
-			generate(fold) nsplit($folds) rseed(10101) cluster(case)
-		forvalues j = 1/$models {
-			forvalues i = 1/$folds {
-				cmclogit choice ${altvars`j'} ///
-						if fold != `i' & gearcat == "`gear'" ///
-						[fweight = days], casevars(${typevars`j'}) ///
-						base("NoFish") altwise vce(robust)
-				estimates save "$dir/data/estimates/Update/estimates-crossfold-`gear'-model_`j'", append
-			}
-		}
-		drop fold
-	}
-
-
-
-keep if keep==1 & year==2022 & price>.15
-
-/* if some of the RHS regressors are uncommon, I can easily see a model fold that does not converge because there are few */
-local folds 5
-local seed 2015
-
-splitsample, generate(fold) nsplit(`folds') rseed(`seed') 
-
-forvalues i=1/`folds'{
-	mlogit market_desc price ib(1).month ib(5).mygear i.stockarea i3.mystatus [fweight=weighting] if fold!=`i', baseoutcome(2) 
-	est store fold`i'
-}
-*/
