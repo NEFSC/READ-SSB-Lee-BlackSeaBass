@@ -20,6 +20,18 @@ fontsize: 12pt
 # Exploring Unclassifieds and CAMS status
 
 <!---- 
+**********************************************************************
+* Purpose: 	Quality Assurance and checks on data for machine learning models.
+* Inputs:
+*   - BSB_estimation_dataset (from data_prep_ml.Rmd)
+*   - BSB_unclassified_dataset (from data_prep_ml.Rmd)
+
+
+* Outputs:
+
+**********************************************************************
+
+
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
  --->
 ```{r global_options, include=FALSE}

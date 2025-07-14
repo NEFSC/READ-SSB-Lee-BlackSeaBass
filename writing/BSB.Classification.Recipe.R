@@ -1,3 +1,5 @@
+###############################################################################
+# Purpose: 	Script to setup the BSB classification Recipe. This is reused across many estimation scripts
 
 # I'm using the tidymodels framework to train and test the classification trees and
 # random forest.  The main advantage is that switching models or estimation packages
@@ -7,6 +9,7 @@
 # Tiny bit of code to set up the BSB Classification Recipe. 
 
 # I use this many times when I run different models, so it's good to have it in 1 place 
+###############################################################################  
 
 # assign roles to predictors, outcome, groups, and weights
 BSB.Classification.Recipe <- recipe(train_data) %>%
