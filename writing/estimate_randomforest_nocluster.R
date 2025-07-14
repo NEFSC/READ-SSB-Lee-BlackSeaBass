@@ -1,3 +1,6 @@
+###############################################################################
+# Purpose: 	Estimate a Random Forest classification model on 4 classes WITHOUT Clustering
+# on DLRID for the validation. Unclassified are excluded.
 
 # I'm using the tidymodels framework to train and test the classification trees and
 # random forest.  The main advantage is that switching models or estimation packages
@@ -10,7 +13,17 @@
 # note good enough to want to do this.  Therefore, I'm basically passing the
 # recipe into the workflow. C'est la guerre.
 
+# Inputs:
+#  - BSB_estimation_dataset (from data_prep_ml.Rmd)
+#  - BSB_unclassified_dataset (from data_prep_ml.Rmd)
+#  - BSB.Classification.Recipe.R
+#  - BSB.Workflow.Setup.R
 
+# Outputs:
+#  - estimating dataset 
+#  - tuning results 
+#  - final_fit results
+###############################################################################  
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 testing<-FALSE

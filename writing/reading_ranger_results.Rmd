@@ -22,6 +22,22 @@ fontsize: 12pt
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ **********************************************************************
+* Purpose: 	Read in outputs of machine learning models 
+* Inputs: These three can be adjusted by changing the "modeltype"
+*   - Data file
+*   - tuning results file
+*   - final results file
+
+
+* Outputs:
+*   - Graphs of tuning quality and final model fit
+*   - Aggregate predictions for the testing (validation) dataset and the entire dataset (train+test)
+
+
+**********************************************************************
+
+ 
  --->
 ```{r global_options, include=FALSE}
 

@@ -21,6 +21,19 @@ fontsize: 12pt
 
 
 <!---- 
+**********************************************************************
+* Purpose: 	Make out of sample predictions
+* Inputs:
+*   - final model (from associated "estimate_randomforest" Rmarkdown doc)
+*   - BSB_unclassified_dataset (from data_prep_ml.Rmd)
+
+
+* Outputs:
+
+**********************************************************************
+
+
+
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
  --->
 ```{r global_options, include=FALSE}
