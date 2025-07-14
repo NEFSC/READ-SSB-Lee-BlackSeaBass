@@ -1,7 +1,6 @@
 /* code to estimate experiment with finite mixture smodels */
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
-global in_string 2024_12_20
 use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 
 

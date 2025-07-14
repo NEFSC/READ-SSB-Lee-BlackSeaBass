@@ -1,5 +1,5 @@
 clear
-use "$data_main\commercial\mlogit_estimation_dataset_${vintage_string}.dta"
+use "$data_main\commercial\mlogit_estimation_dataset_${in_string}.dta"
 est drop _all
 
 est use "$my_results/class2.ster", number(1)
