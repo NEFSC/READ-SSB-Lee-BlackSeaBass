@@ -1,4 +1,16 @@
-/* code to estimate experiment with finite mixture smodels */
+**********************************************************************
+* Purpose: 	experiment with finite mixture models.
+* Inputs:
+*   - landings_cleaned_$date.dta (from wrappers)
+*
+* Outputs:
+*   -simple FMM models, nothing saved
+
+**********************************************************************
+
+
+
+/* code to estimate  */
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
 use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace

@@ -18,9 +18,26 @@ fontsize: 12pt
 ---
 
 # Summary and Housekeeping
-
-
 <!---- 
+**********************************************************************
+* Purpose: 	Final Data preparation for Machine Learning Models
+* Inputs:
+*   - landings_cleaned_$date.dta (from wrappers)
+*   - camsid_specific_cleaned_
+*   - daily_ma
+*   - state_ma
+*   - stockarea_ma
+*   - dlrid_historical_stats_
+
+
+* Outputs:
+*   - estimation_dataset.Rds Ready for estimation
+*   - unclassified_dataset.Rds Unclassified Transactions. Use these to predict after estimating.
+
+**********************************************************************
+
+
+
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
  --->
 ```{r global_options, include=FALSE}

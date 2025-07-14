@@ -1,3 +1,16 @@
+**********************************************************************
+* Purpose: 	code to estimate estimate simple hedonic and classification models.
+* Inputs:
+*   - landings_cleaned_$date.dta (from commercial data processing wrappers)
+*   - class2.ster (from bsb_size_classifications.do)
+
+* Outputs:
+*   -  tex and md files of regression results
+*   -  tex and md files of mlogit results
+
+
+**********************************************************************
+
 /* code to estimate simple classification models */
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
