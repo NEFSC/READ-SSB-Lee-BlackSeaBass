@@ -1,16 +1,30 @@
-/* code to do some data cleaning and preparations 
-There are only a few "drops" in this bit of code:
-1. I drop things that don't have a species code, this is mostly VTR discards, VTR not sold and vtr orphan species that don't have a price.  There are a few with novel market codes (XG) or grade codes (23) 
-2. I drop out some observations from DE and VA that I strongly suspect are duplicates.
-3. I drop rows where lndlb=0. I have no idea where these came from.
-4. I drop rows that are too recent to get a GDP implicit price deflator. This would the current quarter and probably the most recent quarter.
+**********************************************************************
+* Purpose: 	code to do my data prep.
+*  There are only a few "drops" in this bit of code:
+*  1. I drop things that don't have a species code, this is mostly VTR discards, VTR not sold and vtr orphan species that don't have a price.  There are a few with novel market codes (XG) or grade codes (23) 
+*  2. I drop out some observations from DE and VA that I strongly suspect are duplicates.
+*  3. I drop rows where lndlb=0. I have no idea where these came from.
+*  4. I drop rows that are too recent to get a GDP implicit price deflator. This would the current quarter and probably the most recent quarter.
+*Everything else is data creation or labeling. I prefer to do any 'dropping' as close to the estimation step as possible.
 
-Everything else is data creation or labeling. I prefer to do any 'dropping' as close to the estimation step as possible.
-*/
+* Inputs:
+*   - landings_all_$date.dta (from DataPull repo)
+*   - cams_gears_$date.dta (from DataPull repo)
+*   - deflatorsQ_$date.dta (from DataPull repo)
 
 
+* Outputs:
 
-use "${my_datapull}/data_folder/raw/commercial/landings_all_${in_string}.dta", replace
+*   - landings_cleaned_${vintage_string} a not quite estimation dataset
+*   - camsid_specific_cleaned_
+*   - daily_ma_ 7 day moving sum of QJumbo, QLarge, QMedium, QSmall, QUnclassified
+*   - state_ma_ 7 day moving sum of StateQJumbo StateQLarge StateQMedium StateQSmall StateQUnclassified at the state level
+*   - stockarea_ma_ 7 day moving sum of StateQJumbo StateQLarge StateQMedium StateQSmall StateQUnclassified at the stockarea level
+*   - dlrid_historical_stats_ : Dealer historical (2010-2014) used for target encoding
+**********************************************************************
+
+
+use "${my_datapull}/data_folder/main/commercial/landings_all_${in_string}.dta", replace
 drop if merge_species_codes==1
 replace dlr_date=dofc(dlr_date)
 format dlr_date %td
@@ -54,7 +68,7 @@ drop if lndlb==0
 
 
 /* merge gearcodes */
-merge m:1 negear using "${my_datapull}/data_folder/raw/commercial/cams_gears_${in_string}.dta", keep(1 3)
+merge m:1 negear using "${my_datapull}/data_folder/main/commercial/cams_gears_${in_string}.dta", keep(1 3)
 
 assert _merge==3
 drop _merge
@@ -185,7 +199,6 @@ replace semester=2 if month>=7
 
 
 save  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
-
 
 
 

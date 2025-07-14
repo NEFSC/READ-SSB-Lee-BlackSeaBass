@@ -1,5 +1,19 @@
+**********************************************************************
+* Purpose: 	code to predict class probability after mlogit model.
+* Inputs:
+*   - mlogit_estimation_dataset_$date.dta (from DataPull Repository)
+*   - class2.ster (from bsb_size_classifications.do)
+
+* Outputs:
+*   -  aggregate multinomial logit predictions (mlogit_predictions_raw.csv)
+
+**********************************************************************
+
+
+
+
 clear
-use "$data_main\commercial\mlogit_estimation_dataset_${in_string}.dta"
+use "${my_datapull}/data_folder/main/commercial/mlogit_estimation_dataset_${in_string}.dta", replace
 est drop _all
 
 est use "$my_results/class2.ster", number(1)
