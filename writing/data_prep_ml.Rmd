@@ -87,7 +87,7 @@ data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 #############################################################################
 #knitr options
 
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
 											dpi = 600)
 options(tinytex.verbose = TRUE)
 # options(knitr.table.format = "latex")
@@ -111,30 +111,37 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
 2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
 3. I do some tidying-up (converting datetime variables to date variables)
 4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
-
 5. There is a little data dropping
-  1. landed pounds=0
-  2. Some landings from VA and DE that look like aggregates. 
+    1. landed pounds=0
+    2. Some landings from VA and DE that look like aggregates. 
 6. I do some binning of gears, loosely into
-  1. Line or Hand gear
-  2. Trawls
-  3. Gillnets
-  4. Pot and Trap
-  5. Misc=Dredge, Seine, and Unknown.
+    1. Line or Hand gear
+    2. Trawls
+    3. Gillnets
+    4. Pot,Trap and other fixed gears that capture fish alive
+    5. Misc=Dredge, Seine, and Unknown.
   
 7.  I do some binning of market categories
-  1. Unclassified and "Mixed or Unsized" are combined
-  2. Small, Extra Small, and Pee Wee (Rats) are combined
-  3. Medium and "Medium or Select" are combined.
+    1. Unclassified and "Mixed or Unsized" are combined
+    2. Small, Extra Small, and Pee Wee (Rats) are combined
+    3. Medium and "Medium or Select" are combined.
 8.  Ungraded is combined with Round
 9. I construct a stockunit indicator
-  1. south is 621 and greater, plus 614 and 615 
-  2. North is 613 and smaller, plus 616
+    1. south is 621 and greater, plus 614 and 615 
+    2. North is 613 and smaller, plus 616
 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
 11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
 are in both real and nominal dollars per landed pound. 
 
-```{r load_in_data, include=FALSE}
+# Read in Data
+
+Read in the cleaned data, and the mini-aggregates that contain
+1. Daily landings at the market category level
+2. Daily landings at the state and market category level
+3. Daily landings at the stockarea and market category level 
+4. Historical "target encoding" based on 2010-2014 purchases for the dealers
+
+```{r load_in_data}
 cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
@@ -149,9 +156,11 @@ stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
 ```
 
+# Read in Data
 
+Make dataset of landings, trips and landing per trip at the year and stock level. This is used to see how much gets dropped out at the end.
 
-```{r landings and trips, include=FALSE}
+```{r landings and trips}
 
 start_data<-cleaned_landings %>%
   group_by(stockarea,year, camsid) %>%
@@ -161,21 +170,22 @@ start_data<-cleaned_landings %>%
   summarise(lnd_mt=sum(lndlb/2204),
             trips=n()) %>%
   mutate(lbs_per_trip=lnd_mt*2204/trips) %>%
-  filter(year>=2015)
+  filter(year>=2015) %>%
+  mutate(year=forcats::as_factor(year),
+          stockarea=haven::as_factor(stockarea, levels="label")) 
 ```
 
 
+# Data cleaning
 
-I am not sure that this  group_by ...summarize statement is a good one.
+This mimics the stata data cleaning that I did for the multinomial logit. 
 
- 1. Should I disaggregate to "area" instead of stockarea?  
- 2. What do I do about missing values for columns, particularly value and price.
-
+I am not sure that this  group_by ...summarize statement is a proper one.
 
 Additionally, I think some extra columns from CAMS_LAND might be good candidate predictors. 
 
 
-```{r filter_mimic_mlogit_dataclean, include=FALSE}
+```{r filter_mimic_mlogit_dataclean}
 
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
@@ -247,7 +257,7 @@ cleaned_landings<-cleaned_landings %>%
 
 
 
-#semester
+# Encode semester
 cleaned_landings<-cleaned_landings %>%
   mutate(semester=case_when(
       month<=6  ~ 1,
@@ -265,21 +275,21 @@ cleaned_landings<-cleaned_landings %>%
          stockarea=haven::as_factor(stockarea, levels="label")
          )
 
-# flag observations to keep
-
 #Factor the cams status column
 cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
 ```
+# Final Tidyup
 
+Estimate on: 
 
-```{r final_tidyup, include=FALSE}
+1.  Nominal prices that are above $0.15 per pound and below 15
+1.  North Carolina to Mass
+1.  2015 to 2024 data
 
-# what do I want to estimate on? 
-# Nominal prices that are above $0.15 per pound and below 15
-# North Carolina to Mass
-# 2015 to 2024 data
+```{r final_tidyup}
+
 
 
 combined_dataset<-cleaned_landings %>%
@@ -327,7 +337,7 @@ write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0
 
 
 ```{r initial_dataset}
-knitr::kable(start_data, caption='Initial Dataset Landings and Trips by stockarea and year', digits=0, align=c("l",rep('r',times=3)))  
+knitr::kable(start_data, caption='Initial Dataset Landings and Trips by stockarea and year', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 ```
 
 
