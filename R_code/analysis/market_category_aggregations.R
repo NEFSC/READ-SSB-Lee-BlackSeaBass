@@ -1,4 +1,18 @@
-# Code to construct an "aggregation key table" for the market categories
+###############################################################################
+# Purpose: 	Code to construct an "aggregation key table" for the market categories 
+
+# if a market_cat_aggregations datafile does not exist, this will read in "all_marketcategory_landings_", keep the unique
+# itis, market category, and market category description, and create a "category_combined" column that indicates which orginal market categories should be aggregated together. 
+# if a market_cat_aggregations datafile exists, this will modify the "category_combined" column
+
+
+# Inputs:
+#  - market_cat_aggregations OR all_marketcategory_landings_
+# Outputs:
+#  - market_cat_aggregations
+
+###############################################################################  
+# 
 # The stock assessments aggregate certain species together. 
 
 library("glue")

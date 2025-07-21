@@ -1,3 +1,19 @@
+###############################################################################
+# Purpose: 	Make plots of prices by market category and "combined market category" for 
+# managed fish stocks.
+
+# Inputs:
+# - all_marketcategory_landings_
+#  - market_cat_aggregations 
+
+# Outputs:
+#  - histograms of prices
+#  - histograms of prices, aggregated by combined market category
+
+###############################################################################  
+
+
+
 library("glue")
 library("tidyverse")
 library("forcats")
