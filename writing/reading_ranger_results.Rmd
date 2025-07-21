@@ -41,8 +41,10 @@ fontsize: 12pt
  --->
 ```{r global_options, include=FALSE}
 
-modeltype<-"nocluster"
-# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
+modeltype<-"North_NOC_TEST"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard" or
+# "South_NOC" or "North_NOC" "South_NOC_TEST" or "North_NOC_TEST"
+
 
 library("here")
 
@@ -98,7 +100,23 @@ if (modeltype=="standard"){
   data_pattern<-"data_split_5_NOC_class"
   tuning_pattern<-"BSB_ranger_5_NOC_class_tune"
   final_pattern<-"BSB_ranger_5_NOC_class_results"
-} else {
+} else if (modeltype=="South_NOC"){
+  data_pattern<-"nocluster_South_data_split"
+  tuning_pattern<-"BSB_ranger_South_nocluster_tune"
+  final_pattern<-"BSB_ranger_South_nocluster_results"
+} else if (modeltype=="North_NOC"){
+  data_pattern<-"nocluster_North_data_split"
+  tuning_pattern<-"BSB_ranger_North_nocluster_tune"
+  final_pattern<-"BSB_ranger_North_nocluster_results"
+} else if (modeltype=="South_NOC_TEST"){
+  data_pattern<-"nocluster_South_data_split_TEST"
+  tuning_pattern<-"BSB_ranger_South_nocluster_tune_TEST"
+  final_pattern<-"BSB_ranger_South_nocluster_results_TEST"
+} else if (modeltype=="North_NOC_TEST"){
+  data_pattern<-"nocluster_North_data_split_TEST"
+  tuning_pattern<-"BSB_ranger_North_nocluster_tune_TEST"
+  final_pattern<-"BSB_ranger_North_nocluster_results_TEST"
+}else {
   stop("Unknown modeltype")
 }
 
@@ -261,7 +279,7 @@ ggsave(here("results","ranger","tune",paste0("roc_tune_",modeltype,tuning_vintag
 
 predictions %>%
   group_by(id, mtry) %>%
-  dplyr::filter(mtry==11)%>%
+  dplyr::filter(mtry==opt_mtry)%>%
 #  dplyr::filter(!id %in% not_good) %>%
   pr_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
