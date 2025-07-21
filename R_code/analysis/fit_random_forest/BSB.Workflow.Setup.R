@@ -69,7 +69,7 @@ if (modeltype %in%c("standard","fiveclass")){
 
 # Overwite mtry rf_grid for testing=true to speed prototyping
 if (testing==TRUE){
-  mtry<-1:3
+  mtry<-c(1,3,10,15,npredict)
   rf_grid<-as.data.frame(mtry)
 }
   
