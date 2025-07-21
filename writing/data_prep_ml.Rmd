@@ -290,8 +290,6 @@ Estimate on:
 
 ```{r final_tidyup}
 
-
-
 combined_dataset<-cleaned_landings %>%
    mutate(keep = case_when(year<2015~ 0,
                            year>2024~ 0,
@@ -324,17 +322,20 @@ combined_dataset<-combined_dataset %>%
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
 
-write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
+#write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
 
 # put everything else in a dataset
 
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
-write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+#write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 
 ```
 
+# Data summaries
+
+In the original "cleaned" dataset, I have about 1,100-1,300 trips per year in the South and 10-20x more trips in the North.
 
 ```{r initial_dataset}
 knitr::kable(start_data, caption='Initial Dataset Landings and Trips by stockarea and year', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
@@ -360,7 +361,7 @@ knitr::kable(totals, caption='Full Dataset Landings and Trips',format.args = lis
 
 ``` {r summarize_estimation_dataset}
 
-totals<-estimation_dataset %>%
+totalsE<-estimation_dataset %>%
   group_by(stockarea,year, camsid) %>%
   summarise(lndlb=sum(lndlb)) %>%
   ungroup() %>%
@@ -370,8 +371,50 @@ totals<-estimation_dataset %>%
   mutate(lbs_per_trip=lnd_mt*2204/trips)
 
 
-knitr::kable(totals, caption='Four Principal Classes Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(totalsE, caption='Four Principal Classes Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 ```
+
+# How much data do I have
+
+Is there "enough" data in just the South?  There are about 1,300 trips per year.
+
+``` {r graph_combined_obs}
+
+totalsMC<-combined_dataset %>%
+  group_by(stockarea,year, camsid, market_desc) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year,market_desc) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            observations=n()) 
+
+
+
+ggplot(totalsMC)+
+aes(x=year, y=observations) +
+  geom_point() +
+  ylab("obs")+ 
+    facet_grid(stockarea~market_desc, scales="free")
+
+```
+
+
+
+``` {r table_for_combined_obs}
+
+obs<-totalsMC %>%
+  select(-lnd_mt) %>%
+  pivot_wider(values_from=observations, names_from=stockarea, names_glue="Observations_{stockarea}")
+
+
+knitr::kable(obs, caption='Number of Observations', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=3)))  
+
+
+
+
+```
+
+
 
 
 
