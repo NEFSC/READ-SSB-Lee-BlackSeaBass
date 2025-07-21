@@ -98,7 +98,7 @@ lbs_per_mt<-2204.62
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(file.path(data_pull_dir,"data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.dta"))
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.dta"))
 vintage_string<-gsub("landings_cleaned_","",vintage_string)
 vintage_string<-gsub(".dta","",vintage_string)
 vintage_string<-max(vintage_string)
@@ -135,21 +135,36 @@ Most of my data cleaning code is in stata. There's no reason to port it to R and
 are in both real and nominal dollars per landed pound. 
 
 ```{r load_in_data, include=FALSE}
-cleaned_landings<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
+cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
-camsid_specific_stats<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
+camsid_specific_stats<-read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
 
-daily_ma<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
+daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
 
-state_ma<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
 
-stockarea_ma<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
+stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
-dlrid_historical<-read_dta(file.path(data_pull_dir,"data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
-
-
+dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
 ```
+
+
+
+```{r landings and trips, include=FALSE}
+
+start_data<-cleaned_landings %>%
+  group_by(stockarea,year, camsid) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            trips=n()) %>%
+  mutate(lbs_per_trip=lnd_mt*2204/trips) %>%
+  filter(year>=2015)
+```
+
+
 
 I am not sure that this  group_by ...summarize statement is a good one.
 
@@ -267,7 +282,7 @@ cleaned_landings<-cleaned_landings %>%
 # 2015 to 2024 data
 
 
-estimation_dataset<-cleaned_landings %>%
+combined_dataset<-cleaned_landings %>%
    mutate(keep = case_when(year<2015~ 0,
                            year>2024~ 0,
                            price<0.15 ~ 0,
@@ -280,7 +295,7 @@ estimation_dataset<-cleaned_landings %>%
           )
 
 # deal with factors
-estimation_dataset<-estimation_dataset %>%
+combined_dataset<-combined_dataset %>%
     filter(keep==1 )%>%
    mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
     mutate(year=forcats::as_factor(year)) %>%
@@ -296,14 +311,14 @@ estimation_dataset<-estimation_dataset %>%
 
 
 # put the unclassifieds into a dataset
-unclassified_dataset<-estimation_dataset %>%
+unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
 
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
 
 # put everything else in a dataset
 
-estimation_dataset<-estimation_dataset %>%
+estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
@@ -311,6 +326,42 @@ write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0
 ```
 
 
+```{r initial_dataset}
+knitr::kable(start_data, caption='Initial Dataset Landings and Trips by stockarea and year', digits=0, align=c("l",rep('r',times=3)))  
+```
+
+
+``` {r summarize_combined_dataset}
+
+totals<-combined_dataset %>%
+  group_by(stockarea,year, camsid) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            trips=n()) %>%
+  mutate(lbs_per_trip=lnd_mt*2204/trips)
+
+knitr::kable(totals, caption='Full Dataset Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+
+
+
+``` {r summarize_estimation_dataset}
+
+totals<-estimation_dataset %>%
+  group_by(stockarea,year, camsid) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            trips=n()) %>%
+  mutate(lbs_per_trip=lnd_mt*2204/trips)
+
+
+knitr::kable(totals, caption='Four Principal Classes Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
 
 
 
