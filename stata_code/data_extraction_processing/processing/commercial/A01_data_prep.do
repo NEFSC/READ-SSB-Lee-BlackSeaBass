@@ -91,9 +91,9 @@ replace mygear="Gillnet" if  inlist(negear,500,520)
 
 replace mygear="Seine" if negear>=120 & negear<=124 
 replace mygear="Seine" if inlist(negear,70, 71,160,360) 
-replace mygear="PotTrap" if negear>=180 & negear<=212 
+replace mygear="PotTrap" if negear>=180 & negear<=217 
 replace mygear="PotTrap" if negear>=300 & negear<=301
-replace mygear="PotTrap" if inlist(negear,80, 140, 142, 240, 260, 270, 320, 322)
+replace mygear="PotTrap" if inlist(negear,80, 140, 141,142, 143,240, 260, 270, 320, 321,322,323)
  /* includes weirs and pounds */ 
 
 
