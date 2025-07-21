@@ -202,10 +202,10 @@ nrow(test_data)
 # 
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
-source(here("analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
 
-source(here("analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 set.seed(457)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
