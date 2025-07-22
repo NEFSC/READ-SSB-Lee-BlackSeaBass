@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
     df_print: paged
+    keep_md: yes
     fig_caption: yes
   pdf_document:
     keep_tex: yes
@@ -15,6 +16,19 @@ urlcolor: blue
 editor_options:
   chunk_output_type: console
 fontsize: 12pt
+params:
+  modeltype:
+    value: South_NOC
+    choices:
+    - standard
+    - fiveclass
+    - noc5class
+    - nocluster
+    - South_NOC
+    - North_NOC
+    - South_NOC_TEST
+    - North_NOC_TEST
+
 ---
 
 # Summary and Housekeeping
@@ -41,9 +55,7 @@ fontsize: 12pt
  --->
 ```{r global_options, include=FALSE}
 
-modeltype<-"North_NOC_TEST"
-# OR "nocluster", or "fiveclass", or "noc5class" OR "standard" or
-# "South_NOC" or "North_NOC" "South_NOC_TEST" or "North_NOC_TEST"
+modeltype<-params$modeltype
 
 
 library("here")
@@ -169,6 +181,11 @@ raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 ```
 
 Data vintage is `r data_vintage_string`. Tuning vintage is `r tuning_vintage`.  Final fit vintage is `r finalfit_vintage`.
+Data vintage is `r data_vintage_string`.
+
+Tuning vintage is `r tuning_vintage`.
+
+Final fit vintage is `r finalfit_vintage`.
 
 ```{r load_in_data and tuning_results, include=FALSE}
 # this was created with data_prep_ml.Rmd
