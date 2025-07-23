@@ -1,2 +1,4 @@
 *.csv
 *.ster
+/ranger/*
+/cforest/*
