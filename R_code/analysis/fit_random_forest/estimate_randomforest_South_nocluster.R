@@ -209,8 +209,16 @@ nrow(test_data)
 # and predictor variables.
 source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
+# Exclude stockarea as a predictor for the North and South separate models.
+# also need to change npredict.
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(stockarea), new_role="excluded", old_role="predictor") 
+recipe_summary<-BSB.Classification.Recipe %>%
+  summary() %>%
+  arrange(source,role, variable)
+#How many predictors
+npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
+
 
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
