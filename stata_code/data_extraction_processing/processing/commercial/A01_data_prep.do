@@ -225,6 +225,7 @@ bysort dlr_date camsid: egen OwnQUnclassified=total(_MmarXlndlb_6)
 /* market category landings by other vessels on this day */
 foreach size in Jumbo Large Medium Small Unclassified {
 	gen OtherQ`size'=DailyQ`size'-OwnQ`size'
+	assert OtherQ`size'>=0
 }
 
 
@@ -235,11 +236,23 @@ bysort dlr_date state: egen StateQMedium=total(_MmarXlndlb_3)
 bysort dlr_date state: egen StateQSmall=total(_MmarXlndlb_4)
 bysort dlr_date state: egen StateQUnclassified=total(_MmarXlndlb_6)
 
+/* Camsid, dlr_date (Trip) level quantity supplied */
+bysort dlr_date camsid state: egen StateOwnQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date camsid state: egen StateOwnQLarge=total(_MmarXlndlb_2)
+bysort dlr_date camsid state: egen StateOwnQMedium=total(_MmarXlndlb_3)
+bysort dlr_date camsid state: egen StateOwnQSmall=total(_MmarXlndlb_4)
+bysort dlr_date camsid state: egen StateOwnQUnclassified=total(_MmarXlndlb_6)
+
+
 
 /* market category and state landings by other vessels on this day */
 foreach size in Jumbo Large Medium Small Unclassified {
-	gen StateOtherQ`size'=StateQ`size'-OwnQ`size'
+	gen StateOtherQ`size'=StateQ`size'-StateOwnQ`size'
+    assert StateOtherQ`size'>=0
 }
+
+drop StateOwnQ*
+
 
 
 /*  market level and stockarea quantity supplied */
@@ -250,11 +263,24 @@ bysort dlr_date stockarea: egen StockareaQMedium=total(_MmarXlndlb_3)
 bysort dlr_date stockarea: egen StockareaQSmall=total(_MmarXlndlb_4)
 bysort dlr_date stockarea: egen StockareaQUnclassified=total(_MmarXlndlb_6)
 
+
+/*  market level and stockarea quantity supplied */
+
+bysort dlr_date camsid stockarea: egen StockareaOwnQJumbo=total(_MmarXlndlb_1)
+bysort dlr_date camsid stockarea: egen StockareaOwnQLarge=total(_MmarXlndlb_2)
+bysort dlr_date camsid stockarea: egen StockareaOwnQMedium=total(_MmarXlndlb_3)
+bysort dlr_date camsid stockarea: egen StockareaOwnQSmall=total(_MmarXlndlb_4)
+bysort dlr_date camsid stockarea: egen StockareaOwnQUnclassified=total(_MmarXlndlb_6)
+
+
 foreach size in Jumbo Large Medium Small Unclassified {
-	gen StockareaOtherQ`size'=StockareaQ`size'-OwnQ`size'
+	gen StockareaOtherQ`size'=StockareaQ`size'- StockareaOwnQ`size'
+    assert StockareaOtherQ`size'>=0
+
 }
  
- 
+drop StockareaOwnQ*
+
  
  
  /* 
