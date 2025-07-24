@@ -79,6 +79,7 @@ library("vip")
 library("knitr")
 library("kableExtra")
 library("viridis")
+library("glue")
 library("conflicted")
 
 #deal with conflicts
@@ -152,19 +153,19 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
-data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(paste0(data_pattern,"*Rds")))
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
 data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
 data_vintage_string<-gsub(".Rds","",data_vintage_string)
 data_vintage_string<-max(data_vintage_string)
 
 
-tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(paste0(tuning_pattern,"*Rds")))
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
 tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
 
-finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(paste0(final_pattern,"*Rds")))
+finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
 finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
 finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
 finalfit_vintage<-max(finalfit_vintage)
@@ -190,9 +191,9 @@ Final fit vintage is `r finalfit_vintage`.
 
 ```{r load_in_data and tuning_results, include=FALSE}
 # this was created with data_prep_ml.Rmd
-data_split<-readr::read_rds(file=here("results","ranger",paste0(data_pattern,data_vintage_string,".Rds")))
-tune_res<-readr::read_rds(file=here("results","ranger",paste0(tuning_pattern,tuning_vintage,".Rds")))
-oos_data<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",raw_oos_data_vintage_string,".Rds")))
+data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+tune_res<-readr::read_rds(file=here("results","ranger",glue("{tuning_pattern}{tuning_vintage}.Rds")))
+oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
 
 ```
 
@@ -217,7 +218,7 @@ brier<-all.metrics %>%
  brier %>% ggplot(aes(mtry, brier_class)) +
   geom_point(show.legend = TRUE) 
 
- ggsave(here("results","ranger","tune",paste0("brier_class",modeltype,tuning_vintage,".png")), plot=last_plot())
+ ggsave(here("results","ranger","tune",glue("brier_class{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
 
  
@@ -229,7 +230,7 @@ brier<-tune_res %>%
 brier %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
   geom_boxplot(show.legend = TRUE) 
 
-  ggsave(here("results","ranger","tune",paste0("brier_class_indivd_",modeltype,tuning_vintage,".png")), plot=last_plot())
+  ggsave(here("results","ranger","tune",glue("brier_class_indivd_{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
  
 ```
@@ -246,7 +247,7 @@ mn_log_loss<-all.metrics %>%
  mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
   geom_point(show.legend = TRUE) 
 
- ggsave(here("results","ranger","tune",paste0("mn_log_loss",modeltype,tuning_vintage,".png")), plot=last_plot())
+ ggsave(here("results","ranger","tune",glue("mn_log_loss{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
 ```
 
@@ -290,7 +291,7 @@ test2<-predictions %>%
   roc_curve(market_desc,any_of(prob_names))
 
 
-ggsave(here("results","ranger","tune",paste0("roc_tune_",modeltype,tuning_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","tune",glue("roc_tune_{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
 
 predictions %>%
@@ -300,7 +301,7 @@ predictions %>%
   pr_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
 
-ggsave(here("results","ranger","tune",paste0("pr_curve_tune_",modeltype,tuning_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","tune",glue("pr_curve_tune_{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
 
   
@@ -314,7 +315,7 @@ read in the final model, extract the recipe and the predictors, extract the pred
 
 rm(tune_res)
 
-final_fit<-read_rds(file=here("results","ranger",paste0(final_pattern,tuning_vintage,".Rds")))
+final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
 
 # What is the workflow
@@ -353,7 +354,10 @@ Look at the VIP, ROC, and PR curves
 final_fit %>% 
   extract_fit_parsnip() %>% 
   vip(num_features = num_preds)
-ggsave(here("results","ranger","final",paste0("vip",modeltype,finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",glue("vip{modeltype}{finalfit_vintage}.png")), plot=last_plot())
+
+
+
 ```
 
 ```{r ROC_Curve}
@@ -362,14 +366,14 @@ ggsave(here("results","ranger","final",paste0("vip",modeltype,finalfit_vintage,"
 final_predictions %>%
   roc_curve(market_desc, any_of(prob_names))  %>%
   autoplot()
-ggsave(here("results","ranger","final",paste0("roc_",modeltype,finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",glue("roc_{modeltype}{finalfit_vintage}.png")), plot=last_plot())
 ```
 ```{r PR_Curve}
 # PR curve
 final_predictions %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
-ggsave(here("results","ranger","final",paste0("pr_curve",modeltype,finalfit_vintage,".png")), plot=last_plot())
+ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=last_plot())
 ```
 
 ## Validation Predictions and Confusion matrix
@@ -408,10 +412,9 @@ test_predictions$modeltype<-modeltype
 test_predictions<-test_predictions %>%
   mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
 
-write_rds(test_predictions, file=here("results","ranger",paste0("aggregate_test_predictions_",modeltype,finalfit_vintage,".Rds")))
+write_rds(test_predictions, file=here("results","ranger",glue("aggregate_test_predictions_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
-
 
 Compute predicted pounds and compare it to actual pounds.
 
@@ -447,11 +450,9 @@ Testmkt_preds<-Testmkt_preds %>%
          lndlb=lndlb/lbs_per_mt) %>%
   rename(true_mt=lndlb,
          predicted_mt=predicted)%>%
-  mutate(error=floor(100*(predicted_mt-true_mt)/true_mt))
+  mutate('error (%)'=100*(predicted_mt-true_mt)/true_mt)
 
-Testmkt_preds$error=paste0(Testmkt_preds$error,"%")
-
- knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))
+ knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
 ```
 
 Construct a confusion matrix.  The columns that start with "pred_" sum to the value of "true_mt" by construction.  A perfect model will put the value of "true_mt" in the diagonal and zeros elsewhere. A good model will have most of the prediction errors in the "neighbors": true Jumbos will be characterized as Jumbo or Large, True Larges will be characterized as "Jumbo", "Large", or "Medium", etc.
@@ -469,6 +470,113 @@ knitr::kable(augmented_confusion, caption='Confusion Matrix',format.args = list(
 write_rds(augmented_confusion, file=here("results","ranger",paste0("augmented_confusion_",modeltype,finalfit_vintage,".Rds")))
 
 ```
+
+
+# Knife Edge predictions
+
+
+```{r knife_edge_prediction}
+#use .pred_class to assign
+
+knife_edge_predictions<-test_data %>%
+     group_by(stockarea, year,market_desc,.pred_class) %>%
+  summarise(pounds=sum(lndlb)) %>%
+   ungroup()
+knife_edge_predictions$modeltype<-modeltype
+
+```
+
+Compute predicted pounds and compare it to actual pounds.
+
+```{r Knife_edge_Validation_Predictions_by_stockarea}
+
+# Aggregate to the stockarea- market category
+
+KE_aggregate_test_predictions<-knife_edge_predictions %>%
+    group_by(stockarea,.pred_class) %>%
+    summarise(predicted=sum(pounds)) %>%
+  arrange(stockarea,.pred_class) %>%
+  rename(market_desc=.pred_class)
+
+# true landings by stockarea and market_category
+trueTest<-knife_edge_predictions %>%
+    group_by(stockarea,market_desc) %>%
+    summarise(true=sum(pounds))
+
+Testmkt_preds<-KE_aggregate_test_predictions %>%
+  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  mutate(predicted=predicted/lbs_per_mt,
+         true=true/lbs_per_mt) %>%
+  rename(true_mt=true,
+         predicted_mt=predicted)%>%
+  mutate('error (%)'=100*(predicted_mt-true_mt)/true_mt) %>%
+  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) %>%
+  arrange(stockarea, market_desc) 
+
+
+ knitr::kable(Testmkt_preds, caption='Aggregate Knife Edge Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
+```
+
+
+
+```{r Knife_edgeconfusion_matrix}
+KE_confusion<-knife_edge_predictions %>%
+  mutate(.pred_class=fct_relevel(.pred_class,"Jumbo","Large","Medium","Small")) %>%
+  group_by(stockarea,market_desc,.pred_class) %>%
+    summarise(pred=sum(pounds)/2204) %>%
+  ungroup()
+
+KE_confusion<-KE_confusion %>%
+  pivot_wider(values_from=pred, names_from=".pred_class",names_glue="pred_{.pred_class}")
+
+KE_confusion<-KE_confusion %>%
+  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc)) %>%
+  mutate(true=true/2204) %>%
+  rename(true_mt=true)  %>%
+  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) %>%
+  arrange(stockarea, market_desc)
+
+knitr::kable(KE_confusion, caption='Confusion Matrix',format.args = list(big.mark = ","), digits=1, align=c("l","l",rep('r',times=5)))
+
+
+write_rds(KE_confusion, file=here("results","ranger",paste0("KE_augmented_confusion_",modeltype,finalfit_vintage,".Rds")))
+
+```
+
+
+# Don't weight by pounds, just look at observations
+
+
+
+```{r observation_level_prediction}
+#use .pred_class to assign
+
+
+obs_predictions<-test_data %>%
+    select(-.pred_class) %>%
+    group_by(stockarea,market_desc) %>%
+    summarise(across(c(starts_with(".pred_")), sum),
+              count=n()) %>%
+  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small"))  %>%
+  arrange(stockarea,market_desc)
+
+obs_predictions<-obs_predictions %>%
+  relocate(c(".pred_Jumbo",".pred_Large",".pred_Medium", ".pred_Small"), .after="market_desc")
+
+knitr::kable(obs_predictions, caption='Observation level Confusion Matrix',format.args = list(big.mark = ","), digits=0, align=c("l","l",rep('r',times=5)))
+
+
+final_predictions %>%
+  conf_mat(market_desc, .pred_class) %>%
+  autoplot(type = "heatmap") 
+
+
+```
+
+
+
 
 # Full Sample predictions
 I coded up the full sample predictions, but I don't think it's fair to look at them to assess model fit.
