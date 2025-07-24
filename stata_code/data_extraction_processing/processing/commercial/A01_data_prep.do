@@ -200,6 +200,7 @@ replace semester=2 if month>=7
 
 save  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
 
+/*use  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace */
 
 
 
@@ -250,7 +251,6 @@ foreach size in Jumbo Large Medium Small Unclassified {
 	gen StateOtherQ`size'=StateQ`size'-StateOwnQ`size'
     assert StateOtherQ`size'>=0
 }
-
 drop StateOwnQ*
 
 
@@ -296,20 +296,21 @@ browse if dlr_date==mdy(5,1,2018)
 egen tagstateM = tag(camsid state market_desc dlr_date)
 egen ndistinct_stateM = total(tagstateM), by(state dlr_date market_desc)
 
-
+/*
 foreach size in Jumbo Large Medium Small Unclassified{
 	replace StateOtherQ`size'=. if ndistinct_stateM==1 & market_desc_string=="`size'"
 }
-
+*/
 
 /* set the StockareaOtherQ columns to missing if there is only 1 trip on that day, stockarea, market category */
 
 egen tagstockareaM = tag(camsid stockarea market_desc dlr_date)
 egen ndistinct_stockareaM = total(tagstockareaM), by(stockarea dlr_date market_desc)
-
+/*
 foreach size in Jumbo Large Medium Small Unclassified {
 	replace StockareaOtherQ`size'=. if ndistinct_stockareaM==1 & market_desc_string=="`size'"
 }
+*/
 
 drop _Mmarket* _MmarX* OwnQ*
 
