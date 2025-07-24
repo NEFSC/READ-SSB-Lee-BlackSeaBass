@@ -295,6 +295,7 @@ combined_dataset<-cleaned_landings %>%
                            year>2024~ 0,
                            price<0.15 ~ 0,
                            price>15 ~ 0,
+                           is.na(price) ~ 0,
                            state =="CN"  ~ 0,
                            state =="FL"  ~ 0, 
                            state =="PA"  ~ 0,
@@ -323,6 +324,7 @@ unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
 
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
+haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
 
 # put everything else in a dataset
 
@@ -330,6 +332,7 @@ estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
 
 ```
 
