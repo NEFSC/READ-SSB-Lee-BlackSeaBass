@@ -305,7 +305,7 @@ combined_dataset<-cleaned_landings %>%
 # deal with factors
 combined_dataset<-combined_dataset %>%
     filter(keep==1 )%>%
-   mutate(market_desc=forcats::fct_relevel(market_desc,c("Small", "Jumbo","Large","Medium","Extra Small", "Unclassified")) ) %>%
+   mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
     mutate(semester=forcats::as_factor(semester)) %>%
