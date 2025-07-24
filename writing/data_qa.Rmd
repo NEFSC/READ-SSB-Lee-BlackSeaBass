@@ -41,10 +41,10 @@ library("here")
 # load tidyverse and related
 library("tidyverse")
 library("scales")
-
+library("glue")
 # load tidyverse and related
 library("tidymodels")
-
+library("hardhat")
 # load machine learning and estimation tools
 # ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
 # you might want to install Rcpp, then RcppEigen, then ranger
@@ -58,6 +58,7 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
+library("skimr")
 library("conflicted")
 
 #deal with conflicts
@@ -243,11 +244,39 @@ The proportion of PZEROs is consistent across the market categories. I'm setting
 
 I was concerned that the unclassifieds were more likely to be PZERO if they are coming from state vessels that do not sort catch. "Real" prices remain a concern.
 
+# Other things
+```{r summary_tables}
+now<-combined_dataset %>%
+    select(-c("weighting")) %>%
+  filter(is.na(price)==0)
+
+skim_results<-skim(now)
+skim_results
+
+
+# 
+# test<-combined_dataset %>%
+#   filter(is.na(StateOtherQJumbo)==1)
+# 
+# 
+# z<-cleaned_landings %>%
+#   filter(camsid=='222074_20221226120000_22207422122604')
+# 
+# z2<-cleaned_landings %>%
+#   filter(dlr_date=='2022-12-26') %>%
+#   filter(market_desc=="Large") %>%
+#   arrange(stockarea)
+
+```
+
+
+
+
 # Low Prices
 
 In my ML data prep, I've dropped observations where prices are <$0.15. This is reasonable, but they are disproportionately Unclassified. I suspect something different is going on with those observations, or we have a CAMS allocation issue intersecting with integer values. 
 
-```{r}
+```{r investigate_prices}
 
   price_95th_percentile <- combined_dataset %>%
     summarise(price_95th = quantile(price, 0.95, na.rm = TRUE)) %>%
