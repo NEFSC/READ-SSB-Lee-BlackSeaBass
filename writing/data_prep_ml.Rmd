@@ -232,11 +232,11 @@ cleaned_landings<-cleaned_landings %>%
   )
 
 cleaned_landings<-cleaned_landings %>%
-  mutate(lndlbJumbo=replace_na(lndlbJumbo),
-         lndlbLarge=replace_na(lndlbLarge),
-         lndlbMedium=replace_na(lndlbMedium),
-         lndlbSmall=replace_na(lndlbSmall),
-         lndlbUnclassified=replace_na(lndlbUnclassified)
+  mutate(DealerHLbsPurchasedJumbo=replace_na(DealerHLbsPurchasedJumbo),
+         DealerHLbsPurchasedLarge=replace_na(DealerHLbsPurchasedLarge),
+         DealerHLbsPurchasedMedium=replace_na(DealerHLbsPurchasedMedium),
+         DealerHLbsPurchasedSmall=replace_na(DealerHLbsPurchasedSmall),
+         DealerHLbsPurchasedUnclassified=replace_na(DealerHLbsPurchasedUnclassified)
   )
 
 
@@ -313,9 +313,11 @@ combined_dataset<-combined_dataset %>%
     mutate(dlrid=forcats::as_factor(dlrid)) %>%
   mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
-        state=fct_drop(state)) %>%
-     mutate(weighting = frequency_weights(weighting)) 
-    
+        state=fct_drop(state)) 
+
+# drop some columns
+combined_dataset<-combined_dataset %>%
+  select(-c("keep"))
 
 
 

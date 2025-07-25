@@ -438,6 +438,7 @@ local sizes Jumbo Large Medium Small Unclassified
 foreach  l of local sizes {
 	replace lndlb`l'=0 if lndlb`l'==.
 	label var lndlb`l'  "Dealer level pounds purchased from 2010-2014 in market category `l'"
+	rename lndlb`l' DealerHLbsPurchased`l'
 	
 	replace TransactionCount`l'=0 if TransactionCount`l'==.
 	label var TransactionCount`l'  "Dealer level number of transactions from 2010-2014 in market category `l' "
@@ -445,14 +446,14 @@ foreach  l of local sizes {
 	
 }
 
-egen totalland=rowtotal(lndlb*)
+egen totalland=rowtotal(DealerHLbsPurchased*)
 egen totaltrans=rowtotal(TransactionCount*)
 
 
 
 local sizes Jumbo Large Medium Small Unclassified
 foreach l of local sizes{
-	gen Share2014`l'=lndlb`l'/totalland
+	gen Share2014`l'=DealerHLbsPurchased`l'/totalland
 	label var Share2014`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
 	gen Frac2014T`l'=TransactionCount`l'/totaltrans
 	label var Frac2014T`l' "Dealer Fraction of total transactions from 2010-2014 in market category `l'"
@@ -460,7 +461,7 @@ foreach l of local sizes{
 }
 drop totalland totaltrans
 
-order dlrid lndlb* TransactionCount* Share2014* Frac2014T*
+order dlrid DealerHLbsPurchased* TransactionCount* Share2014* Frac2014T*
 
 compress
 
