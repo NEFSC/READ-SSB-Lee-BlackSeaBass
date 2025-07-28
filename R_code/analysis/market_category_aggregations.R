@@ -33,7 +33,7 @@ data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 #today
 #vintage_string<-format(Sys.Date())
 #specific vintage
-vintage_string<-"2025-07-10"
+vintage_string<-"2025-07-28"
 
 # most recent 
 # (not coded)
