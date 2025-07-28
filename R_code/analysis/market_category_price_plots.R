@@ -18,7 +18,7 @@ library("here")
 
 here::i_am("R_code/analysis/market_category_price_plots.R")
 
-graph_disaggregate<-FALSE
+graph_disaggregate<-TRUE
 graph_aggregate<-TRUE
 
 
@@ -33,10 +33,10 @@ data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 year_start<-2020
 year_end<-2024
 
-vintage_string<-"2025-07-10"
+vintage_string<-"2025-07-28"
 options(scipen=999)
 
-landings<-readRDS(file=file.path(data_pull_dir,"data_folder","main","commercial", glue("all_marketcategory_landings_{vintage_string}.Rds")))
+landings<-readRDS(file=file.path(data_pull_dir,"data_folder","raw","commercial", glue("all_marketcategory_landings_{vintage_string}.Rds")))
 
 #There is no point in looking at scallop, surfclam, or ocean quahog.
 
@@ -110,9 +110,9 @@ if (graph_aggregate==TRUE){
   
 
 # read in market_cat keyfile aggregations and ensure it is unique
-market_cat_aggregations<-readRDS(file=here("data_folder","main","commercial",glue("market_cat_aggregations_{vintage_string}.Rds")))
+market_cat_aggregations_Orig<-readRDS(file=here("data_folder","main","commercial",glue("market_cat_aggregations_{vintage_string}.Rds")))
 
-market_cat_aggregations<-market_cat_aggregations %>%
+market_cat_aggregations<-market_cat_aggregations_Orig %>%
   select(itis_tsn,dlr_mkt,category_combined)%>%
   group_by(itis_tsn,dlr_mkt,category_combined) %>%
   slice(1) %>%
@@ -175,8 +175,28 @@ landings<-landings %>%
              height = 8, 
              dpi = 300,
              units = "in")
-    }
+    
+      
+      wp2<-ggplot(working_dataset, aes(x = price)) + 
+        geom_histogram(aes(weight = lndlb), boundary = 0, binwidth=0.10) + 
+        labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end}"), y = "Pounds (000s)") +
+        #    theme_minimal() + 
+        facet_grid(market_desc_factor_ordered ~ year,  scales="free_y")  
+      ggsave(here("images","descriptive",glue("price_year_hist_AGG_{species_name}.png")), 
+             plot = wp2,
+             width = 12, 
+             height = 8, 
+             dpi = 300,
+             units = "in")
+      
+      
+  }
     
   }
 }
 
+
+
+
+
+wp
