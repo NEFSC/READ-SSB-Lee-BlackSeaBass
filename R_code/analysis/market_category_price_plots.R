@@ -92,7 +92,7 @@ if (graph_disaggregate==TRUE){
     #    theme_minimal() + 
     facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
   
-  ggsave(here("images","descriptive",glue("price_hist_{species_name}.png")), 
+  ggsave(here("images","descriptive",glue("{species_name}_price_hist.png")), 
          plot = wp,
          width = 12, 
          height = 8, 
@@ -169,7 +169,7 @@ landings<-landings %>%
         #    theme_minimal() + 
         facet_wrap(vars(market_desc_factor_ordered), ncol=1, scales="free_y")
       
-      ggsave(here("images","descriptive",glue("price_hist_AGG_{species_name}.png")), 
+      ggsave(here("images","descriptive",glue("{species_name}_AGG_price_hist.png")), 
              plot = wp,
              width = 12, 
              height = 8, 
@@ -182,7 +182,7 @@ landings<-landings %>%
         labs(, x = glue("Nominal Price of {species_name},{year_start} to {year_end}"), y = "Pounds (000s)") +
         #    theme_minimal() + 
         facet_grid(market_desc_factor_ordered ~ year,  scales="free_y")  
-      ggsave(here("images","descriptive",glue("price_year_hist_AGG_{species_name}.png")), 
+      ggsave(here("images","descriptive",glue("{species_name}_AGG_price_year_hist.png")), 
              plot = wp2,
              width = 12, 
              height = 8, 
