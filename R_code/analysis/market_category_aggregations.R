@@ -69,6 +69,10 @@ market_cat_aggregations<-market_cat_aggregations %>%
     itis_tsn==167687 & dlr_mkt %in% c("JB","XG") ~ "JB",  # BSB Jumbo includes Extra Large 
     itis_tsn==167687 & (dlr_mkt %in% c("UN","MX")| is.na(dlr_mkt)) ~ "UN", # BSB Unclassified includes Mixed and NA
     itis_tsn==167687 & dlr_mkt %in% c("PW","SQ","ES") ~ "SQ", # BSB Small includes PeeWee and Extra Small
+    itis_tsn==172414 & dlr_mkt %in% c("JB","XG", "LG") ~ "LG",  # Mackerel Large - Jumbo, Extra Large, and Large 
+    itis_tsn==172414 & (dlr_mkt %in% c("UN","MX")| is.na(dlr_mkt)) ~ "UN", # Mackerel Unclassified includes Mixed and NA
+    itis_tsn==172414 & dlr_mkt %in% c("SV","SQ","ES","SM") ~ "SM", # Mackerel Small includes Extra Small, Small, and Super Super Small
+    
     .default=dlr_mkt)
   ) %>%
   group_by(itis_tsn, category_combined) %>%
