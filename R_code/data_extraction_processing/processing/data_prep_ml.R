@@ -53,7 +53,7 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 # Directories 
 ###############################################################################
-here::i_am("writing/data_prep_ml.R")
+here::i_am("R_code/data_extraction_processing/processing/data_prep_ml.R")
 
 #traverse over to the DataPull repository
 mega_dir<-dirname(here::here())
@@ -89,6 +89,9 @@ camsid_specific_stats<-read_dta(here("data_folder","main","commercial", paste0("
 daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
 
 state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+
+gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vintage_string,".dta")))
+
 
 stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
@@ -126,6 +129,11 @@ cleaned_landings<-cleaned_landings %>%
 # merge in stockarea-day statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
+
+# merge in gear-day statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(gear_ma, by=join_by(mygear==mygear, dlr_date==dlr_date), relationship="many-to-one")
+
 
 # merge in dlrid historical statistics
 cleaned_landings<-cleaned_landings %>%
