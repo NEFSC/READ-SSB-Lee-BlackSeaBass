@@ -203,25 +203,30 @@ save  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
 /*use  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace */
 
 
+gen lndlbxJumbo=market_desc_string=="Jumbo"
+gen lndlbxLarge=market_desc_string=="Large"
+gen lndlbxMedium=market_desc_string=="Medium"
+gen lndlbxSmall=market_desc_string=="Small"
+gen lndlbxUnclassified=market_desc_string=="Unclassified"
 
-
-/* interact market category with landings*/
-xi, prefix(_M) noomit i.market_desc*lndlb
+foreach var of varlist lndlbxJumbo lndlbxLarge lndlbxMedium lndlbxSmall lndlbxUnclassified{
+	replace `var'=`var'*lndlb
+}
 
 /*  market level quantity supplied */
-bysort dlr_date: egen DailyQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date: egen DailyQLarge=total(_MmarXlndlb_2)
-bysort dlr_date: egen DailyQMedium=total(_MmarXlndlb_3)
-bysort dlr_date: egen DailyQSmall=total(_MmarXlndlb_4)
-bysort dlr_date: egen DailyQUnclassified=total(_MmarXlndlb_6)
+bysort dlr_date: egen DailyQJumbo=total(lndlbxJumbo)
+bysort dlr_date: egen DailyQLarge=total(lndlbxLarge)
+bysort dlr_date: egen DailyQMedium=total(lndlbxMedium)
+bysort dlr_date: egen DailyQSmall=total(lndlbxSmall)
+bysort dlr_date: egen DailyQUnclassified=total(lndlbxUnclassified)
 
 
 /* Camsid, dlr_date (Trip) level quantity supplied */
-bysort dlr_date camsid: egen OwnQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date camsid: egen OwnQLarge=total(_MmarXlndlb_2)
-bysort dlr_date camsid: egen OwnQMedium=total(_MmarXlndlb_3)
-bysort dlr_date camsid: egen OwnQSmall=total(_MmarXlndlb_4)
-bysort dlr_date camsid: egen OwnQUnclassified=total(_MmarXlndlb_6)
+bysort dlr_date camsid: egen OwnQJumbo=total(lndlbxJumbo)
+bysort dlr_date camsid: egen OwnQLarge=total(lndlbxLarge)
+bysort dlr_date camsid: egen OwnQMedium=total(lndlbxMedium)
+bysort dlr_date camsid: egen OwnQSmall=total(lndlbxSmall)
+bysort dlr_date camsid: egen OwnQUnclassified=total(lndlbxUnclassified)
 
 /* market category landings by other vessels on this day */
 foreach size in Jumbo Large Medium Small Unclassified {
@@ -231,18 +236,18 @@ foreach size in Jumbo Large Medium Small Unclassified {
 
 
 /*  market level and state quantity supplied */
-bysort dlr_date state: egen StateQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date state: egen StateQLarge=total(_MmarXlndlb_2)
-bysort dlr_date state: egen StateQMedium=total(_MmarXlndlb_3)
-bysort dlr_date state: egen StateQSmall=total(_MmarXlndlb_4)
-bysort dlr_date state: egen StateQUnclassified=total(_MmarXlndlb_6)
+bysort dlr_date state: egen StateQJumbo=total(lndlbxJumbo)
+bysort dlr_date state: egen StateQLarge=total(lndlbxLarge)
+bysort dlr_date state: egen StateQMedium=total(lndlbxMedium)
+bysort dlr_date state: egen StateQSmall=total(lndlbxSmall)
+bysort dlr_date state: egen StateQUnclassified=total(lndlbxUnclassified)
 
 /* Camsid, dlr_date (Trip) level quantity supplied */
-bysort dlr_date camsid state: egen StateOwnQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date camsid state: egen StateOwnQLarge=total(_MmarXlndlb_2)
-bysort dlr_date camsid state: egen StateOwnQMedium=total(_MmarXlndlb_3)
-bysort dlr_date camsid state: egen StateOwnQSmall=total(_MmarXlndlb_4)
-bysort dlr_date camsid state: egen StateOwnQUnclassified=total(_MmarXlndlb_6)
+bysort dlr_date camsid state: egen StateOwnQJumbo=total(lndlbxJumbo)
+bysort dlr_date camsid state: egen StateOwnQLarge=total(lndlbxLarge)
+bysort dlr_date camsid state: egen StateOwnQMedium=total(lndlbxMedium)
+bysort dlr_date camsid state: egen StateOwnQSmall=total(lndlbxSmall)
+bysort dlr_date camsid state: egen StateOwnQUnclassified=total(lndlbxUnclassified)
 
 
 
@@ -257,20 +262,23 @@ drop StateOwnQ*
 
 /*  market level and stockarea quantity supplied */
 
-bysort dlr_date stockarea: egen StockareaQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date stockarea: egen StockareaQLarge=total(_MmarXlndlb_2)
-bysort dlr_date stockarea: egen StockareaQMedium=total(_MmarXlndlb_3)
-bysort dlr_date stockarea: egen StockareaQSmall=total(_MmarXlndlb_4)
-bysort dlr_date stockarea: egen StockareaQUnclassified=total(_MmarXlndlb_6)
+bysort dlr_date stockarea: egen StockareaQJumbo=total(lndlbxJumbo)
+bysort dlr_date stockarea: egen StockareaQLarge=total(lndlbxLarge)
+bysort dlr_date stockarea: egen StockareaQMedium=total(lndlbxMedium)
+bysort dlr_date stockarea: egen StockareaQSmall=total(lndlbxSmall)
+bysort dlr_date stockarea: egen StockareaQUnclassified=total(lndlbxUnclassified)
 
+
+/*  market level and stockarea own quantity  */
+
+bysort dlr_date camsid stockarea: egen StockareaOwnQJumbo=total(lndlbxJumbo)
+bysort dlr_date camsid stockarea: egen StockareaOwnQLarge=total(lndlbxLarge)
+bysort dlr_date camsid stockarea: egen StockareaOwnQMedium=total(lndlbxMedium)
+bysort dlr_date camsid stockarea: egen StockareaOwnQSmall=total(lndlbxSmall)
+bysort dlr_date camsid stockarea: egen StockareaOwnQUnclassified=total(lndlbxUnclassified)
 
 /*  market level and stockarea quantity supplied */
 
-bysort dlr_date camsid stockarea: egen StockareaOwnQJumbo=total(_MmarXlndlb_1)
-bysort dlr_date camsid stockarea: egen StockareaOwnQLarge=total(_MmarXlndlb_2)
-bysort dlr_date camsid stockarea: egen StockareaOwnQMedium=total(_MmarXlndlb_3)
-bysort dlr_date camsid stockarea: egen StockareaOwnQSmall=total(_MmarXlndlb_4)
-bysort dlr_date camsid stockarea: egen StockareaOwnQUnclassified=total(_MmarXlndlb_6)
 
 
 foreach size in Jumbo Large Medium Small Unclassified {
@@ -312,7 +320,6 @@ foreach size in Jumbo Large Medium Small Unclassified {
 }
 */
 
-drop _Mmarket* _MmarX* OwnQ*
 
 
 /* distinct trips by state and day */
