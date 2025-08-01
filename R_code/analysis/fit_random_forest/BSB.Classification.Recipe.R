@@ -37,6 +37,12 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") 
 
+# Trailing 7 day landing, by gear and market category    
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+  update_role(c(MA7_gearQJumbo, MA7_gearQLarge,MA7_gearQMedium, MA7_gearQSmall), new_role = "predictor") 
+
+
+
 # Dealer share of landings by market category from 2013-2017   
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(Share2014Jumbo, Share2014Large, Share2014Medium,Share2014Small, Share2014Unclassified), new_role = "predictor") 
