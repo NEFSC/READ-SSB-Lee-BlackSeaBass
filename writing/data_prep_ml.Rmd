@@ -104,6 +104,8 @@ vintage_string<-gsub(".dta","",vintage_string)
 vintage_string<-max(vintage_string)
 ```
 
+I'm using the `r vintage_string` data vintage.
+
 
 Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
 
