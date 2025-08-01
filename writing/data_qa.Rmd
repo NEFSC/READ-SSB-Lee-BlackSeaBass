@@ -160,10 +160,10 @@ keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
 
-keep_cols<-c(keep_cols,"status" )
+#keep_cols<-c(keep_cols,"status" )
 
-combined_dataset<- combined_dataset %>%
-  select(all_of(keep_cols))
+#combined_dataset<- combined_dataset %>%
+#  select(all_of(keep_cols))
 
 ```
 
@@ -245,6 +245,9 @@ The proportion of PZEROs is consistent across the market categories. I'm setting
 I was concerned that the unclassifieds were more likely to be PZERO if they are coming from state vessels that do not sort catch. "Real" prices remain a concern.
 
 # Other things
+
+Here's the result of ``skim``.
+
 ```{r summary_tables}
 now<-combined_dataset %>%
     select(-c("weighting")) %>%
@@ -310,14 +313,342 @@ wp
 ```
 
 
+# Unclassified Only Dealers 
+
+There are a few dealers that sell almost exclusively Unclassified fish. The concern 
+is that out-of-sample prediction for these firms will be invalid.
+
+Only a small fraction of the total landings and observations are from these dealers. It's 5,000 observations in the entire time series (not shown).
+
+
+For the 2018-2024 time period (i need to predict for 2019-2024, so I don't know why I included 2018.  There's about 3,000 transactions and 445,000 lbs of Unclassified landings from the Almost-always Unclassified  dealers. There 29,000,000 of total landings from the classified dealers.
+
+
+
+
+```{r UncOnly1}
+##########################################################################
+##########################################################################
+## Look at the dealers that are mostly "Unclassified"
+##########################################################################
+##########################################################################
+
+unc_check <-combined_dataset %>%
+  mutate(
+    many_unc=case_when(
+      Frac2014TUnclassified>=0.85 ~ "Mostly Unclassified",
+      .default="Not"
+    ))%>%
+  mutate(dlrid=droplevels(dlrid))
+
+#This isnt' exactly a transaction, because I'm calling a camsid an transaction.
+unclassified_table1<-unc_check %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(many_unc) %>%
+  summarise(observations=n_distinct(camsid),
+            dealers=n_distinct(dlrid),
+            lnd_000lbs=round(sum(lndlb)/1000,1)
+            ) %>%
+  mutate(lbs_per_trans=lnd_000lbs*1000/observations)
+
+# 36 Dealers that are frequently unclassified in the 2010-2014 time period.
+# There are 5100 transactions and 620000 lbs.  This is lower pounds per "transaction" than the classifiers
+
+knitr::kable(unclassified_table1, caption='Total landings, transactions size, diaggregated into Mostly unclassified and mostly classified', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+Excluding the dlrid=0, and there's still 27,000,000 of landings. 
+
+```{r UncOnly2}
+unclassified_table1a<-unc_check %>%
+    filter(dlr_date>=mdy("01/01/2018")) %>%
+  filter(dlrid!=0) %>%
+    group_by(many_unc) %>%
+  summarise(observations=n_distinct(camsid),
+            dealers=n_distinct(dlrid),
+            lnd_000lbs=round(sum(lndlb)/1000,1)) %>%
+  mutate(lbs_per_trans=lnd_000lbs*1000/observations)
+
+knitr::kable(unclassified_table1a, caption='Total landings, transactions size, diaggregated into Mostly unclassified and mostly classified. No dlrid==0 included.', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+About 419,000 lbs of landings from the "always unclassified" dealers.
+
+```{r Always_Unclassified}
+##########################################################################
+##########################################################################
+## Look at the dealers that are always "Unclassified"
+##########################################################################
+##########################################################################
+
+unc_check2 <-combined_dataset %>%
+  mutate(
+    many_unc=case_when(
+      Frac2014TUnclassified==1 ~ "All Unclassified",
+      .default="Not"
+    ))%>%
+  mutate(dlrid=droplevels(dlrid))
+
+unclassified_table2<-unc_check2 %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(many_unc) %>%
+  summarise(observations=n_distinct(camsid),
+            dealers=n_distinct(dlrid),
+            lnd_000lbs=round(sum(lndlb)/1000,1)) %>%
+  mutate(lbs_per_trans=lnd_000lbs*1000/observations)
+
+knitr::kable(unclassified_table2, caption='Total landings, transactions size, diaggregated into Always unclassified and mostly classified', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+```{r Always_Unclassified_no_dlr0, eval=FALSE}
+
+unclassified_table2a<-unc_check2 %>%
+    filter(dlr_date>=mdy("01/01/2018")) %>%
+  filter(dlrid!=0) %>%
+  group_by(many_unc) %>%
+  summarise(observations=n_distinct(camsid),
+            dealers=n_distinct(dlrid),
+            lnd_000lbs=round(sum(lndlb)/1000,1)) %>%
+  mutate(lbs_per_trans=lnd_000lbs*1000/observations)
+
+# Still lower when I filter out the dlrid=0 observations
+knitr::kable(unclassified_table2a, caption='Total landings, transactions size, diaggregated into Always unclassified and mostly classified', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+Show the dealerid's and their landed pounds 
+
+```{r Only_UNC}
+unclassified_table3<-unc_check2 %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(many_unc, dlrid, market_desc) %>%
+  summarise(lnd_000lbs=round(sum(lndlb)/1000,1)) %>%
+  filter(lnd_000lbs>=2) %>%
+arrange(many_unc, market_desc, desc(lnd_000lbs)) 
+
+unclassified_table4<-unclassified_table3 %>%
+  ungroup() %>%
+  filter(many_unc=="All Unclassified") %>%
+  filter(lnd_000lbs>=6) %>%
+  select(dlrid, lnd_000lbs)
+
+knitr::kable(unclassified_table4, caption='Dealers most likely to be all unclassified', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4) ) )  
+
+```
+
+The amount of unclassified transactions from the "unclassifiers" relative to the total amount of unclassifieds
+is also of interest. Approximately 1/4th of the unclassified landings are coming from "unclassified-only" dealers.  On average, the transactions are about 50% larger. I'm uncomfortable using prices for 2 of the largest ones: 3710 and 3290.  That's about 1/8th of the unclassified landings. Even those two might be okay.
+
+```{r only_unc2}
+
+################################################################################ 
+# Unclassified Landings by "mostly unclassified dealers 
+################################################################################ 
+
+unc_check5 <-combined_dataset %>%
+  filter(market_desc=="Unclassified") %>%
+    mutate(
+    many_unc=case_when(
+      Frac2014TUnclassified>=0.85 ~ "Mostly Unclassified",
+      .default="Not"
+    ))%>%
+  mutate(dlrid=droplevels(dlrid))
+
+#This isnt' exactly a transaction, because I'm calling a camsid an transaction.
+unclassified_table5<-unc_check5 %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(many_unc) %>%
+  summarise(observations=n_distinct(camsid),
+            dealers=n_distinct(dlrid),
+            lnd_000lbs=round(sum(lndlb)/1000,1)
+  ) %>%
+  mutate(lbs_per_trans=lnd_000lbs*1000/observations) 
+
+
+knitr::kable(unclassified_table5, caption='Unclassified landings, average transactions size, diaggregated into Mostly unclassified and not', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+```{r prep1_for_scatter}
+# Data prop for scatter plots.  
+# Select the dealerids that purchased at least 6k  of unclassifieds after jan 1 2018.
+
+unclassified_table55<-unc_check5 %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(many_unc, dlrid, market_desc) %>%
+  summarise(lnd_000lbs=round(sum(lndlb)/1000,1)) %>%
+  filter(lnd_000lbs>=2) %>%
+  arrange(many_unc, market_desc, desc(lnd_000lbs)) 
+
+dlrs<-unclassified_table55 %>%
+  ungroup() %>%
+  filter(many_unc=="Mostly Unclassified") %>%
+  filter(lnd_000lbs >=6) %>%
+  select(dlrid) %>%
+  mutate(dlrid=droplevels(dlrid)) %>%
+  pull(dlrid)
+
+
+ # extract the observations for those dealers
+dlr_detail<-combined_dataset %>%
+  filter(dlrid %in% dlrs) %>%
+  group_by(dlrid) %>%
+#  mutate(price=round(price,2)) %>%
+  relocate(c(market_desc,dlrid,camsid,dlr_date,price, value, lndlb, status)) %>%
+  arrange(dlrid, dlr_date, mygear, hullid)
+ 
+# Do these dealers actually report prices that vary for the unclassfieds?
+# Do they have purchases from multiple vessels on the same day?
+# Are they getting the same prices?
+# View(dlr_detail %>% filter(dlrid %in%dlrs[2]))
+```
+
+
+```{r prep2_for_scatter}
+
+
+#############A little more systematic ####################
+# lets look at the prices of J,M,L, U of "everyone else" compared to the top 10 
+# unclassified dealers
+good<-combined_dataset %>%
+  filter((dlrid %in% dlrs)==0) %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  group_by(dlr_date, market_desc) %>%
+  summarise(lndlb=sum(lndlb),
+         value=sum(value),
+         type=1) %>%
+  mutate(price=value/lndlb) %>%
+  select(dlr_date,market_desc, price) %>%
+  mutate(market_desc=as.character(market_desc)) %>%
+  ungroup()
+
+good<-good %>%
+  pivot_wider(values_from=price, names_from=market_desc, names_prefix = "price_")%>%
+  complete(dlr_date)
+
+unclassified_test<-combined_dataset %>%
+  filter(market_desc=="Unclassified") %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  filter((dlrid %in% dlrs)==1) %>%
+  group_by(dlr_date, dlrid, market_desc) %>%
+  summarise(lndlb=sum(lndlb),
+            value=sum(value),
+            type=2) %>%
+  mutate(price=value/lndlb) %>%
+  mutate(dlrid=droplevels(dlrid)) %>%
+  ungroup() %>%
+  complete(dlrid, dlr_date)
+
+
+unclassified_test2<-unclassified_test %>%
+  left_join(good, by=join_by(dlr_date==dlr_date))
+
+
+
+
+
+
+unclassified_no_aggregate<-combined_dataset %>%
+  filter(market_desc=="Unclassified") %>%
+  filter(dlr_date>=mdy("01/01/2018")) %>%
+  filter((dlrid %in% dlrs)==1) %>%
+  mutate(dlrid=droplevels(dlrid)) %>%
+  ungroup() %>%
+  complete(dlrid, dlr_date)
+
+unclassified_no_aggregate<-unclassified_no_aggregate %>%
+  left_join(good, by=join_by(dlr_date==dlr_date))
+
+
+
+
+
+
+```  
+
+## Daily average scatterplots
+
+The prices for two dealers (3290 and 3710) are very consistent, which does not inspire much confidence in using them to predict market category. Each of these dealers buys from 1-2 permits -- which means that they are likely integrated.   I could include a predictor, but I don't know how it should impact the classifier. I think what I actually want to do is exclude observations where a permit is exclusively selling to 1 buyer. Or downweight them.
+
+The prices for the other dealers all fluctuate up and down, suggesting that they do 'mean' something.
+
+Scatterplot of the average unclassified sales prices for the unclassified-only dealers against the daily average price of Jumbo. 
+
+```{r scattter_Jumbo_baseline}
+unclassified_test2  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Large), linetype=2, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+```
+  
+Scatterplot of the average unclassified sales prices for the unclassified-only dealers  against the daily average price of Large
+
+```{r scattter_Large_baseline}
+unclassified_test2  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Large), linetype=2, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+```
+
+Scatterplot of the average unclassified sales prices for the unclassified-only dealers  against the daily average price of Medium
+
+```{r scattter_Medium_baseline}
+
+unclassified_test2  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Medium), linetype=3, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+
+
+
+```
+
+## Transaction level scatterplot
+
+Scatterplot of the transaction level  unclassified sales prices for the unclassified-only dealers against the daily average price of Jumbo
+
+```{r no_aggregateJ}
+unclassified_no_aggregate  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Jumbo), linetype=2, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+  
+```
+Scatterplot of the transaction level  unclassified sales prices for the unclassified-only dealers against the daily average price of Large
+
+```{r no_aggregateL}
+
+
+unclassified_no_aggregate  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Large), linetype=2, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+  
+```
+
+
+Scatterplot of the transaction level  unclassified sales prices for the unclassified-only dealers against the daily average price of Medium
+
+
+```{r no_aggregateM}
+unclassified_no_aggregate  %>%
+  ggplot(aes(x=dlr_date,y=price)) + 
+  geom_point(aes(size=lndlb), color="blue") +
+  geom_line(aes(x=dlr_date,y=price_Medium), linetype=3, linewidth=.5 ) + 
+  facet_wrap(vars(dlrid))
+```
+
 <!---
 \newpage
 --->
+
+
 # References
 <div id="refs"></div>
-
-
-
 
 
 # Appendix{-}
