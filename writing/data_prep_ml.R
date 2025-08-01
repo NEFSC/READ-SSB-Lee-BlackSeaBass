@@ -1,46 +1,21 @@
----
-title: "Black Sea Data prep for machine learning classification"
-author: "Min-Yang Lee"
-date: "`r format(Sys.time(), '%B %d, %Y')`"
-output:
-  html_document:
-    df_print: paged
-    fig_caption: yes
-  pdf_document:
-    keep_tex: yes
-    fig_caption: yes
-    number_sections: yes
-header-includes: \usepackage{setspace}\doublespacing
-urlcolor: blue
-editor_options:
-  chunk_output_type: console
-fontsize: 12pt
----
-
-# Summary and Housekeeping
-<!---- 
-**********************************************************************
-* Purpose: 	Final Data preparation for Machine Learning Models
-* Inputs:
-*   - landings_cleaned_$date.dta (from wrappers)
-*   - camsid_specific_cleaned_
-*   - daily_ma
-*   - state_ma
-*   - stockarea_ma
-*   - dlrid_historical_stats_
+###############################################################################
+# Purpose: 	Final Data preparation for Machine Learning Models
+# Inputs:
+#   - landings_cleaned_$date.dta (from wrappers)
+#   - camsid_specific_cleaned_
+#   - daily_ma
+#   - state_ma
+#   - stockarea_ma
+#   - dlrid_historical_stats_
 
 
-* Outputs:
-*   - estimation_dataset.Rds Ready for estimation
-*   - unclassified_dataset.Rds Unclassified Transactions. Use these to predict after estimating.
+# Outputs:
+#   - estimation_dataset.Rds Ready for estimation
+#   - unclassified_dataset.Rds Unclassified Transactions. Use these to predict after estimating.
 
-**********************************************************************
-
-
-
- The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
- --->
-```{r global_options, include=FALSE}
+###############################################################################
+# Packages 
+###############################################################################
 
 
 library("here")
@@ -75,26 +50,16 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-
-here::i_am("writing/data_prep_ml.Rmd")
+###############################################################################
+# Directories 
+###############################################################################
+here::i_am("writing/data_prep_ml.R")
 
 #traverse over to the DataPull repository
 mega_dir<-dirname(here::here())
 data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 
 
-
-#############################################################################
-#knitr options
-
-knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
-											dpi = 600)
-options(tinytex.verbose = TRUE)
-# options(knitr.table.format = "latex")
-options(scipen=999)
-
-lbs_per_mt<-2204.62
-#############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
@@ -102,46 +67,20 @@ vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob
 vintage_string<-gsub("landings_cleaned_","",vintage_string)
 vintage_string<-gsub(".dta","",vintage_string)
 vintage_string<-max(vintage_string)
-```
+
+lbs_per_mt<-2204.62
 
 
-Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
 
-1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
-2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
-3. I do some tidying-up (converting datetime variables to date variables)
-4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
-5. There is a little data dropping
-    1. landed pounds=0
-    2. Some landings from VA and DE that look like aggregates. 
-6. I do some binning of gears, loosely into
-    1. Line or Hand gear
-    2. Trawls
-    3. Gillnets
-    4. Pot,Trap and other fixed gears that capture fish alive
-    5. Misc=Dredge, Seine, and Unknown.
-  
-7.  I do some binning of market categories
-    1. Unclassified and "Mixed or Unsized" are combined
-    2. Small, Extra Small, and Pee Wee (Rats) are combined
-    3. Medium and "Medium or Select" are combined.
-8.  Ungraded is combined with Round
-9. I construct a stockunit indicator
-    1. south is 621 and greater, plus 614 and 615 
-    2. North is 613 and smaller, plus 616
-10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-11. I scale landed pounds, nominal value, and deflated value to "thousands". Prices
-are in both real and nominal dollars per landed pound. 
-
+###############################################################################
 # Read in Data
+###############################################################################
+#Read in the cleaned data, and the mini-aggregates that contain
+#1. Daily landings at the market category level
+#2. Daily landings at the state and market category level
+#3. Daily landings at the stockarea and market category level 
+#4. Historical "target encoding" based on 2010-2014 purchases for the dealers
 
-Read in the cleaned data, and the mini-aggregates that contain
-1. Daily landings at the market category level
-2. Daily landings at the state and market category level
-3. Daily landings at the stockarea and market category level 
-4. Historical "target encoding" based on 2010-2014 purchases for the dealers
-
-```{r load_in_data}
 cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
 
@@ -154,38 +93,11 @@ state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vi
 stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
-```
-
-# Read in Data
-
-Make dataset of landings, trips and landing per trip at the year and stock level. This is used to see how much gets dropped out at the end.
-
-```{r landings and trips}
-
-start_data<-cleaned_landings %>%
-  group_by(stockarea,year, camsid) %>%
-  summarise(lndlb=sum(lndlb)) %>%
-  ungroup() %>%
-  group_by(stockarea,year) %>%
-  summarise(lnd_mt=sum(lndlb/2204),
-            trips=n()) %>%
-  mutate(lbs_per_trip=lnd_mt*2204/trips) %>%
-  filter(year>=2015) %>%
-  mutate(year=forcats::as_factor(year),
-          stockarea=haven::as_factor(stockarea, levels="label")) 
-```
 
 
-# Data cleaning
-
-This mimics the stata data cleaning that I did for the multinomial logit. 
-
-I am not sure that this  group_by ...summarize statement is a proper one.
-
-Additionally, I think some extra columns from CAMS_LAND might be good candidate predictors. 
-
-
-```{r filter_mimic_mlogit_dataclean}
+###############################################################################
+# mimics the stata data cleaning that I did for the multinomial logit.
+###############################################################################
 
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
@@ -215,33 +127,26 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
 
-
-
 # merge in dlrid historical statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
 
 # NAs for Transaction count and lndlb can be replaced by zero.
-# Not sure what to do with Shares of landings of Fraction of transactions columns 
-cleaned_landings<-cleaned_landings %>%
-  mutate(TransactionCountJumbo=replace_na(TransactionCountJumbo),
-         TransactionCountLarge=replace_na(TransactionCountLarge),
-         TransactionCountMedium=replace_na(TransactionCountMedium),
-         TransactionCountSmall=replace_na(TransactionCountSmall),
-         TransactionCountUnclassified=replace_na(TransactionCountUnclassified)
-  )
-
-cleaned_landings<-cleaned_landings %>%
-  mutate(DealerHLbsPurchasedJumbo=replace_na(DealerHLbsPurchasedJumbo),
-         DealerHLbsPurchasedLarge=replace_na(DealerHLbsPurchasedLarge),
-         DealerHLbsPurchasedMedium=replace_na(DealerHLbsPurchasedMedium),
-         DealerHLbsPurchasedSmall=replace_na(DealerHLbsPurchasedSmall),
-         DealerHLbsPurchasedUnclassified=replace_na(DealerHLbsPurchasedUnclassified)
-  )
-
-
-
-
+# cleaned_landings<-cleaned_landings %>%
+#   mutate(TransactionCountJumbo=replace_na(TransactionCountJumbo),
+#          TransactionCountLarge=replace_na(TransactionCountLarge),
+#          TransactionCountMedium=replace_na(TransactionCountMedium),
+#          TransactionCountSmall=replace_na(TransactionCountSmall),
+#          TransactionCountUnclassified=replace_na(TransactionCountUnclassified)
+#   )
+# 
+# cleaned_landings<-cleaned_landings %>%
+#   mutate(DealerHLbsPurchasedJumbo=replace_na(DealerHLbsPurchasedJumbo),
+#          DealerHLbsPurchasedLarge=replace_na(DealerHLbsPurchasedLarge),
+#          DealerHLbsPurchasedMedium=replace_na(DealerHLbsPurchasedMedium),
+#          DealerHLbsPurchasedSmall=replace_na(DealerHLbsPurchasedSmall),
+#          DealerHLbsPurchasedUnclassified=replace_na(DealerHLbsPurchasedUnclassified)
+#   )
 
 # compute prices and real prices
 cleaned_landings<-cleaned_landings %>%
@@ -254,8 +159,6 @@ cleaned_landings<-cleaned_landings %>%
   group_by(camsid) %>%
   mutate(trip_level_BSB=sum(lndlb)) %>%
     ungroup()
-
-
 
 # Encode semester
 cleaned_landings<-cleaned_landings %>%
@@ -279,16 +182,16 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
-```
+
+
+###############################################################################
 # Final Tidyup
+###############################################################################
 
-Estimate on: 
-
-1.  Nominal prices that are above $0.15 per pound and below 15
-1.  North Carolina to Mass
-1.  2015 to 2024 data
-
-```{r final_tidyup}
+#Estimate on: 
+#1.  Nominal prices that are above $0.15 per pound and below 15
+#1.  North Carolina to Mass
+#1.  2015 to 2024 data
 
 combined_dataset<-cleaned_landings %>%
    mutate(keep = case_when(year<2015~ 0,
@@ -336,101 +239,4 @@ estimation_dataset<-combined_dataset %>%
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
 
-```
 
-# Data summaries
-
-In the original "cleaned" dataset, I have about 1,100-1,300 trips per year in the South and 10-20x more trips in the North.
-
-```{r initial_dataset}
-knitr::kable(start_data, caption='Initial Dataset Landings and Trips by stockarea and year', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-```
-
-
-``` {r summarize_combined_dataset}
-
-totals<-combined_dataset %>%
-  group_by(stockarea,year, camsid) %>%
-  summarise(lndlb=sum(lndlb)) %>%
-  ungroup() %>%
-  group_by(stockarea,year) %>%
-  summarise(lnd_mt=sum(lndlb/2204),
-            trips=n()) %>%
-  mutate(lbs_per_trip=lnd_mt*2204/trips)
-
-knitr::kable(totals, caption='Full Dataset Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-```
-
-
-
-
-``` {r summarize_estimation_dataset}
-
-totalsE<-estimation_dataset %>%
-  group_by(stockarea,year, camsid) %>%
-  summarise(lndlb=sum(lndlb)) %>%
-  ungroup() %>%
-  group_by(stockarea,year) %>%
-  summarise(lnd_mt=sum(lndlb/2204),
-            trips=n()) %>%
-  mutate(lbs_per_trip=lnd_mt*2204/trips)
-
-
-knitr::kable(totalsE, caption='Four Principal Classes Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-```
-
-# How much data do I have
-
-Is there "enough" data in just the South?  There are about 1,300 trips per year.
-
-``` {r graph_combined_obs}
-
-totalsMC<-combined_dataset %>%
-  group_by(stockarea,year, camsid, market_desc) %>%
-  summarise(lndlb=sum(lndlb)) %>%
-  ungroup() %>%
-  group_by(stockarea,year,market_desc) %>%
-  summarise(lnd_mt=sum(lndlb/2204),
-            observations=n()) 
-
-
-
-ggplot(totalsMC)+
-aes(x=year, y=observations) +
-  geom_point() +
-  ylab("obs")+ 
-    facet_grid(stockarea~market_desc, scales="free")
-
-```
-
-
-
-``` {r table_for_combined_obs}
-
-obs<-totalsMC %>%
-  select(-lnd_mt) %>%
-  pivot_wider(values_from=observations, names_from=stockarea, names_glue="Observations_{stockarea}")
-
-
-knitr::kable(obs, caption='Number of Observations', format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=3)))  
-
-
-
-
-```
-
-
-
-
-
-<!---
-\newpage
---->
-# References
-<div id="refs"></div>
-
-
-
-
-
-# Appendix{-}
