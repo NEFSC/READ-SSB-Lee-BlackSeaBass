@@ -279,6 +279,17 @@ bysort dlr_date camsid stockarea: egen StockareaOwnQUnclassified=total(lndlbxUnc
 
 /*  market level and stockarea quantity supplied */
 
+bysort dlr_date mygear: egen gearQJumbo=total(lndlbxJumbo)
+bysort dlr_date mygear: egen gearQLarge=total(lndlbxLarge)
+bysort dlr_date mygear: egen gearQMedium=total(lndlbxMedium)
+bysort dlr_date mygear: egen gearQSmall=total(lndlbxSmall)
+bysort dlr_date mygear: egen gearQUnclassified=total(lndlbxUnclassified)
+
+
+
+
+
+
 
 
 foreach size in Jumbo Large Medium Small Unclassified {
@@ -321,6 +332,15 @@ foreach size in Jumbo Large Medium Small Unclassified {
 */
 
 
+egen tagstockareaG = tag(camsid mygear market_desc dlr_date)
+egen ndistinct_gear = total(tagstockareaG), by(mygear dlr_date market_desc)
+
+
+
+
+
+drop lndlbx* OwnQ*
+
 
 /* distinct trips by state and day */
 egen tagstate = tag(camsid state dlr_date)
@@ -337,7 +357,7 @@ egen ndistinct_trips = total(tag), by(dlr_date)
 
 
 
-order camsid dlr_date OtherQ* StateOtherQ* StateQ* DailyQ* StockareaOtherQ* StockareaQ* ndistinct_state ndistinct_stockarea ndistinct_trips
+order camsid dlr_date OtherQ* StateOtherQ* StateQ* DailyQ* StockareaOtherQ* StockareaQ* gearQ*  ndistinct_state ndistinct_stockarea ndistinct_trips ndistinct_gear
 
 preserve
 
@@ -361,7 +381,7 @@ restore
 /* Compute moving sums */
 /*7 day moving sum of QJumbo, QLarge, QMedium, QSmall, QUnclassified */
 
-keep camsid dlr_date state stockarea StateQ* DailyQ* StockareaQ* ndistinct_state ndistinct_stockarea ndistinct_trips
+keep camsid dlr_date state stockarea mygear StateQ* DailyQ* StockareaQ* gearQ*  ndistinct_state ndistinct_stockarea ndistinct_trips ndistinct_gear
 preserve
 rename ndistinct_trips trips
 collapse (first) DailyQ* trips, by(dlr_date)
@@ -378,12 +398,10 @@ foreach var of varlist DailyQ* trips{
 save "${data_main}\commercial\daily_ma_${vintage_string}.dta", replace
 restore
 
+
 /*7 day moving sum of StateQJumbo StateQLarge StateQMedium StateQSmall StateQUnclassified
 collapsed by dlr_date, state
 */
-
-
-
 
 preserve
 
@@ -407,7 +425,7 @@ restore
 collapsed by dlr_date stockarea
 */
 
-
+preserve
 collapse (first) StockareaQ* ndistinct_stockarea, by(dlr_date stockarea)
 tsset stockarea dlr_date
 rename ndistinct_stockarea stockarea_trips
@@ -419,6 +437,42 @@ foreach var of varlist StockareaQ* stockarea_trips{
 	drop `var'
 }
 save "${data_main}\commercial\stockarea_ma_${vintage_string}.dta", replace
+
+restore
+
+
+
+/*
+7 day moving sum of StockareaQJumbo StockareaQLarge StockareaQMedium StockareaQSmall StockareaQUnclassified
+collapsed by dlr_date stockarea
+*/
+
+preserve
+collapse (first) gearQ* ndistinct_gear, by(dlr_date mygear)
+tsset mygear dlr_date
+rename ndistinct_gear gear_trips
+tsfill, full
+
+foreach var of varlist gearQ* gear_trips{
+	replace `var'=0 if `var'==.
+    tssmooth ma MA7_`var'=`var', window(7 0 0)
+	drop `var'
+}
+save "${data_main}\commercial\gear_ma_${vintage_string}.dta", replace
+
+restore
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* I could easily construct a variable for the number of trips that landed a particular market category (by state or stockarea).
 Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
