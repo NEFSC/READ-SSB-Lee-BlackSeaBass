@@ -93,7 +93,14 @@ tune_spec <- rand_forest(
   min_n = 5,
 ) %>%
   set_mode("classification") %>%
-  set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
+  set_engine("ranger",
+             num.threads=!!my.ranger.threads, 
+             na.action="na.learn", 
+             respect.unordered.factors="order",
+             importance="impurity",
+             oob.error = TRUE,
+             keep.inbag=TRUE,
+             write.forest=TRUE)
 
 
 
