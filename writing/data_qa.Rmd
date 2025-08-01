@@ -248,7 +248,7 @@ knitr::kable(totalsE, caption='Four Principal Classes Landings and Trips',format
 
 Is there "enough" data in just the South?  There are about 1,300 trips per year.
 
-``` {r graph_combined_obs}
+``` {r graph_combined_obs,fig.cap = "Number of observations by Market category and stockarea"}
 
 totalsMC<-combined_dataset %>%
   group_by(stockarea,year, camsid, market_desc) %>%
@@ -283,43 +283,8 @@ knitr::kable(obs, caption='Number of Observations', format.args = list(big.mark 
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 The raw looks okay
-```{r investigate_cams_status}
+```{r investigate_cams_status,fig.cap = "landed weight by status and year "}
 
 status_check<-combined_dataset %>%
   group_by(status,year,market_desc) %>%
@@ -334,7 +299,7 @@ ggplot(status_check, aes(fill=status, y=landed_mt, x=year)) +
 
 But the percentage based graphs show that more of the "Unclassifieds" are PZERO. 
 
-```{r investigate_status2}
+```{r investigate_status2,fig.cap = "landed weight by status and year in percentages"}
 ggplot(status_check, aes(fill=status, y=landed_mt, x=year)) + 
     geom_bar(position="fill", stat="identity") +
     facet_wrap(~market_desc) 
@@ -342,7 +307,7 @@ ggplot(status_check, aes(fill=status, y=landed_mt, x=year)) +
 ```
 
 Some states are really good for matching. Some (MA) are not.
-```{r status-check2}
+```{r status-check2,fig.cap = "landed weight by status and year "}
 status_check2<-combined_dataset %>%
   group_by(status,year,state) %>%
   summarise(landed_mt=sum(lndlb)/lbs_per_mt)
@@ -370,9 +335,35 @@ ggplot(status_check3, aes(fill=status, y=landed_mt, x=year)) +
 
 ```
 
+```{r status-check3a,fig.cap = "landed weight by status and year, disaggregated by state and market category"}
+status_check3<-combined_dataset %>%
+  group_by(status,year,state, market_desc) %>%
+  summarise(landed_mt=sum(lndlb)/lbs_per_mt)%>%
+  filter(state!="ME")
+
+ggplot(status_check3, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_grid(rows=vars(state), cols=vars(market_desc)) 
+
+```
+
+
+```{r status-check3aFree,fig.cap = "landed weight by status and year, disaggregated by state and market category. Different y scaless for each state. No Maine"}
+status_check3<-combined_dataset %>%
+  group_by(status,year,state, market_desc) %>%
+  summarise(landed_mt=sum(lndlb)/lbs_per_mt) %>%
+  filter(state!="ME")
+         
+ggplot(status_check3, aes(fill=status, y=landed_mt, x=year)) + 
+    geom_bar(position="stack", stat="identity") +
+    facet_grid(rows=vars(state), cols=vars(market_desc), scale="free") 
+
+```
+
+
 After conditioning for state, the Unclassified seem to "match" at a similar rate to the other cats.
 
-```{r subset3}
+```{r subset3,fig.cap = "landed weight by status and year, disaggregated by state and market category.3 most common states"}
 status_check3 %>%
   dplyr::filter(state %in% c('MA','NY', 'RI') ) %>%
   ggplot( aes(fill=status, y=landed_mt, x=year)) + 
@@ -383,7 +374,7 @@ status_check3 %>%
 
 The percentage bar graphs confirm. 
 
-```{r subset3_pct}
+```{r subset3_pct,fig.cap = "landed weight by status and year, disaggregated by state and market category.3 most common states In percentages"}
 status_check3 %>%
   dplyr::filter(state %in% c('MA','NY', 'RI') ) %>%
   ggplot( aes(fill=status, y=landed_mt, x=year)) + 
@@ -430,7 +421,7 @@ skim_results
 
 In my ML data prep, I've dropped observations where prices are <$0.15. This is reasonable, but they are disproportionately Unclassified. I suspect something different is going on with those observations, or we have a CAMS allocation issue intersecting with integer values. 
 
-```{r investigate_prices}
+```{r investigate_prices,fig.cap = "Histogram of prices, weighted"}
 
   price_95th_percentile <- combined_dataset %>%
     summarise(price_95th = quantile(price, 0.95, na.rm = TRUE)) %>%
