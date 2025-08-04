@@ -199,6 +199,13 @@ cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
 
+cleaned_landings<-cleaned_landings %>%
+  mutate(shore=as.numeric(hullid=="FROM_SHORE"),
+         nofederal=as.numeric(str_detect(camsid, "^000000*"))
+)
+
+
+# 
 
 ###############################################################################
 # Final Tidyup
