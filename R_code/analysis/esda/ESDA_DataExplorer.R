@@ -66,7 +66,9 @@ daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vi
 state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
 stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
 
+gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vintage_string,".dta")))
 
 #############################################################################
 # END  Data read in #
@@ -122,10 +124,19 @@ cleaned_landings<-cleaned_landings %>%
   left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
 
 
+# merge in gear-day statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(gear_ma, by=join_by(mygear==mygear, dlr_date==dlr_date), relationship="many-to-one")
+
 
 # merge in dlrid historical statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
+
+
+# merge in dlrid lag statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(dlrid_lag, by=join_by(dlrid==dlrid,year==year), relationship="many-to-one")
 
 # NAs for Transaction count and lndlb can be replaced by zero.
 # Not sure what to do with Shares of landings of Fraction of transactions columns 
@@ -178,6 +189,12 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(shore=as.numeric(hullid=="FROM_SHORE"),
+         nofederal=as.numeric(str_detect(camsid, "^000000*"))
+  )
+
 
 combined_dataset<-cleaned_landings %>%
   mutate(keep = case_when(year<2015~ 0,
