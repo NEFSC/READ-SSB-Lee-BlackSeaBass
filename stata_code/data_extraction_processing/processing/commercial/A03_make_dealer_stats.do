@@ -87,15 +87,17 @@ bysort dlrid year: egen TotalPounds=total(lndlb)
 bysort dlrid year: egen TotalTrans=total(TransactionCount)
 gen LagSharePounds=lndlb/TotalPounds
 gen LagShareTrans=TransactionCount/TotalTrans
-keep year dlrid mymarket LagSharePounds LagShareTrans
+keep year dlrid mymarket LagSharePounds LagShareTrans lndlb TransactionCount
 
+rename lndlb LagPounds
+rename TransactionCount LagTrans
 /* lag my statistics */
 replace year=year+1
 
-reshape wide LagSharePound LagShareTrans, i(dlrid year) j(mymarket) string
+reshape wide LagSharePound LagShareTrans LagPounds LagTrans, i(dlrid year) j(mymarket) string
 
 /* zero fill if there are missings here. This means a dealer never purchased one of the market categories  */
-foreach var of varlist LagSharePound* LagShareTrans*{
+foreach var of varlist LagSharePound* LagShareTrans* LagPounds* LagTrans* {
 	replace `var'=0 if `var'==.
 }
 tsset dlrid year
