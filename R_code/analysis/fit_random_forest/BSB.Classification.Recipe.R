@@ -45,12 +45,12 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 
 # Dealer share of landings by market category from 2013-2017   
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(Share2014Jumbo, Share2014Large, Share2014Medium,Share2014Small, Share2014Unclassified), new_role = "predictor") 
+  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall, LagSharePoundsUnclassified), new_role = "predictor") 
 
 # Dealer transaction count of landings by market category from 2013-2017   
 
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified), new_role = "predictor") 
+  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall, LagShareTransUnclassified), new_role = "predictor") 
 
 # You can't center the factor variables
 # rescale and recenter 

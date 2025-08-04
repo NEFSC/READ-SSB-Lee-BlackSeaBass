@@ -105,7 +105,7 @@ dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_st
 
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
-  group_by(camsid,hullid, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
+  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
   summarise(value=sum(value),
             valueR_CPI=sum(valueR_CPI),
            lndlb=sum(lndlb),
@@ -137,11 +137,11 @@ cleaned_landings<-cleaned_landings %>%
 
 
 # merge in dlrid historical statistics
-cleaned_landings<-cleaned_landings %>%
-  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
+#cleaned_landings<-cleaned_landings %>%
+#  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
 
 
-# merge in dlrid historical statistics
+# merge in dlrid lag statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(dlrid_lag, by=join_by(dlrid==dlrid,year==year), relationship="many-to-one")
 
