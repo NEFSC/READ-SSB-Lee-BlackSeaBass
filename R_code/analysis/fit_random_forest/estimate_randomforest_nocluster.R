@@ -78,11 +78,11 @@ platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
   if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-      runClass<-'DynamicContainer'
-    } else{ 
-      runClass <- 'Container'
-    }
+    runClass<-'DynamicContainer'
+  } else{ 
+    runClass <- 'Container'
   }
+}
 
 if(platform == 'Windows'){
   runClass<-'Windows'
@@ -93,8 +93,8 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container')){ 
   my.ranger.threads<-8
 }else if (runClass %in% c('DynamicContainer')){ 
-  my.ranger.threads<-50
-
+  my.ranger.threads<-8
+  
 }
 
 
@@ -156,30 +156,34 @@ if(testing==TRUE){
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 
 
- # for reproducibility
- set.seed(4587315)
+# for reproducibility
+set.seed(4587315)
 
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if(testing==TRUE){
- estimation_dataset$rand<-runif(nrow(estimation_dataset))
- estimation_dataset<-estimation_dataset %>%
-     dplyr::filter(rand<=testing_fraction)
+  estimation_dataset$rand<-runif(nrow(estimation_dataset))
+  estimation_dataset<-estimation_dataset %>%
+    dplyr::filter(rand<=testing_fraction)
 }
 
 # construct the "case weights" variable here and trim out the extra factor levels from market_desc.
- estimation_dataset<-estimation_dataset %>%
-     mutate(weighting = frequency_weights(weighting),
-            market_desc=fct_drop(market_desc))
+estimation_dataset<-estimation_dataset %>%
+  mutate(weighting = frequency_weights(weighting),
+         market_desc=fct_drop(market_desc))
 
 keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c(keep_cols,"shore","nofederal","permit", "hullid")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
 keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
 keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
+keep_cols<-c(keep_cols,"MA7_gearQJumbo", "MA7_gearQLarge","MA7_gearQMedium", "MA7_gearQSmall")
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
-keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
-keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+# keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+# keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
+keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
 
 
 estimation_dataset<- estimation_dataset %>%
