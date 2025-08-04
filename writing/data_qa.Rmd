@@ -145,6 +145,8 @@ daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vi
 state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
 stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
+gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vintage_string,".dta")))
 
 
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
@@ -167,12 +169,24 @@ keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", 
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
-
+keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
+keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
 #keep_cols<-c(keep_cols,"status" )
 
 #combined_dataset<- combined_dataset %>%
 #  select(all_of(keep_cols))
 
+
+
+#Factor the cams status column
+cleaned_landings<-cleaned_landings %>%
+  mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
+  )
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(shore=as.numeric(hullid=="FROM_SHORE"),
+         nofederal=as.numeric(str_detect(camsid, "^000000*"))
+  )
 ```
 
 
