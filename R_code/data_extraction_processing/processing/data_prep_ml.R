@@ -137,8 +137,8 @@ cleaned_landings<-cleaned_landings %>%
 
 
 # merge in dlrid historical statistics
-#cleaned_landings<-cleaned_landings %>%
-#  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
+cleaned_landings<-cleaned_landings %>%
+  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
 
 
 # merge in dlrid lag statistics
