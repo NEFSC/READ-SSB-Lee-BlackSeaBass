@@ -26,7 +26,10 @@
 
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
-testing<-FALSE
+
+search_type<-"Initial"
+# search_type in "Initial", "Prototype", or "Final")
+
 testing_fraction<-0.30
 
 
@@ -95,7 +98,7 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container')){ 
   my.ranger.threads<-8
 }else if (runClass %in% c('DynamicContainer')){ 
-  my.ranger.threads<-50
+  my.ranger.threads<-16
 
 }
 
@@ -116,7 +119,7 @@ data_save_name<-paste0("data_split",estimation_vintage,".Rds")
 tune_file_name<-paste0("BSB_ranger_tune",estimation_vintage,".Rds")
 final_fit_file_name<-paste0("BSB_ranger_results",estimation_vintage,".Rds")
 
-if(testing==TRUE){
+if  (search_type=="Prototype"){
   data_save_name<-paste0("data_split_TEST",estimation_vintage,".Rds")
   tune_file_name<-paste0("BSB_ranger_tune_TEST",estimation_vintage,".Rds")
   final_fit_file_name<-paste0("BSB_ranger_results_TEST",estimation_vintage,".Rds")
@@ -163,7 +166,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 
 
 # When testing, take a subset of the data. This is just to test how my code is working   
-if(testing==TRUE){
+if  (search_type=="Prototype"){
  estimation_dataset$rand<-runif(nrow(estimation_dataset))
  estimation_dataset<-estimation_dataset %>%
      dplyr::filter(rand<=testing_fraction)

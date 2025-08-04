@@ -28,7 +28,10 @@
 
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
-testing<-FALSE
+
+search_type<-"Initial"
+# search_type in "Initial", "Prototype", or "Final")
+
 testing_fraction<-0.30
 
 # how much of the data to hold out for final validation
@@ -95,7 +98,7 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container')){ 
   my.ranger.threads<-8
 }else if (runClass %in% c('DynamicContainer')){ 
-  my.ranger.threads<-50
+  my.ranger.threads<-16
 
 }
 
@@ -116,7 +119,7 @@ data_save_name<-paste0("data_split_5_NOC_class",estimation_vintage,".Rds")
 tune_file_name<-paste0("BSB_ranger_5_NOC_class_tune",estimation_vintage,".Rds")
 final_fit_file_name<-paste0("BSB_ranger_5_NOC_class_results",estimation_vintage,".Rds")
 if(testing==TRUE){
-  data_save_name<-paste0("data_split_5_NOC_class_TEST",estimation_vintage,".Rds")
+if  (search_type=="Prototype"){
   tune_file_name<-paste0("BSB_ranger_5_NOC_class_tune_TEST",estimation_vintage,".Rds")
   final_fit_file_name<-paste0("BSB_ranger_5_NOC_class_results_TEST",estimation_vintage,".Rds")
   
@@ -164,7 +167,7 @@ estimation_dataset<-rbind(estimation_dataset,unclassified_dataset)
 
 
 # When testing, take a subset of the data. This is just to test how my code is working   
-if(testing==TRUE){
+if  (search_type=="Prototype"){
  estimation_dataset$rand<-runif(nrow(estimation_dataset))
  estimation_dataset<-estimation_dataset %>%
      dplyr::filter(rand<=testing_fraction)
