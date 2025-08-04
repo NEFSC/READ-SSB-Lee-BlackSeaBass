@@ -273,11 +273,12 @@ foreach var of varlist gearQ* gear_trips{
 }
 save "${data_main}\commercial\gear_ma_${vintage_string}.dta", replace
 
-restore
 
 
 
-
+/* I could easily construct a variable for the number of trips that landed a particular market category (by state or stockarea).
+Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
+But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockareaM */
 
 
 

@@ -1,7 +1,8 @@
 global in_string 2025_07_09
-do "$processing_code/commercial/A01_data_prep.do"
+do "$processing_code/commercial/A01_make_landings_cleaned.do"
+do "$processing_code/commercial/A02_make_daily_stats.do"
 
-do "$processing_code/commercial/A02_dealer_stats_prep.do"
+do "$processing_code/commercial/A03_make_dealer_stats.do"
 
 /* Run the R code */
 /* this doesn't work because the data_prep_ml.R script depends on setting directories with here and having an open project. 
