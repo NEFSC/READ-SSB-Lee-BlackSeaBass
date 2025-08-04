@@ -272,3 +272,13 @@ combined_dataset %>% filter(lndlb<=1000) %>%
     config=configs
   )
 
+
+# Correlation of the Lag Shares
+
+corrs<-combined_dataset %>%
+  group_by(dlrid,year) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(starts_with("LagSharePounds"))
+
+cor(corrs)

@@ -161,14 +161,14 @@ combined_dataset<-combined_dataset %>%
      mutate(weighting = frequency_weights(weighting),
             market_desc=fct_drop(market_desc))
 
-keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c("market_desc","dlrid","permit", "hullid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
 keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
 keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
-keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
-keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+#keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+#keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
 keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
 keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
 #keep_cols<-c(keep_cols,"status" )
@@ -797,6 +797,174 @@ unclassified_no_aggregate  %>%
   geom_line(aes(x=dlr_date,y=price_Medium), linetype=3, linewidth=.5 ) + 
   facet_wrap(vars(dlrid))
 ```
+
+# Persistence of market categories
+Dealers with higher shares of Jumbos tend to have higher shares of Larges. Dealers with large shares of Unclassifieds have smaller shares of other things.
+
+```{r dealer_classifications_pounds}
+# Correlation of the Lag Shares of Pounds
+
+dealer_pounds<-combined_dataset %>%
+  group_by(dlrid,year) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(starts_with("LagSharePounds"))
+
+knitr::kable(cor(dealer_pounds, use="pairwise.complete.obs"), caption='Correlations of Dealer Shares of Pounds', format.args = list(big.mark = ","), digits=3, align=c("l",rep('r',times=4)))  
+```
+
+```{r correlations_of_pounds}
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsJumbo)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsLarge)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsMedium)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsSmall)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+```
+
+
+
+Qualitatively the same thing when I remove the dealers than are almost all "unclassified"
+
+
+```{r dealer_classifications_poundstrim}
+# Correlation of the Lag Shares of Pounds
+
+dealer_pounds<-combined_dataset %>%
+  filter(Frac2014TUnclassified<=.85) %>%
+  group_by(dlrid,year) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(starts_with("LagSharePounds"))
+
+knitr::kable(cor(dealer_pounds, use="pairwise.complete.obs"), caption='Correlations of Dealer Shares of Pounds. Trimmed.', format.args = list(big.mark = ","), digits=3, align=c("l",rep('r',times=4)))  
+
+```
+
+
+
+```{r correlations_of_poundsTrim}
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsJumbo)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsLarge)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsMedium)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagSharePoundsUnclassified, y=LagSharePoundsSmall)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+```
+
+
+Qualitatively the same thing for Transactions
+
+
+```{r dealer_classifications_Trans}
+# Correlation of the Lag Shares of Trans
+
+dealer_pounds<-combined_dataset %>%
+  group_by(dlrid,year) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(starts_with("LagShareTrans"))
+
+knitr::kable(cor(dealer_pounds, use="pairwise.complete.obs"), caption='Correlations of Dealer Shares of Transactions', format.args = list(big.mark = ","), digits=3, align=c("l",rep('r',times=4)))  
+
+```
+
+
+
+```{r correlations_of_trans}
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransJumbo)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransLarge)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransMedium)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransSmall)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+```
+
+Trimmed dataset shows the same thing.
+
+```{r correlations_of_transactions}
+
+dealer_pounds2<-combined_dataset %>%
+  filter(Frac2014TUnclassified<=.85) %>%
+  group_by(dlrid,year) %>%
+  slice(1) %>%
+  ungroup() %>%
+    select(starts_with("LagSharePounds"))
+
+knitr::kable(cor(dealer_pounds2, use="pairwise.complete.obs"), caption='Correlations of Dealer Shares of Transactions. Trimmed', format.args = list(big.mark = ","), digits=3, align=c("l",rep('r',times=4)))  
+```
+
+
+
+```{r correlations_of_trans2}
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransJumbo)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransLarge)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransMedium)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+dealer_pounds %>%
+  ggplot(aes(x=LagShareTransUnclassified, y=LagShareTransSmall)) + 
+  geom_jitter(width = 0.05, height = 0.05)
+
+
+```
+
 
 <!---
 \newpage
