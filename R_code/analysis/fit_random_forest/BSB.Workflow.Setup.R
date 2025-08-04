@@ -38,7 +38,10 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
              importance="impurity",
              oob.error = TRUE,
              keep.inbag=TRUE,
-             write.forest=TRUE)
+             write.forest=TRUE,
+             proximity = TRUE,
+             probability = TRUE) 
+
 
 case_weights_allowed(ranger_model)
 
@@ -100,6 +103,8 @@ tune_spec <- rand_forest(
              importance="impurity",
              oob.error = TRUE,
              keep.inbag=TRUE,
+             proximity = TRUE,
+             probability = TRUE,
              write.forest=TRUE)
 
 
