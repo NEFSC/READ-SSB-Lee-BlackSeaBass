@@ -96,6 +96,7 @@ gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vint
 stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
 
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
 
 
 ###############################################################################
@@ -138,6 +139,13 @@ cleaned_landings<-cleaned_landings %>%
 # merge in dlrid historical statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
+
+
+# merge in dlrid historical statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(dlrid_lag, by=join_by(dlrid==dlrid,year==year), relationship="many-to-one")
+
+
 
 # NAs for Transaction count and lndlb can be replaced by zero.
 # cleaned_landings<-cleaned_landings %>%

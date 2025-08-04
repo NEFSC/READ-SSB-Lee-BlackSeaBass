@@ -1,10 +1,16 @@
+**********************************************************************
+* Purpose: 	code to do my make the dealer aggregate statistics.
+* Inputs:
+*   - landings_cleaned_$date.dta 
 
 
+* Outputs:
 
+*   - dlrid_historical_stats_ : Dealer historical (2010-2014) used for target encoding
+*   - dlrid_last_year: Dealer historical (2010-2014) used for target encoding
 
-/* I could easily construct a variable for the number of trips that landed a particular market category (by state or stockarea).
-Because states have possession limits, I think this is too close to the quantity landed variables to be worthwhile. 
-But if I change my mind, I can operate on ndistinct_stateM and ndistinct_stockareaM */
+**********************************************************************
+
 
 
 /* historical dealnum things */
@@ -56,4 +62,71 @@ compress
 
 notes: pounds landed and fraction pound landed of bsb 
 save "${data_main}\commercial\dlrid_historical_stats_${vintage_string}.dta", replace
+
+
+
+
+
+
+
+
+/* Previous Year landings */
+
+use "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
+keep if year>=2014
+
+bysort dlrid camsid market_desc: gen TransactionCount=_n==1
+/* sum by dlr and market category */
+collapse (sum) lndlb TransactionCount, by(dlrid market_desc year)
+decode market_desc, gen(mymarket)
+
+keep lndlb dlrid mymarket TransactionCount year
+/* reshape and zero fill */
+
+bysort dlrid year: egen TotalPounds=total(lndlb)
+bysort dlrid year: egen TotalTrans=total(TransactionCount)
+gen LagSharePounds=lndlb/TotalPounds
+gen LagShareTrans=TransactionCount/TotalTrans
+keep year dlrid mymarket LagSharePounds LagShareTrans
+
+/* lag my statistics */
+replace year=year+1
+
+reshape wide LagSharePound LagShareTrans, i(dlrid year) j(mymarket) string
+
+/* zero fill if there are missings here. This means a dealer never purchased one of the market categories  */
+foreach var of varlist LagSharePound* LagShareTrans*{
+	replace `var'=0 if `var'==.
+}
+tsset dlrid year
+/* do not zero fill here. missing values mean the dealer didn't buy anything in the previous year */
+tsfill, full
+
+notes: merge this on dlrid and year to get 1 year lags of the share of Pounds into the estimation dataset
+save "${data_main}\commercial\dlrid_lag_stats_${vintage_string}.dta", replace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
