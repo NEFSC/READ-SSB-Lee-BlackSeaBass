@@ -1,0 +1,414 @@
+---
+title: "Black Sea Bass: no price variation"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+---
+
+
+<!---- 
+**********************************************************************
+* Purpose: 	Quality Assurance and checks on data for machine learning models.
+* Inputs:
+*   - BSB_estimation_dataset (from data_prep_ml.Rmd)
+*   - BSB_unclassified_dataset (from data_prep_ml.Rmd)
+* --- all other precursor datasets
+
+* Outputs:
+
+**********************************************************************
+
+
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ --->
+```{r global_options, include=FALSE}
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+library("glue")
+# load tidyverse and related
+library("tidymodels")
+library("haven")
+library("hardhat")
+# load machine learning and estimation tools
+# ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
+# you might want to install Rcpp, then RcppEigen, then ranger
+
+library("nnet")
+library("ranger")
+
+library("partykit")
+library("bonsai")
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("skimr")
+library("conflicted")
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+here::i_am("writing/data_qa.Rmd")
+
+#traverse over to the DataPull repository
+mega_dir<-dirname(here::here())
+data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+estimation_vintage<-as.character(Sys.Date())
+
+
+
+
+
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.ranger.threads<-6
+} else if (runClass %in% c('Container')){ 
+  my.ranger.threads<-8
+}else if (runClass %in% c('DynamicContainer')){ 
+  my.ranger.threads<-50
+
+}
+
+
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+```
+
+```{r load_in_data and results, include=FALSE}
+# this was created with data_prep_ml.Rmd
+
+cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
+camsid_specific_stats<-read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
+daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
+state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
+dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
+dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
+
+gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vintage_string,".dta")))
+
+
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+unclassified_dataset<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
+combined_dataset<-rbind(estimation_dataset,unclassified_dataset)
+
+ # for reproducibility
+ set.seed(4587315)
+
+# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
+combined_dataset<-combined_dataset %>%
+     mutate(weighting = frequency_weights(weighting),
+            market_desc=fct_drop(market_desc))
+
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
+keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
+keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
+keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
+keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
+keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
+keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
+
+#keep_cols<-c(keep_cols,"status" )
+
+#combined_dataset<- combined_dataset %>%
+#  select(all_of(keep_cols))
+
+```
+
+
+
+# Read in start Data
+
+Make dataset of landings, trips and landing per trip at the year and stock level. This is used to see how much gets dropped out at the end.
+
+```{r landings and trips}
+
+start_data<-cleaned_landings %>%
+  group_by(stockarea,year, camsid) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            trips=n()) %>%
+  mutate(lbs_per_trip=lnd_mt*2204/trips) %>%
+  filter(year>=2015) %>%
+  mutate(year=forcats::as_factor(year),
+          stockarea=haven::as_factor(stockarea, levels="label")) 
+```
+
+
+# Data summaries
+
+``` {r summarize_estimation_dataset}
+
+totalsE<-estimation_dataset %>%
+  group_by(stockarea,year, camsid) %>%
+  summarise(lndlb=sum(lndlb)) %>%
+  ungroup() %>%
+  group_by(stockarea,year) %>%
+  summarise(lnd_mt=sum(lndlb/2204),
+            trips=n()) %>%
+  mutate(lbs_per_trip=lnd_mt*2204/trips)
+
+
+knitr::kable(totalsE, caption='Four Principal Classes Landings and Trips',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+# Dealers that always report the same price
+
+If a dealer is always reporting the same price for a market category, those prices are probably coming from a separate data generating process, and not reflecting true market prices. This information will not be useful in predicting market categories for "regular" transactions.
+
+Dropping data out of my estimation dataset will be a little painful, but it's necessary.
+
+1. Dealers that have the same price for the entire time series for a market category
+2. Dealers that have the same price for a year for a market category
+3. Dealers that have the same price for 6 months for a market category
+
+Dealers might lock in a price for a month or two by forward contracting. This is fine to keep in, their prices will adjust, just slower than other people.
+
+"The Same" -- at minimum we have integers for value which introduces some noise due to rounding errors in the prices.  So we should treat things within a few cents of each other as the same price.
+
+Mechanisms
+Vertical integration with the vessel
+
+Forward contracting with buyers and downstream
+
+Just putting in a price
+
+
+```{r compute_summary_stats}
+# compute summary statistics for variability of prices at the dealer-market-year level
+
+dlr_variability <- combined_dataset %>%
+  mutate(price=value/lndlb) %>%
+  group_by(dlrid, year, market_desc ) %>%
+  summarise(transactions=n(),
+            value=sum(value),
+            lndlb=sum(lndlb),
+            mean_price=mean(price),
+            sd_price=sd(price),
+            mad_price=mad(price)
+            )%>%
+  mutate(cv=sd_price/mean_price) %>%
+  arrange(sd_price)
+
+distinct_prices<-combined_dataset %>%
+  mutate(price=value/lndlb) %>%
+  mutate(price=round(price/.05)*.05) %>%
+  group_by(dlrid,year, market_desc, price) %>%
+  slice(1)%>%
+  ungroup()%>%
+  group_by(dlrid, year, market_desc) %>%
+  summarise(num_levels=n())
+
+dlr_variability<-dlr_variability %>%
+  left_join(distinct_prices, by=join_by(dlrid, year, market_desc))
+
+```
+
+
+Worrysome:
+1882
+3274 graded transactions are all one price. Unclassified prices vary.
+
+Not: 
+1757. There are a couple year-markets with sd=0, but those are associated with a small number of transactions and low pounds. It's more likely a timing/small sample size kind of issue.
+1326, 3023. Same as 1757, plus they have landings in different cats with some variability.
+1398 -- same. A handful of years with 1-2 transactions, then years with more transactions and some variability.
+2138 - all unclassified, but there is some variation in prices.
+3348
+3406 - mostly unclassified, very few classified, but those prices vary from year to year.
+3290 -- all unclassified, constant prices in 2018 and earlier.
+3504  couple random years with constant prices and few transactions. See 1757
+
+
+
+```{r inv_dlr1}
+# Code to eyeball some individual dealers
+dlr1<-dlr_variability %>%
+  group_by(dlrid, year, market_desc) %>%
+  arrange(dlrid,market_desc,year) %>%
+  filter(dlrid==3193) #%>%
+#  filter(transactions>=5) #%>%
+#  filter(year==2023)
+
+knitr::kable(dlr1, caption='One look',format.args = list(big.mark = ","), digits=4, align=c("l",rep('r',times=4)))  
+
+
+```
+
+```{r box}
+# Code to boxplot prices for  individual dealers
+
+data1<-combined_dataset %>%
+    filter(dlrid==3193) %>%
+  arrange(dlrid,market_desc,year) %>%
+  mutate(price=value/lndlb) %>%
+  relocate(price, .after="lndlb") %>%
+  group_by(dlrid, year, market_desc) #%>%
+#  filter(year==2019) %>%
+#  filter(market_desc=="Unclassified")
+
+
+ggplot(data1, aes(x=year, y=price)) + 
+  geom_boxplot() + 
+  facet_wrap(vars(market_desc))
+
+```
+
+
+Trouble:
+dlr - market_desc - year combinations where the sd of price is "small" 
+AND
+1. The number of transactions is greater than 5, AND
+2. The sd's of other dlr-market-market_desc's is also small. 
+
+
+Good: 
+Dlr-market_desc-year combinations with sd of price that is "large"
+
+Flag in some dealers-market-years, based on sd of their prices.
+
+```{r mark_in}
+mark_in<-dlr_variability %>%
+  filter(market_desc !="Unclassified") %>%
+  mutate(mark_in=case_when(
+    sd_price>=0.1 ~ 1,
+    #transactions<=4 ~ 1,
+    .default = 0
+  )
+)
+```
+
+Plot the amount of landings that I'm marking out, by year and market category.
+```{r plot}
+#View(mark_in %>% filter(mark_in==1))
+
+summs<-mark_in %>%
+  group_by(year, market_desc,mark_in) %>%
+  summarize(transactions=sum(transactions),
+          lndlb=sum(lndlb),
+          value=sum(value)
+  ) %>% 
+  group_by(year, market_desc) %>%
+  mutate(total_lbs=sum(lndlb)) %>%
+  mutate(pct=lndlb/total_lbs) %>%
+  group_by(year, market_desc, mark_in)
+
+
+#View(summs %>% filter(mark_in==0))
+
+
+ggplot(summs %>% filter(mark_in==0), aes(x=year, y=pct)) + 
+  geom_point() + 
+  facet_wrap(vars(market_desc))
+
+
+```
+
+```{r compare_in_out}
+
+key_in<-mark_in %>%
+  select(dlrid,year,market_desc, mark_in)
+
+
+data_compare<-combined_dataset %>%
+  left_join(key_in, by=join_by(dlrid==dlrid, year==year, market_desc==market_desc)) %>%
+  mutate(mark_in=as.factor(mark_in)) %>%
+  ungroup() %>%
+  group_by(year, market_desc, mark_in)
+   
+
+
+
+ggplot(data_compare %>% filter(market_desc!="Unclassified"), aes(x = year, y = price, fill = mark_in)) +
+  geom_boxplot() + 
+  facet_wrap(~market_desc)
+
+
+dc2<-data_compare %>% 
+  filter(market_desc!="Unclassified") %>%
+  filter(stockarea=="North")
+
+ggplot(dc2, aes(x = year, y = price, fill = mark_in))  +
+  geom_boxplot() + 
+  facet_wrap(~market_desc)
+
+
+
+
+```
+
+
+<!---
+\newpage
+--->
+
+
+# References
+<div id="refs"></div>
+
+
+# Appendix{-}
