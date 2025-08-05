@@ -67,7 +67,7 @@ BSB.Ranger.Workflow <-
 
 # I have about 40 predictors, so I'll specify a coarse initial grid, 
 if  (search_type=="Initial"){
-  mtry<-round(seq(1,npredict,length.out=10))
+  mtry<-round(seq(1,npredict,length.out=15))
   rf_grid<-as.data.frame(mtry)
 }
 
@@ -75,7 +75,7 @@ if  (search_type=="Final"){
   
   # Custom Grid 
   if (modeltype=="standard"){
-    mtry<-seq(1,npredict,5)
+    mtry<-round(seq(1,npredict,length.out=15))
     rf_grid<-as.data.frame(mtry)
     
   } else if (modeltype=="nocluster"){
