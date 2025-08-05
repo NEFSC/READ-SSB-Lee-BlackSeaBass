@@ -541,7 +541,7 @@ KE_confusion<-KE_confusion %>%
 knitr::kable(KE_confusion, caption='Confusion Matrix',format.args = list(big.mark = ","), digits=1, align=c("l","l",rep('r',times=5)))
 
 
-write_rds(KE_confusion, file=here("results","ranger",paste0("KE_augmented_confusion_",modeltype,finalfit_vintage,".Rds")))
+#write_rds(KE_confusion, file=here("results","ranger",paste0("KE_augmented_confusion_",modeltype,finalfit_vintage,".Rds")))
 
 ```
 
