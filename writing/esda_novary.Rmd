@@ -151,7 +151,10 @@ gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vint
 
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
 unclassified_dataset<-read_rds(file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
-combined_dataset<-rbind(estimation_dataset,unclassified_dataset)
+
+combined_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_original_combined_dataset",vintage_string,".Rds")))
+
+
 
  # for reproducibility
  set.seed(4587315)

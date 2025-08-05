@@ -241,6 +241,7 @@ combined_dataset<-combined_dataset %>%
         year=fct_drop(year),
         state=fct_drop(state)) 
 
+write_rds(combined_dataset, file=here("data_folder","main","commercial",paste0("BSB_original_combined_dataset",vintage_string,".Rds")))
 
 
 dlr_variability <- combined_dataset %>%
@@ -296,6 +297,6 @@ estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
+haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".dta")))
 
 
