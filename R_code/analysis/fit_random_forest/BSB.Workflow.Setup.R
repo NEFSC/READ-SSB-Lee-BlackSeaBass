@@ -75,16 +75,22 @@ if  (search_type=="Final"){
   
   # Custom Grid 
   if (modeltype=="standard"){
-    mtry<-round(seq(1,npredict,length.out=15))
+    mtry<-seq(26,41)
     rf_grid<-as.data.frame(mtry)
     
   } else if (modeltype=="nocluster"){
-  
+    mtry<-seq(25,npredict)
+    rf_grid<-as.data.frame(mtry)
+    
   }else if (modeltype=="fiveclass"){
   } else if (modeltype=="noc5class"){
   } else if (modeltype=="South_NOC"){
+    mtry<-seq(25,npredict)
+    rf_grid<-as.data.frame(mtry)
   } else if (modeltype=="North_NOC"){
-  }else {
+    mtry<-seq(26,npredict)
+    rf_grid<-as.data.frame(mtry)
+    }else {
     stop("Unknown modeltype")
   }
 }
