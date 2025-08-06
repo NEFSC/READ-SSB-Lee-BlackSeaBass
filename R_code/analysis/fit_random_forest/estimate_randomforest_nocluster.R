@@ -27,7 +27,7 @@
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 
-search_type<-"Initial"
+search_type<-"Final"
 # search_type in "Initial", "Prototype", or "Final")
 
 testing_fraction<-0.30

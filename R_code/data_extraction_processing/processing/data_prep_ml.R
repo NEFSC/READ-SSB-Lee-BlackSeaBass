@@ -241,9 +241,46 @@ combined_dataset<-combined_dataset %>%
         year=fct_drop(year),
         state=fct_drop(state)) 
 
+write_rds(combined_dataset, file=here("data_folder","main","commercial",paste0("BSB_original_combined_dataset",vintage_string,".Rds")))
+
+
+dlr_variability <- combined_dataset %>%
+  mutate(price=value/lndlb) %>%
+  group_by(dlrid, year, market_desc ) %>%
+  summarise(transactions=n(),
+            value=sum(value),
+            lndlb=sum(lndlb),
+            mean_price=mean(price),
+            sd_price=sd(price),
+            mad_price=mad(price)
+  )%>%
+  mutate(cv=sd_price/mean_price) %>%
+  arrange(sd_price)
+
+mark_in<-dlr_variability %>%
+  filter(market_desc !="Unclassified") %>%
+  mutate(mark_in=case_when(
+    sd_price>=0.1 ~ 1,
+    market_desc=="Unclassified" ~ 1,
+    #transactions<=4 ~ 1,
+    .default = 0
+  )
+  ) %>%
+  select(dlrid,year,market_desc, mark_in)
+
+
+combined_dataset<-combined_dataset %>%
+  left_join(mark_in, by=join_by(dlrid==dlrid, year==year, market_desc==market_desc)) %>%
+  mutate(mark_in=as.factor(mark_in)) %>%
+  ungroup() %>%
+  filter(mark_in==1)
+
+
+
+
 # drop some columns
 combined_dataset<-combined_dataset %>%
-  select(-c("keep"))
+  select(-c("keep","mark_in"))
 
 
 
@@ -260,6 +297,6 @@ estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
+haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".dta")))
 
 
