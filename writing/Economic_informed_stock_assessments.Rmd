@@ -248,6 +248,7 @@ knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commerc
 Figure \@ref(fig:BorrowedLengths) illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
 
 
+
 # Methods and Data
 
 The goal of this research is to accurately predict the true market category of the unclassified fish
@@ -293,6 +294,53 @@ After fitting the data, we predict out of sample on the Unclassified Landings.  
 using the trained model to predict the probability of class memembership and then aggregating the 
 landed pounds to the year-, market category-, and subregion level. 
 
+## A Simple Theoretical Model Provides Guidance About Explanatory Factors
+
+The core concept of this research is simple: use the information contained in transaction level prices to infer something about the size of the Unclassified fish.  A simple theoretical model sketch can provide guidance about explanatory factors that belong in the model. We assume a perfectly competitive market for *ex-vessel* fish: there are many dealers and vessels, no vertical integration,  no transactions costs associated with selling, all dealers and vessels know the prices being paid and the quantities begin supplied, and individuals are small relative to the market and cannot influence market prices. <!--- We also assume there is no vertical integration between dealers and vessels: a dealer and a fishing vessel is not owned by the same firm and there is no "forward" contracting in which buyers and sellers agree in advance on a price. --->
+
+We assume that dealers have a perfectly elastic demand curve for the two categories of fish, Jumbo and Large, and that they prefer Jumbo relative to large.  A perfectly elastic demand curve means that dealers will buy all Jumbo landings as long as the price of Jumbo is less than or equal to $p_J$. The same holds true for the Large market category. Since dealers prefer Jumbo to Large,  the price of Jumbo is strictly greater than the price of Large: $p_J > p_L$.  
+
+If we observe an Unclassified transaction where $p=p_J$, we can infer that actually a sale of Jumbo; if we observe an Unclassified transaction where $p=p_L$, we can infer that it is a sale of Large. Finally, if we observe a price in between the Large and Jumbo price:
+
+\begin{equation}
+\label{unknown1}
+p= \alpha p_J+ (1-\alpha) p_L \hspace{2mm} \forall \hspace{2mm} \alpha \in (0,1)
+\end{equation},
+
+we can infer that the transaction is a mix of $\alpha$ Jumbo and $(1-\alpha)$ Large.  The last fact suggests that a method that predicts the probability of class membership for a transaction, as opposed to assigning a transaction to a class is preferred. 
+
+### Downward Sloping Demand
+
+A perfectly inelastic demand curve is unrealistic.  The demand curve for nearly fish is downward sloping: increases in quantity supplied of a category of fish will will reduce the price of that category [@Lee2014Hedonic; @Ardini2018, and Table \ref{HedonicTableA}]. The different market categories are substitutes: increases in the quantity supplied of Large will reduce the price of Jumbo and vise-versa. Finally, there are other factors that impact prices, these are collected into $Z$.    
+
+Therefore:
+\begin{equation}
+\label{demand}
+$p_J = f_J(q_J,q_L; Z)$,
+\end{equation}
+where $f_J()$ is decreasing in both quantities and $f_L()$ is defined analogously.  Downward sloping demand implies that equation \ref{unknown1} should be modified by substituting in \ref{demand}.
+
+### More that two market categories
+
+When there are more than two market categories (say, Medium), equation \ref{unknown1} becomes:
+
+\begin{align}
+p&= \beta_1 p_J+ \beta_2 p_L + (1-\beta_1-\beta_2) \\\label{unknown2}
+\sum_{i=1}^3 \beta_i&=1\\
+\geq 0 &\beta_i \geq 1 \hspace{2mm} \forall i=1,2
+\end{align}
+Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
+
+### The Competitive Market Equilibrium and the Law of One Price
+
+The assumption of a competitive market is critical to our ability to use prices to infer market category. In brief, assume that a dealer did not offer the prevailing Jumbo price to a fishing vessel, instead offering a lower price. A competitive market ensures that this dealer would not purchase any Jumbo fish at this price; vessels with Jumbo fish to sell would simply sell to another dealer and if the dealer wanted to purchase Jumbos, it would have to raise it's offer price.  All identical goods will sell at identical prices; observations of identical goods with different prices suggest that some conditions of a competitive market are absent [@Lamont2003].  Variations of the law of one price that account for heterogenous goods, informational assymmetries [@Salop1982].  Different data availability have been proposed and tested statistically [@Asche2002; @Nielsen2009; @Pettersen2018]. 
+
+
+In this application, transactions by the same vessel, market category, and day are transactions of identical goods.  The hedonic model (Table \ref{HedonicTableA}) suggests factors like gear and month also impact prices. Transactions on different days are different in two dimensions: there may be seasonal variation in meat quality and daily variation in quantity supplied. There may be regional variation in prices if is systematic variation in transportation costs from dealer to final consumer or differences in  costs of processing whole fish into final form  [@samuelson1954transfer; @Krugman1991a].
+
+
+
+
 ## Data
 
 
@@ -304,9 +352,17 @@ The model selection metric I use should be related to that.  For example, "True"
 
 We use CAMS data from 2015 to 2024 to train our data. The CAMS data complied by GARFO consists of dealer transactions matched to vessel trip reports. We briefly describe this datasource.  Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer.   Vessel trip report data are subtrip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. In the Northeast United states, fishing vessels are required to file a logbook report for every combination of statistical area and subtrip. When vessels file more than one logbook per dealer sales transaction, we cannot definitively determine which which it belongs to.  That is, if a dealer record contains 500 pounds and a vessel fished in two statistical areas, CAMS allocates in proportion to the hail weights on those two trip reports.
 
+
 Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports. 
 
 Black Sea Bass: sales by firms without a federal permit to dealers without a federal permit.  In some states, firms without a federal permit can fish for black sea bass in state waters and sell it to fish dealers who do not have a federal permit. These states require vessels to report their catch at a lower frequency and catch from these vessels is added into the dealer data at a higher.
+
+
+The law of one price suggests two things. First, that the classification model should include variables explain prices in the classification model. These include attributes like gear used, whether the fish is sold live, state of landing, daily quantity landed, and time period of landing.  Without these variables, the classification model may interpret price as being informative of market category. For example, from Table \ref{HedonicTableA}, the average price of Medium Trawl- , Small Trawl-, and Small Gillnet- caught  black sea bass is \$3.75, \$3.52, and \$3.71 per pound, respectively. Excluding gear from the classification model would likely result in misclassification of some Small Gillnet caught fish as Medium fish.
+
+Second, the law of one price suggests that if we cannot control for deviations from the law of one price for some observations, we should strongly consider removing them from the training dataset and not predicting class membership for those. We can think of three scenarios where this is likely to occur. First, there is less quality assurance and quality control for the species value field which we use to construct prices.  While there are checks to ensure that the values are within a reasonable range, firms that do not report accurately may not be required to improve their reporting accuracy. We handle this by excluding transactions with prices that are too high (over \$15 per pound) or too low (under \$0.15 per pound).  Second, buyers and sellers may be owned by the same entity, making definition of the  *ex-vessel* value somewhat vague.  Fully disentangling ownership is difficult, but inspection of the data suggested that some dealers-vessel pairs were exclusively transacting with each other, suggesting some vertical integration.  Firms may also participate in forward contracting in which the price of fish is determined well in advance.  To account  for the final two, we excluded transactions from dealer-year-market category combinations where the standard deviation of prices was less than 0.10.  Table Summary statistics describes charactieristics of the full dataset and the cleaned dataset.
+
+
 <!---  
 outcome variable: market_desc
 id variables: dlrid,camsid 
