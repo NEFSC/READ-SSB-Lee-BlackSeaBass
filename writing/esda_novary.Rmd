@@ -392,6 +392,23 @@ ggplot(data_compare %>% filter(market_desc!="Unclassified"), aes(x = year, y = p
 
 
 dc2<-data_compare %>% 
+  filter(market_desc!="Unclassified") 
+
+ggplot(dc2, aes(x = year, y = price, fill = mark_in))  +
+  geom_boxplot() + 
+  facet_wrap(~market_desc)
+
+
+
+
+```
+
+
+
+
+
+```{r North_only}
+dc2<-data_compare %>% 
   filter(market_desc!="Unclassified") %>%
   filter(stockarea=="North")
 
@@ -404,6 +421,21 @@ ggplot(dc2, aes(x = year, y = price, fill = mark_in))  +
 
 ```
 
+
+
+```{r South_only}
+dc2<-data_compare %>% 
+  filter(market_desc!="Unclassified") %>%
+  filter(stockarea=="South")
+
+ggplot(dc2, aes(x = year, y = price, fill = mark_in))  +
+  geom_boxplot() + 
+  facet_wrap(~market_desc)
+
+
+
+
+```
 
 <!---
 \newpage
