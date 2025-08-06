@@ -63,7 +63,7 @@ library("here")
 # load tidyverse and related
 library("tidyverse")
 library("scales")
-
+library("ggrepel")
 # load tidyverse and related
 library("tidymodels")
 
@@ -216,7 +216,9 @@ brier<-all.metrics %>%
   rename(brier_class=mean) 
 
  brier %>% ggplot(aes(mtry, brier_class)) +
-  geom_point(show.legend = TRUE) 
+  geom_point(show.legend = TRUE) +
+   geom_text_repel(aes(label = round(brier_class,4)), size=3) 
+
 
  ggsave(here("results","ranger","tune",glue("brier_class{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
@@ -245,7 +247,9 @@ mn_log_loss<-all.metrics %>%
   rename(mn_log_loss=mean)
 
  mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
-  geom_point(show.legend = TRUE) 
+  geom_point(show.legend = TRUE) + 
+    geom_text_repel(aes(label = round(mn_log_loss,4)), size=3) 
+
 
  ggsave(here("results","ranger","tune",glue("mn_log_loss{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
