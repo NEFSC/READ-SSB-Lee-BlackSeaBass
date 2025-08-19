@@ -98,7 +98,6 @@ stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea
 dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
 dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
 
-
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
 ###############################################################################
@@ -113,6 +112,19 @@ cleaned_landings<-cleaned_landings %>%
            weighting=sum(weighting)
   ) %>%
   ungroup()
+
+# South - Delaware, Florida*, Maryland, North Carolina, South Carolina*, Virginia
+# North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*
+# * have no landings or limited landings are are dropped later.
+
+cleaned_landings<-cleaned_landings %>% 
+  mutate(region=case_when(
+    state %in% c(9,23,25,33,36,42,44,50) ~ "North",
+    state %in% c(10, 12,24,34, 37,45,51)  ~ "South",
+    .default = "Unknown"  )
+  )
+  
+
 
 
 # merge in camsid (trip) level statistics
@@ -232,12 +244,13 @@ combined_dataset<-cleaned_landings %>%
 # deal with factors
 combined_dataset<-combined_dataset %>%
     filter(keep==1 )%>%
-   mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
+    mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
     mutate(semester=forcats::as_factor(semester)) %>%
     mutate(dlrid=forcats::as_factor(dlrid)) %>%
-  mutate(market_desc=fct_drop(market_desc),
+    mutate(region=forcats::as_factor(region)) %>%
+    mutate(market_desc=fct_drop(market_desc),
         year=fct_drop(year),
         state=fct_drop(state)) 
 
