@@ -294,7 +294,8 @@ end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
 
-# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
+# Select the best tuning parameter based on brier from the 10 folds.
+#Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
 best_tree <- tune_res %>%
   select_best(metric = "brier_class")

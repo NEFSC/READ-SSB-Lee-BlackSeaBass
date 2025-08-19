@@ -63,6 +63,7 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
+library("glue")
 library("conflicted")
 
 #deal with conflicts
@@ -115,15 +116,16 @@ vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
-data_save_name<-paste0("data_split",estimation_vintage,".Rds")
-tune_file_name<-paste0("BSB_ranger_tune",estimation_vintage,".Rds")
-final_fit_file_name<-paste0("BSB_ranger_results",estimation_vintage,".Rds")
+data_save_name<-glue("data_split{estimation_vintage}.Rds")
+tune_file_name<-glue("BSB_ranger_tune{estimation_vintage}.Rds")
+final_fit_file_name<-glue("BSB_ranger_results{estimation_vintage}.Rds")
+
 
 if  (search_type=="Prototype"){
-  data_save_name<-paste0("data_split_TEST",estimation_vintage,".Rds")
-  tune_file_name<-paste0("BSB_ranger_tune_TEST",estimation_vintage,".Rds")
-  final_fit_file_name<-paste0("BSB_ranger_results_TEST",estimation_vintage,".Rds")
-  
+  data_save_name<-glue("data_split_TEST{estimation_vintage}.Rds")
+  tune_file_name<-glue("BSB_ranger_tune_TEST{estimation_vintage}.Rds")
+  final_fit_file_name<-glue("BSB_ranger_results_TEST{estimation_vintage}.Rds")
+ 
 }
 
 # 
@@ -158,7 +160,7 @@ if  (search_type=="Prototype"){
 # 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("data_split{estimation_vintage}.Rds")))
 
 
  # for reproducibility
