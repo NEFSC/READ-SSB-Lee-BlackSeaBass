@@ -30,7 +30,7 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor")
 
 # Trailing 7 days landings, by state and market category   
-BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") 
 
 # Trailing 7 day trips, by state and stock area.   
@@ -43,21 +43,20 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 
 
 
-# Dealer share of landings by market category from 2013-2017   
+# Dealer share of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.   
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall, LagSharePoundsUnclassified), new_role = "predictor") 
+  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall), new_role = "predictor") 
 
-# Dealer transaction count of landings by market category from 2013-2017   
-
+# Dealer transaction count of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall, LagShareTransUnclassified), new_role = "predictor") 
+  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall), new_role = "predictor") 
 
 # You can't center the factor variables
 # rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
-#  step_impute_knn(all_predictors()) %>%
+  step_zv() %>%
   step_center(all_numeric_predictors()) %>%
-  step_scale(all_numeric_predictors())
+  step_scale(all_numeric_predictors()) 
 
 recipe_summary<-BSB.Classification.Recipe %>%
   summary() %>%
