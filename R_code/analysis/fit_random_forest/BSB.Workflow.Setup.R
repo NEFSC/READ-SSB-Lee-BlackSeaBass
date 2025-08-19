@@ -65,10 +65,10 @@ BSB.Ranger.Workflow <-
 # 
 # Set up a set of mtry to search over. 
 
-# I have about 40 predictors, so I'll specify a coarse initial grid, 
+# I have about 40 predictors, so I'll specify a coarse initial grid with 15 points, 
 if  (search_type=="Initial"){
-  mtry<-round(seq(1,npredict,length.out=15))
-  rf_grid<-as.data.frame(mtry)
+  rf_grid<-  grid_regular(
+    mtry(range = c(1, npredict)), levels=15)
 }
 
 if  (search_type=="Final"){
@@ -83,14 +83,26 @@ if  (search_type=="Final"){
     rf_grid<-as.data.frame(mtry)
     
   }else if (modeltype=="fiveclass"){
+    mtry<-seq(1,npredict)
+    rf_grid<-as.data.frame(mtry)
+    
   } else if (modeltype=="noc5class"){
+    mtry<-seq(1,npredict)
+    rf_grid<-as.data.frame(mtry)
+    
   } else if (modeltype=="South_NOC"){
     mtry<-seq(25,npredict)
     rf_grid<-as.data.frame(mtry)
   } else if (modeltype=="North_NOC"){
     mtry<-seq(26,npredict)
     rf_grid<-as.data.frame(mtry)
-    }else {
+    } else if (modeltype=="North_region_NOC"){
+      mtry<-seq(1,npredict)
+      rf_grid<-as.data.frame(mtry)
+    } else if (modeltype=="South_region_NOC"){
+      mtry<-seq(1,npredict)
+      rf_grid<-as.data.frame(mtry)
+    } else {
     stop("Unknown modeltype")
   }
 }
@@ -101,7 +113,7 @@ if  (search_type=="Prototype"){
   mtry<-c(2,5,15,npredict)
   rf_grid<-as.data.frame(mtry)
 }
-  
+
   
 
 
