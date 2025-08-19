@@ -236,10 +236,9 @@ tune_res <- tune_grid(
 # Search over 2 sets of parameters
 # #Search over mtry and trees
 # rf_grid2 <-  grid_regular(
-#     mtry(range = c(1, 20)), levels=10)
-#      trees(range=c(100,1000), levels=5)
-#     )
-# 
+#     mtry(range = c(1, 20)), 
+#      trees(range=c(100,1000) )
+#     , levels=5)
 # 
 # # configure the tuning part of the model.
 # tune_spec2 <- rand_forest(
