@@ -18,7 +18,7 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: South_NOC
+    value: South_region_NOC
     choices:
     - standard
     - fiveclass
@@ -28,7 +28,8 @@ params:
     - North_NOC
     - South_NOC_TEST
     - North_NOC_TEST
-
+    - South_region_NOC
+    - North_region_NOC
 ---
 
 # Summary and Housekeeping
@@ -129,6 +130,14 @@ if (modeltype=="standard"){
   data_pattern<-"nocluster_North_data_split_TEST"
   tuning_pattern<-"BSB_ranger_North_nocluster_tune_TEST"
   final_pattern<-"BSB_ranger_North_nocluster_results_TEST"
+} else if (modeltype=="South_region_NOC"){
+  data_pattern<-"nocluster_South_region_data_split"
+  tuning_pattern<-"BSB_ranger_South_region_nocluster_tune"
+  final_pattern<-"BSB_ranger_South_region_nocluster_results"
+} else if (modeltype=="North_region_NOC"){
+  data_pattern<-"nocluster_North_region_data_split"
+  tuning_pattern<-"BSB_ranger_North_region_nocluster_tune"
+  final_pattern<-"BSB_ranger_North_region_nocluster_results"
 }else {
   stop("Unknown modeltype")
 }
