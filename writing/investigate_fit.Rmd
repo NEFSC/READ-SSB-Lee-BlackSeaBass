@@ -1,0 +1,114 @@
+# In which I detail how I mucked around with the data
+
+
+The intial specification ( August 15) estimated a pooled model for 2015-2024.
+
+    * Validation ROC looked nice.  
+    * final fit statistics were similar to the means of the tuning fit statistics
+    * Model predictions were not great, the model was mis-classifying enough fish
+          * Under-predicting South Jumbo by 11% (9mt). Most of those predictions were ending
+          up in Large (5mt) and Medium (3mt), so this wasn't too bad
+          * Underpredicting North Jumbo by 42mt (9%).  This was ending up in large (5mt), Medium (33mt) and Small (5mt). 
+          This is not great.
+    * of course, in-sample prediction was great
+    * Knife-edge prediction (using .pred_class, which is just )
+
+I was not happy with the model fit (validation) results for this model. I looked at the raw data : one problem was that there were just some dealers reported prices that didnt' vary, or didn't vary by year-market category. These tended to be dealers that bought from 1 or 2 vessels -- i think this indicates some level of vertical integration. I filtered these kinds of transactions out of the dataset.  
+
+I next tried to split the model by stockarea into North and South. 
+
+```{r filter, eval=FALSE}
+estimation_dataset<-estimation_dataset %>%
+  dplyr::filter(stockarea=="South")
+
+estimation_dataset<-estimation_dataset %>%
+  dplyr::filter(stockarea=="North")
+```
+
+This turns out to be a bad idea for at least three reasons. First, I end up with some "sparsity" -- there's a handful of "North" fish that is landed in VA and NC.  Second, stockarea (by itself) is not really important in the pooled model (by VIF).  Landings from a stockarea are important: but there is no variation by day in this variable when I split by stockarea.  Third (most important), it just doesn't make much sense. Dealers are the ones that classify, so splitting a dealers landings across the models is odd.
+
+This split did not really help either --- the North was still classifying Jumbos as Medium and Small.  The South was doing fine. 
+
+At some point, I added market category landings by gear. I also experimented with "target encoding" the dealer effects with landed pounds, share of landed pounds, and share of transactions. 
+
+I did some ESDA on the validation dataset to see what was going on. There's definitely some difficulty predicting the Large class because it overlaps so much with the Jumbos and Mediums for prices. 
+```{r pseduo_valid_esda, eval=FALSE}
+# Actual code is in ESDA_South_validations.R or ESDA_North_validations.R 
+
+
+ggplot(datacheck2, aes(x=.pred_Large, y=.pred_Jumbo, color=market_desc)) + 
+  geom_jitter() + 
+  facet_wrap(vars(state))
+# I also tried coloring it based on the prediction (Large Predicted as Large, Large predicted as Jumbo) etc.
+
+
+ggplot(datacheck2 %>% filter(!investigate %in% c("CJASJ","CSASS", "CMASM")), aes(y=.pred_Jumbo, x=priceR_CPI, color=investigate)) + 
+  geom_point()
+
+
+```
+
+
+
+Next, I tried splitting by region.  My first inclination was to lump NC, VA, MD, and DE together. There are comparatively few landings and transactions in these states. So, I added NJ. There's not very compelling reason to do that aggregation. It might be a separate downstream markets kind of story, but the knife edge there is also hard. Nevertheless, I did that and estimated separate SouthRegion and NorthRegion models. 
+
+
+```{r filter_regions, eval=FALSE}
+
+
+estimation_dataset<-estimation_dataset %>% 
+  mutate(region=case_when(
+    state %in% c(9,23,25,33,36,42,44,50) ~ "North",
+    state %in% c(10, 12,24,34, 37,45,51)  ~ "South",
+    .default = "Unknown"  )
+  )
+  
+
+estimation_dataset<-estimation_dataset %>%
+  dplyr::filter(region=="South")
+
+estimation_dataset<-estimation_dataset %>%
+  dplyr::filter(region=="North")
+```
+
+
+
+The southRegion did not do well. IIRC, the north did ok, but I didn't save the results.
+ 
+When I dug into the data further, there's a few things that are going on
+1. In a few of the years, some the prices of market categories don't show great separation.   2020 is an obvious example. So is 2017 and 2018. Certain states also have this problem. (NC, VA, and DE).
+2. Pooling all the years together really illustrates this issue -- DE, NC, and VA have substantial overlaps in their boxplots of prices
+
+```{r pseudo_code, eval=FALSE}
+# Actual code is in ESDA_South_validations.R, but
+
+
+datacheck2<-readRDS(validation_data)
+
+# Boxplot of validation data
+# unweighted
+ggplot(datacheck2, aes(y=priceR_CPI, x=market_desc, fill=state)) + 
+  geom_boxplot()
+# weighted by landed pounds
+ggplot(datacheck2, aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot()
+
+#facet wrapped
+ggplot(datacheck2, aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot() +
+  facet_wrap(vars(year))
+
+
+```
+
+
+I then estimated the model on Four years of data: 2021 to 2024 data for the South Region (NC to NJ). This comes out pretty well, I'm still overpredicting medium a bit. There's not much data here, I'm down to 16,000 data points in the estimation sample and 1780 in the validation sample.  On the plus side, the model fits quickly.
+
+# Next steps
+
+I should look back at the pooled models and see how they fit for just 2021-2024 on the validation sample. That's not really appropriate, but it's a quick way to how things might work.  It's not too bad (I think better than before).
+
+Look at the entire estimation dataset --- do something similar to the esda.
+
+
+
