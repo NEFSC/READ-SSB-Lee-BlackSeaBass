@@ -27,7 +27,7 @@
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 
-search_type<-"Initial"
+search_type<-"Final"
 # search_type in "Initial", "Prototype", or "Final")
 
 testing_fraction<-0.30
@@ -160,7 +160,8 @@ if  (search_type=="Prototype"){
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
 
 estimation_dataset<-estimation_dataset %>%
-  dplyr::filter(region=="South")
+  dplyr::filter(region=="South") %>%
+  filter(year %in% c(2021,2022,2023,2024))
 
 # for reproducibility
  set.seed(4587315)
