@@ -107,6 +107,19 @@ cleaned_landings<-cleaned_landings %>%
   ungroup()
 
 
+
+# South - Delaware, Florida*, Maryland, North Carolina, South Carolina*, Virginia
+# North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*
+# * have no landings or limited landings are are dropped later.
+
+cleaned_landings<-cleaned_landings %>% 
+  mutate(region=case_when(
+    state %in% c(9,23,25,33,36,42,44,50) ~ "North",
+    state %in% c(10, 12,24,34, 37,45,51)  ~ "South",
+    .default = "Unknown"  )
+  )
+
+
 # merge in camsid (trip) level statistics
 cleaned_landings<-cleaned_landings %>%
   left_join(camsid_specific_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one")
@@ -155,6 +168,9 @@ cleaned_landings<-cleaned_landings %>%
          DealerHLbsPurchasedSmall=replace_na(DealerHLbsPurchasedSmall),
          DealerHLbsPurchasedUnclassified=replace_na(DealerHLbsPurchasedUnclassified)
   )
+
+
+
 
 
 # compute prices and real prices
@@ -250,12 +266,136 @@ configs<-configure_report(
 #     y = "market_desc",
 #     config=configs
 #   )
+combined_backup<-combined_dataset
+combined_dataset<-combined_backup
+
+combined_dataset<-combined_dataset %>%
+  filter(state!="ME") %>%
+  filter(market_desc !="Unclassified")
+
+combined_dataset<-combined_dataset %>%
+  mutate(state=fct_relevel(state, "NC","VA","MD","DE","NJ","NY","CT","RI","MA"),
+         time_period=case_when(
+           year %in% c(2015,2016,2017,2018,2019,2020) ~ 1,
+           year %in% c(2021,2022,2023,2024) ~ 2
+         )
+         
+  )
+
+# Boxplot of estimation data
+# unweighted
+ggplot(combined_dataset, aes(y=priceR_CPI, x=market_desc, fill=state)) + 
+  geom_boxplot(outliers=FALSE) +
+  ggtitle("Unweighted Prices")
+ggsave(here("images","exploratory",glue("prices_by_market.png")), plot=last_plot())
+
+# weighted by landed pounds
+ggplot(combined_dataset, aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  ggtitle("Weighted Prices")
+
+ggsave(here("images","exploratory",glue("Wprices_by_market.png")), plot=last_plot())
+
+
+ggplot(combined_dataset , aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE) +
+  facet_wrap(vars(time_period)) + 
+  ggtitle("Weighted Prices, 2015-2020 and 2021-2024")
+ggsave(here("images","exploratory",glue("Wprices_by_market_recent.png")), plot=last_plot())
 
 
 
+
+
+#facet wrapped by year.
+ggplot(combined_dataset %>% filter(time_period==1), aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(year))+
+  ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("FW1_Wprices_by_market.png")), plot=last_plot())
+
+ggplot(combined_dataset %>% filter(time_period==2), aes(y=priceR_CPI, x=market_desc, fill=state, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(year))+
+  ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("FW2_Wprices_by_market.png")), plot=last_plot())
+
+
+
+
+#facet wrapped by year.
+ggplot(combined_dataset %>% filter(time_period==1), aes(y=priceR_CPI, x=year, fill=market_desc, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(state))+
+  ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("FW1_Wprices_by_state.png")), plot=last_plot())
+
+ggplot(combined_dataset %>% filter(time_period==2), aes(y=priceR_CPI, x=year, fill=market_desc, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(state))+
+  ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("FW2_Wprices_by_state.png")), plot=last_plot())
+
+
+
+
+
+
+# Boxplot of validation data -- grouped a different way
+# unweighted
+ggplot(combined_dataset, aes(y=priceR_CPI, fill=market_desc, x=state)) + 
+  geom_boxplot()+
+  ggtitle(" Prices")
+ggsave(here("images","exploratory",glue("prices_by_state.png")), plot=last_plot())
+
+
+
+ggplot(combined_dataset, aes(y=priceR_CPI, fill=market_desc, x=state, weight=lndlb)) + 
+  geom_boxplot()+
+  ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("prices_by_state.png")), plot=last_plot())
+# weighted by landed pounds
+
+
+
+# Boxplot of validation data -- grouped a different way
+# unweighted
+ggplot(combined_dataset, aes(y=priceR_CPI, fill=market_desc, x=state)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(time_period)) + 
+  ggtitle(" Prices")
+ggsave(here("images","exploratory",glue("FWprices_by_state.png")), plot=last_plot())
+
+
+
+ggplot(combined_dataset, aes(y=priceR_CPI, fill=market_desc, x=state, weight=lndlb)) + 
+  geom_boxplot(outliers=FALSE)+
+  facet_wrap(vars(time_period)) + 
+    ggtitle("Weighted Prices")
+ggsave(here("images","exploratory",glue("FW_Wprices_by_state.png")), plot=last_plot())
+
+
+
+# Large and Medium Kernel density overlays, facet 
+ggplot(combined_dataset %>% filter(market_desc %in%c("Jumbo","Large","Medium")) %>% filter(region=="South"), aes(priceR_CPI, fill = market_desc, color=market_desc,weight=lndlb)) +
+  geom_density(alpha = 0.1, aes(y = after_stat(count))) +
+  xlim(0,10) + 
+  facet_wrap(~ time_period + state, scales = "free_y", nrow=2)
+
+ggsave(here("images","exploratory",glue("FGS_Kdensity_by_state.png")), plot=last_plot())
+
+
+ggplot(combined_dataset %>% filter(market_desc %in%c("Jumbo","Large","Medium")) %>% filter(region=="North"), aes(priceR_CPI, fill = market_desc, color=market_desc,weight=lndlb)) +
+  geom_density(alpha = 0.1, aes(y = after_stat(count))) +
+  xlim(0,10) + 
+  facet_wrap(~ time_period + state, scales = "free_y", nrow=2)
+
+ggsave(here("images","exploratory",glue("FGN_Kdensity_by_state.png")), plot=last_plot())
 
 
 ###########################################
+				  
+																		  
 
 # there's a handful of outlier lndlbs.    
 
@@ -263,15 +403,16 @@ configs<-configure_report(
 # Landings of small tend to be reported by dealers who did more small in the 2010-2014 time period
 # Same story for Unclassifieds, but magnified.
 
-# 
-combined_dataset %>% filter(lndlb<=1000) %>%
-  DataExplorer::create_report(
-    output_file = here("R_code","analysis","esda",glue("Report_1k_{DateTime}")),
-    report_title = "EDA Report - Combined ML Dataset lndlb<=1000",
-    y = "market_desc",
-    config=configs
-  )
 
+# 
+# combined_dataset %>% filter(lndlb<=1000) %>%
+#   DataExplorer::create_report(
+#     output_file = here("R_code","analysis","esda",glue("Report_1k_{DateTime}")),
+#     report_title = "EDA Report - Combined ML Dataset lndlb<=1000",
+#     y = "market_desc",
+#     config=configs
+#   )
+# 
 
 # Correlation of the Lag Shares
 
