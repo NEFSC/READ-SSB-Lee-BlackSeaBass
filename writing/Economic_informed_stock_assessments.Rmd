@@ -339,6 +339,9 @@ The assumption of a competitive market is critical to our ability to use prices 
 In this application, transactions by the same vessel, market category, and day are transactions of identical goods.  The hedonic model (Table \ref{HedonicTableA}) suggests factors like gear and month also impact prices. Transactions on different days are different in two dimensions: there may be seasonal variation in meat quality and daily variation in quantity supplied. There may be regional variation in prices if is systematic variation in transportation costs from dealer to final consumer or differences in  costs of processing whole fish into final form  [@samuelson1954transfer; @Krugman1991a].
 
 
+<!--- Include the next 2 child documents.   --->
+```{r, child=here("writing", c("investigate_fit.Rmd")),  eval=FALSE}
+```
 
 
 ## Data
