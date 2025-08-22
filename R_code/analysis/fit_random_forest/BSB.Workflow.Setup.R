@@ -102,6 +102,10 @@ if  (search_type=="Final"){
     } else if (modeltype=="South_region_NOC"){
       mtry<-seq(1,npredict)
       rf_grid<-as.data.frame(mtry)
+    } else if (modeltype=="nocluster_Tsubset"){
+      mtry<-seq(1,npredict)
+      rf_grid<-as.data.frame(mtry)
+      
     } else {
     stop("Unknown modeltype")
   }

@@ -30,6 +30,8 @@ params:
     - North_NOC_TEST
     - South_region_NOC
     - North_region_NOC
+    - nocluster_Tsubset
+    
 ---
 
 # Summary and Housekeeping
@@ -138,9 +140,14 @@ if (modeltype=="standard"){
   data_pattern<-"nocluster_North_region_data_split"
   tuning_pattern<-"BSB_ranger_North_region_nocluster_tune"
   final_pattern<-"BSB_ranger_North_region_nocluster_results"
+} else if (modeltype=="nocluster_Tsubset"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_North_region_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
 }else {
   stop("Unknown modeltype")
 }
+
 
 
 
@@ -463,6 +470,18 @@ Testmkt_preds<-Testmkt_preds %>%
          lndlb=lndlb/lbs_per_mt) %>%
   rename(true_mt=lndlb,
          predicted_mt=predicted)%>%
+  mutate('error (%)'=100*(predicted_mt-true_mt)/true_mt)
+
+ knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
+```
+
+Validation predictions, not by stockarea
+
+```{r Validation predictions}
+Testmkt_preds<-Testmkt_preds %>%
+  group_by(market_desc) %>%
+  summarise(true_mt=sum(true_mt),
+         predicted_mt=sum(predicted_mt))%>%
   mutate('error (%)'=100*(predicted_mt-true_mt)/true_mt)
 
  knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
