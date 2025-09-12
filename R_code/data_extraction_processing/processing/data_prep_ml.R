@@ -100,6 +100,8 @@ stockarea_ma<-read_dta(here("data_folder","main","commercial", glue("stockarea_m
 dlrid_historical<-read_dta(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.dta")))
 dlrid_lag<-read_dta(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.dta")))
 
+grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.dta")))
+
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
 ###############################################################################
@@ -161,6 +163,14 @@ cleaned_landings<-cleaned_landings %>%
 
 
 
+# merge in moving_average_prices  statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
+
+
+
+
+
 # NAs for Transaction count and lndlb can be replaced by zero.
 # cleaned_landings<-cleaned_landings %>%
 #   mutate(TransactionCountJumbo=replace_na(TransactionCountJumbo),
@@ -197,6 +207,13 @@ cleaned_landings<-cleaned_landings %>%
       month>=7  ~ 2,
       .default=0)
       ) 
+
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(Price_Diff_J=priceR_CPI-JumboMA14price,
+         Price_Diff_L=priceR_CPI-LargeMA14price,
+         Price_Diff_M=priceR_CPI-MediumMA14price,
+         Price_Diff_S=priceR_CPI-SmallMA14price)
 
 
 
