@@ -15,7 +15,7 @@
 
 /* historical dealnum things */
 
-use "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
+use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 
 keep if year>=2010 & year<=2014
