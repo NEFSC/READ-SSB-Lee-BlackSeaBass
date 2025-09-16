@@ -142,7 +142,7 @@ if (modeltype=="standard"){
   final_pattern<-"BSB_ranger_North_region_nocluster_results"
 } else if (modeltype=="nocluster_Tsubset"){
   data_pattern<-"nocluster_TS_data_split"
-  tuning_pattern<-"BSB_ranger_North_region_nocluster_tune"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
   final_pattern<-"BSB_ranger_TS_nocluster_results"
 }else {
   stop("Unknown modeltype")
@@ -422,10 +422,12 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   })
 }
 
+test_data$obs<-1
+
 # Sum up the predictions by year, market category, and stockarea. 
 test_predictions<-test_data %>%
    group_by(stockarea, year,market_desc) %>%
-  summarise(across(c(starts_with("pred_"),"lndlb"), \(x) sum(x, na.rm = TRUE))) %>%
+  summarise(across(c(starts_with("pred_"),"lndlb", "obs"), \(x) sum(x, na.rm = TRUE))) %>%
    ungroup()
 test_predictions$modeltype<-modeltype
 
@@ -474,6 +476,44 @@ Testmkt_preds<-Testmkt_preds %>%
 
  knitr::kable(Testmkt_preds, caption='Aggregate Predictions on the Test Dataset (mt)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
 ```
+
+
+Validation Predictions, by observations:
+
+
+```{r}
+#use .pred_class to assign
+
+obs_level_prediction<-test_data %>%
+     group_by(stockarea) %>%
+    select(-".pred_class") %>%
+  summarise(across(c(starts_with(".pred_")), sum)) %>%
+   ungroup()
+
+
+true_obs_level<-test_data %>%
+     group_by(stockarea, market_desc) %>%
+  summarise(true=sum(obs)) %>%
+   ungroup()
+
+obs_level_prediction2<-obs_level_prediction  %>%
+  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix=".pred_",values_to="predicted")
+
+
+
+obs_level_prediction2<-obs_level_prediction2 %>%
+  left_join(true_obs_level, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+
+obs_level_prediction2<-obs_level_prediction2 %>%
+  mutate('error (%)'=100*(predicted-true)/true)
+ knitr::kable(obs_level_prediction2, caption='Aggregate Predictions on the Test Dataset (observations)',format.args = list(big.mark = ","), digits=1, align=c("l",rep('r',times=4)))
+
+
+```
+
+
+
 
 Validation predictions, not by stockarea
 
