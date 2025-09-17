@@ -50,7 +50,8 @@ case_weights_allowed(ranger_model)
 BSB.Ranger.Workflow <-
   workflow() %>%
   add_model(ranger_model) %>% 
-  add_recipe(BSB.Classification.Recipe)
+  add_recipe(BSB.Classification.Recipe) %>%
+  add_case_weights(weighting)
 
 
 # BSB.cf.Workflow <-
