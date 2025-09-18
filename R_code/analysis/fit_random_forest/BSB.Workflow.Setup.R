@@ -150,9 +150,12 @@ tune_spec <- rand_forest(
 
 # make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
 # steps as the model.
-tune_wf <- workflow() %>%
+tune_wf <- 
+  workflow() %>%
+  add_model(tune_spec) %>%
   add_recipe(BSB.Classification.Recipe) %>%
-  add_model(tune_spec)
+  add_case_weights(weighting) 
+
 
 hardhat::extract_parameter_set_dials(tune_wf)
 
