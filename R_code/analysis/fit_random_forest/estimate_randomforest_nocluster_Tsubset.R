@@ -287,9 +287,9 @@ end_time_tune-start_time_tune
 
 
 # Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
-
+#brier is coming up NaN when I try the weighted version. I dont' know why
 best_tree <- tune_res %>%
-  select_best(metric = "brier_class")
+  select_best(metric = "mn_log_loss")
 
 best_tree
 
@@ -305,7 +305,6 @@ final_fit <-
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
 
-
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 
@@ -318,3 +317,5 @@ end_time
 
 end_time-start_time
 sessionInfo()
+
+cat("All done")
