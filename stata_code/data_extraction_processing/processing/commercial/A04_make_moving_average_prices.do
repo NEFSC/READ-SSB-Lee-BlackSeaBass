@@ -217,15 +217,22 @@ tab state market_desc
 
 
 
-/* I have a group mean for mediums and a group mean for smalls. I will 
+/* 
 
-imputed small price = region wide small price price + adjust for state
+There are some days where I don't have a state-price for a market category. 
 
-At the yearly level, compute the markup (over the regionwide price)
+I always have a regionwide price for a market category.
+
+I also have an annual state level price for each market category. 
+
+For missing data, I will daily regionwide price by an annual state adjustment factor.
+
+imputed small price on day t in state s = regionwide small price on day t + adjustment factor for state s
+
+At the yearly level, compute the markup (over the regionwide price) : 
 
 state adjust == difference between each states Jumbo, Large, and Medium price and the regional Jumbo, Large, and Medium price.
-
-I'm going to just apply this to the ma14price */
+ */
 
 
 clonevar imp_ma15stateprice=ma14stateprice
