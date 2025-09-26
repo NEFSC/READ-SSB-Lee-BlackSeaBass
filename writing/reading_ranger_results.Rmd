@@ -18,6 +18,7 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
+    
     value: South_region_NOC
     choices:
     - standard
@@ -31,7 +32,6 @@ params:
     - South_region_NOC
     - North_region_NOC
     - nocluster_Tsubset
-    
 ---
 
 # Summary and Housekeeping
@@ -215,7 +215,7 @@ oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclass
 
 Brier classification. best  depends on the type of model.
 
-```{r brier_class}
+```{r brier_class, eval=FALSE}
 
 # eyeball the metrics 
 all.metrics<-tune_res %>%
@@ -256,9 +256,18 @@ brier %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
 Multinomial log-loss best depends on the type of model.
 
 ```{r log_loss}
+all.metrics<-tune_res %>%
+  collect_metrics() 
+
+best_tree <- tune_res %>%
+  select_best(metric = "mn_log_loss")
+
+opt_mtry<-best_tree$mtry
+
+
+
 mn_log_loss<-all.metrics %>%
   filter(.metric == "mn_log_loss") %>%
-#  filter(mtry <=10) %>%
   select(mean, mtry) %>%
   rename(mn_log_loss=mean)
 
@@ -269,6 +278,18 @@ mn_log_loss<-all.metrics %>%
 
  ggsave(here("results","ranger","tune",glue("mn_log_loss{modeltype}{tuning_vintage}.png")), plot=last_plot())
 
+ 
+ mn_log_loss<-tune_res %>%
+  collect_metrics(summarize=FALSE) %>%
+  filter(.metric == "mn_log_loss") 
+
+mn_log_loss %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
+  geom_boxplot(show.legend = TRUE) 
+
+  ggsave(here("results","ranger","tune",glue("mn_log_loss_indivd_{modeltype}{tuning_vintage}.png")), plot=last_plot())
+
+ 
+ 
 ```
 
 
@@ -340,7 +361,7 @@ final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vi
 
 # What is the workflow
 final_workflow<-extract_workflow(final_fit)
-
+final_workflow
 # And the recipe
 extract_recipe(final_fit)
 
