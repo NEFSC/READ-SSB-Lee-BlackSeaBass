@@ -25,7 +25,7 @@ dir.create(here::here("results","ranger","reports"), showWarnings="FALSE")
 #List of inputs that we are looping over.
 #input_model_vec<-c("standard","fiveclass","noc5class","nocluster", "South_NOC","North_NOC")
 
-input_model_vec<-c("South_NOC", "nocluster")
+input_model_vec<-c("nocluster_Tsubset")
 
 
 ##################################################################################
