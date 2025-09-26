@@ -100,11 +100,11 @@ lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
 
-pred_vintage<-"2025-05-24"
+pred_vintage<-"2025-09-18"
 
-nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_nocluster",pred_vintage, ".Rds")))
-nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster",pred_vintage, ".Rds")))
-aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster",pred_vintage, ".Rds")))
+nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
+nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
+#aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
 
 
 
@@ -316,7 +316,7 @@ A perfectly inelastic demand curve is unrealistic.  The demand curve for nearly 
 Therefore:
 \begin{equation}
 \label{demand}
-$p_J = f_J(q_J,q_L; Z)$,
+p_J = f_J(q_J,q_L; Z),
 \end{equation}
 where $f_J()$ is decreasing in both quantities and $f_L()$ is defined analogously.  Downward sloping demand implies that equation \ref{unknown1} should be modified by substituting in \ref{demand}.
 
@@ -439,20 +439,20 @@ Model tuning overview.
 
 
 ```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curve"}
-knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster_Tsubset", pred_vintage, ".png")))
 ```
 
 Our model fits well. In-sample ROC curves from tuning are quite similar across folds
 and indicate that the tuned random forest does well at predicting market category  (Figure  \@ref(fig:rocTune))..
 
 ```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
-knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster_Tsubset", pred_vintage, ".png")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
 
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
-knitr::include_graphics(here("results","ranger","final", paste0("roc_nocluster", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","final", paste0("roc_nocluster_Tsubset", pred_vintage, ".png")))
 ```
 
 The final ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
@@ -507,9 +507,9 @@ Table \@ref(tab:validation_predictions)), aggregates the individual predictions 
 
 
 #  Out of Sample Predictions
+out of sample predictions not done yet
 
-
-```{r nocluster_oos_predictions, echo=FALSE,warning=FALSE, fig.align='center'}
+```{r nocluster_oos_predictions, eval=FALSE, echo=FALSE,warning=FALSE, fig.align='center'}
 full_oos_predictions<-aggregate_oos_predictions %>%
   group_by(stockarea,year, market_desc) %>%
     summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small,lndlb), sum))%>%
