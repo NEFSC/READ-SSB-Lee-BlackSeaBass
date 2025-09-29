@@ -275,6 +275,14 @@ combined_dataset<-combined_dataset %>%
         year=fct_drop(year),
         state=fct_drop(state)) 
 
+# order the years and states. I'm also ordering the . I chose not to order the months, because month12 of one year is next to month 1 of the following
+combined_dataset<-combined_dataset %>%
+  mutate(state=forcats::fct_relevel(state,c("CN","ME","NH", "MA","RI","CT","NY","NJ","PA","DE","MD","VA","NC","SC")) ) %>%
+  mutate(year=ordered(year),
+         region=ordered(region),
+         semester=ordered(semester),
+         state=ordered(state)
+  )
 
 # Encode catch share
 combined_dataset<-combined_dataset %>%
@@ -283,7 +291,7 @@ combined_dataset<-combined_dataset %>%
     state %in% c("NC","NJ","NY","CT","RI","MA","NH","PA","ME") ~ "Non CatchShare"
     )
   ) %>%
-  mutate(catch_share=as.factor(catch_share))
+  mutate(catch_share=ordered(as.factor(catch_share)))
 
 
 
