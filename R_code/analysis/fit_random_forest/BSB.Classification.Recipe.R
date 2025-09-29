@@ -51,7 +51,7 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 #  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall), new_role = "predictor") 
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(Price_Diff_J, Price_Diff_L, Price_Diff_M,Price_Diff_S), new_role = "predictor") 
+  update_role(c(Price_Diff_J, Price_Diff_L, Price_Diff_M), new_role = "predictor") 
 
 
 
