@@ -59,8 +59,8 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 # rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
   step_zv() %>%
-  step_center(all_numeric_predictors()) %>%
-  step_scale(all_numeric_predictors()) 
+  step_normalize(all_numeric_predictors())
+  
 
 recipe_summary<-BSB.Classification.Recipe %>%
   summary() %>%
