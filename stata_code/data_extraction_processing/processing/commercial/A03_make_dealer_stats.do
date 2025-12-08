@@ -15,7 +15,7 @@
 
 /* historical dealnum things */
 
-use "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
+use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 
 keep if year>=2010 & year<=2014
@@ -23,11 +23,12 @@ keep if year>=2010 & year<=2014
 collapse (sum) lndlb TransactionCount, by(dlrid market_desc)
 decode market_desc, gen(mymarket)
 
+drop if mymarket=="Unclassified"
 keep lndlb dlrid mymarket TransactionCount
 /* reshape and zero fill */
 reshape wide lndlb TransactionCount, i(dlrid) j(mymarket) string
 
-local sizes Jumbo Large Medium Small Unclassified
+local sizes Jumbo Large Medium Small
 
 
 foreach  l of local sizes {
@@ -46,7 +47,7 @@ egen totaltrans=rowtotal(TransactionCount*)
 
 
 
-local sizes Jumbo Large Medium Small Unclassified
+local sizes Jumbo Large Medium Small
 foreach l of local sizes{
 	gen Share2014`l'=DealerHLbsPurchased`l'/totalland
 	label var Share2014`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
@@ -79,6 +80,7 @@ bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 /* sum by dlr and market category */
 collapse (sum) lndlb TransactionCount, by(dlrid market_desc year)
 decode market_desc, gen(mymarket)
+drop if mymarket=="Unclassified"
 
 keep lndlb dlrid mymarket TransactionCount year
 /* reshape and zero fill */
@@ -94,7 +96,7 @@ rename TransactionCount LagTrans
 /* lag my statistics */
 replace year=year+1
 
-reshape wide LagSharePound LagShareTrans LagPounds LagTrans, i(dlrid year) j(mymarket) string
+reshape wide LagSharePounds LagShareTrans LagPounds LagTrans, i(dlrid year) j(mymarket) string
 
 /* zero fill if there are missings here. This means a dealer never purchased one of the market categories  */
 foreach var of varlist LagSharePound* LagShareTrans* LagPounds* LagTrans* {
@@ -106,28 +108,6 @@ tsfill, full
 
 notes: merge this on dlrid and year to get 1 year lags of the share of Pounds into the estimation dataset
 save "${data_main}\commercial\dlrid_lag_stats_${vintage_string}.dta", replace
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

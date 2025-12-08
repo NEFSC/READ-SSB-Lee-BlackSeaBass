@@ -39,7 +39,7 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
              oob.error = TRUE,
              keep.inbag=TRUE,
              write.forest=TRUE,
-             proximity = TRUE,
+             seed=8675309,
              probability = TRUE) 
 
 
@@ -50,7 +50,8 @@ case_weights_allowed(ranger_model)
 BSB.Ranger.Workflow <-
   workflow() %>%
   add_model(ranger_model) %>% 
-  add_recipe(BSB.Classification.Recipe)
+  add_recipe(BSB.Classification.Recipe) %>%
+  add_case_weights(weighting)
 
 
 # BSB.cf.Workflow <-
@@ -102,6 +103,12 @@ if  (search_type=="Final"){
     } else if (modeltype=="South_region_NOC"){
       mtry<-seq(1,npredict)
       rf_grid<-as.data.frame(mtry)
+    } else if (modeltype=="nocluster_Tsubset"){
+      mtry<-seq(15,30)
+      rf_grid<-as.data.frame(mtry)
+    } else if (modeltype=="noc_3waysplit"){
+      mtry<-seq(15,30)
+      rf_grid<-as.data.frame(mtry)
     } else {
     stop("Unknown modeltype")
   }
@@ -145,9 +152,12 @@ tune_spec <- rand_forest(
 
 # make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
 # steps as the model.
-tune_wf <- workflow() %>%
+tune_wf <- 
+  workflow() %>%
+  add_model(tune_spec) %>%
   add_recipe(BSB.Classification.Recipe) %>%
-  add_model(tune_spec)
+  add_case_weights(weighting) 
+
 
 hardhat::extract_parameter_set_dials(tune_wf)
 

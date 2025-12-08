@@ -1,6 +1,6 @@
 ###############################################################################
 # Purpose: 	Estimate a Random Forest classification model on 4 classes WITHOUT Clustering
-# on DLRID for the validation. South stock only. Unclassified are excluded.
+# on DLRID for the validation. Unclassified are excluded.
 
 # I'm using the tidymodels framework to train and test the classification trees and
 # random forest.  The main advantage is that switching models or estimation packages
@@ -27,7 +27,7 @@
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 
-search_type<-"Final"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype", or "Final")
 
 testing_fraction<-0.30
@@ -35,8 +35,7 @@ testing_fraction<-0.30
 # how much of the data to hold out for final validation
 training_fraction<-0.90
 start_time<-Sys.time()
-start_time
-modeltype<-"South_region_NOC"
+modeltype<-"nocluster_Tsubset"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
 
@@ -74,7 +73,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
-here::i_am("R_code/analysis/fit_random_forest/estimate_randomforest_South_nocluster.R")
+here::i_am("R_code/analysis/fit_random_forest/estimate_randomforest_nocluster_Tsubset.R")
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -82,11 +81,11 @@ platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
   if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-      runClass<-'DynamicContainer'
-    } else{ 
-      runClass <- 'Container'
-    }
+    runClass<-'DynamicContainer'
+  } else{ 
+    runClass <- 'Container'
   }
+}
 
 if(platform == 'Windows'){
   runClass<-'Windows'
@@ -98,7 +97,7 @@ if (runClass %in% c('Local', 'Windows')){
   my.ranger.threads<-8
 }else if (runClass %in% c('DynamicContainer')){ 
   my.ranger.threads<-16
-
+  
 }
 
 
@@ -114,14 +113,14 @@ vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
-data_save_name<-glue("nocluster_South_region_data_split{estimation_vintage}.Rds")
-tune_file_name<-glue("BSB_ranger_South_region_nocluster_tune{estimation_vintage}.Rds")
-final_fit_file_name<-glue("BSB_ranger_South_region_nocluster_results{estimation_vintage}.Rds")
+data_save_name<-paste0("nocluster_TS_data_split",estimation_vintage,".Rds")
+tune_file_name<-paste0("BSB_ranger_TS_nocluster_tune",estimation_vintage,".Rds")
+final_fit_file_name<-paste0("BSB_ranger_TS_nocluster_results",estimation_vintage,".Rds")
 
 if  (search_type=="Prototype"){
-  data_save_name<-glue("nocluster_South_region_data_split_TEST{estimation_vintage}.Rds")
-  tune_file_name<-glue("BSB_ranger_South_region_nocluster_tune_TEST{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("BSB_ranger_South_region_nocluster_results_TEST{estimation_vintage}.Rds")
+  data_save_name<-paste0("nocluster_TS_data_split_TEST",estimation_vintage,".Rds")
+  tune_file_name<-paste0("BSB_ranger_TS_nocluster_tune_TEST",estimation_vintage,".Rds")
+  final_fit_file_name<-paste0("BSB_ranger_TS_nocluster_results_TEST",estimation_vintage,".Rds")
   
 }
 
@@ -160,26 +159,27 @@ if  (search_type=="Prototype"){
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
 
 estimation_dataset<-estimation_dataset %>%
-  dplyr::filter(region=="South") %>%
   filter(year %in% c(2021,2022,2023,2024))
 
+
+
 # for reproducibility
- set.seed(4587315)
+set.seed(4587315)
 
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if  (search_type=="Prototype"){
- estimation_dataset$rand<-runif(nrow(estimation_dataset))
- estimation_dataset<-estimation_dataset %>%
-     dplyr::filter(rand<=testing_fraction)
+  estimation_dataset$rand<-runif(nrow(estimation_dataset))
+  estimation_dataset<-estimation_dataset %>%
+    dplyr::filter(rand<=testing_fraction)
 }
 
 # construct the "case weights" variable here and trim out the extra factor levels from market_desc.
- estimation_dataset<-estimation_dataset %>%
-     mutate(weighting = frequency_weights(weighting),
+estimation_dataset<-estimation_dataset %>%
+  mutate(weighting = frequency_weights(weighting),
          market_desc=fct_drop(market_desc))
 
-keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
 keep_cols<-c(keep_cols,"shore","nofederal","permit", "hullid")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
@@ -189,8 +189,9 @@ keep_cols<-c(keep_cols,"MA7_gearQJumbo", "MA7_gearQLarge","MA7_gearQMedium", "MA
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 # keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 # keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
-keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall")
-keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
+#keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+keep_cols<-c(keep_cols, "Price_Diff_J","Price_Diff_L", "Price_Diff_M","Price_Diff_S") 
 
 
 estimation_dataset<- estimation_dataset %>%
@@ -218,14 +219,6 @@ nrow(test_data)
 # and predictor variables.
 source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
-# Exclude stockarea as a predictor for the North and South separate models.
-# also need to change npredict.
-recipe_summary<-BSB.Classification.Recipe %>%
-  summary() %>%
-  arrange(source,role, variable)
-#How many predictors
-npredict<-nrow(recipe_summary %>% dplyr::filter(role=="predictor"))
-
 
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
@@ -235,7 +228,7 @@ myfolds<-rsample::vfold_cv(train_data, strata=market_desc, v = 10)
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
-start_time_tune
+
 tune_res <- tune_grid(
   tune_wf,
   resamples = myfolds,
@@ -248,10 +241,9 @@ tune_res <- tune_grid(
 # Search over 2 sets of parameters
 # #Search over mtry and trees
 # rf_grid2 <-  grid_regular(
-#     mtry(range = c(1, 20)), levels=10)
-#      trees(range=c(100,1000), levels=5)
-#     )
-# 
+#     mtry(range = c(1, 20)), 
+#      trees(range=c(100,1000) )
+#     , levels=5)
 # 
 # # configure the tuning part of the model.
 # tune_spec2 <- rand_forest(
@@ -294,11 +286,10 @@ end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
 
-# Select the best tuning parameter based on brier from the 10 folds.
-#Do a final fit on the full training dataset, predict on the validation dataset. Save the data
-
+# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
+#brier is coming up NaN when I try the weighted version. I dont' know why
 best_tree <- tune_res %>%
-  select_best(metric = "brier_class")
+  select_best(metric = "mn_log_loss")
 
 best_tree
 
@@ -314,7 +305,6 @@ final_fit <-
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
 
-
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 
@@ -327,3 +317,5 @@ end_time
 
 end_time-start_time
 sessionInfo()
+
+cat("All done")
