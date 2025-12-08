@@ -96,7 +96,7 @@ rename TransactionCount LagTrans
 /* lag my statistics */
 replace year=year+1
 
-reshape wide LagSharePound LagShareTrans LagPounds LagTrans, i(dlrid year) j(mymarket) string
+reshape wide LagSharePounds LagShareTrans LagPounds LagTrans, i(dlrid year) j(mymarket) string
 
 /* zero fill if there are missings here. This means a dealer never purchased one of the market categories  */
 foreach var of varlist LagSharePound* LagShareTrans* LagPounds* LagTrans* {
