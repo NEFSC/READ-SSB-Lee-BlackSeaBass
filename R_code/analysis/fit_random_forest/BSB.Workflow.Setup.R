@@ -104,9 +104,11 @@ if  (search_type=="Final"){
       mtry<-seq(1,npredict)
       rf_grid<-as.data.frame(mtry)
     } else if (modeltype=="nocluster_Tsubset"){
-      mtry<-seq(1,npredict)
+      mtry<-seq(15,30)
       rf_grid<-as.data.frame(mtry)
-      
+    } else if (modeltype=="noc_3waysplit"){
+      mtry<-seq(15,30)
+      rf_grid<-as.data.frame(mtry)
     } else {
     stop("Unknown modeltype")
   }
