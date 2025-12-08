@@ -14,4 +14,4 @@
  
 #Rscript --no-save --no-restore --verbose ./estimate_randomforest_RegionN_nocluster.R > estimate_randomforest_RegionN_nocluster.log 2>&1
 
-Rscript --no-save --no-restore --verbose  ./estimate_randomforest_RegionS_nocluster.R > estimate_randomforest_RegionS_nocluster.log 2>&1
+Rscript --no-save --no-restore --verbose  ./estimate_randomforest_nocluster_Tsubset.R > estimate_randomforest_nocluster_Tsubset.log 2>&1

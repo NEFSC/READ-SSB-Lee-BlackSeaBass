@@ -15,7 +15,7 @@
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(dlrid,camsid, hullid, permit), new_role = "ID variable") %>%
-  update_role(c(mygear,priceR_CPI,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB, shore, nofederal), new_role = "predictor")
+  update_role(c(mygear,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB, shore, nofederal, catch_share), new_role = "predictor")
 
 # State-level daily Landings on "other" trips, by market category  
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
@@ -48,15 +48,19 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall), new_role = "predictor") 
 
 # Dealer transaction count of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.
+#BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+#  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall), new_role = "predictor") 
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(LagShareTransJumbo, LagShareTransLarge, LagShareTransMedium,LagShareTransSmall), new_role = "predictor") 
+  update_role(c(Price_Diff_J, Price_Diff_L, Price_Diff_M), new_role = "predictor") 
+
+
 
 # You can't center the factor variables
 # rescale and recenter 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
   step_zv() %>%
-  step_center(all_numeric_predictors()) %>%
-  step_scale(all_numeric_predictors()) 
+  step_normalize(all_numeric_predictors())
+  
 
 recipe_summary<-BSB.Classification.Recipe %>%
   summary() %>%

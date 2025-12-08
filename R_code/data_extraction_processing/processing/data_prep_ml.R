@@ -24,7 +24,7 @@ library("here")
 library("tidyverse")
 library("haven")
 library("scales")
-
+library("glue")
 # load tidyverse and related
 library("tidymodels")
 
@@ -70,6 +70,8 @@ vintage_string<-max(vintage_string)
 
 lbs_per_mt<-2204.62
 
+out_data_string<-Sys.Date()
+
 
 
 ###############################################################################
@@ -81,22 +83,24 @@ lbs_per_mt<-2204.62
 #3. Daily landings at the stockarea and market category level 
 #4. Historical "target encoding" based on 2010-2014 purchases for the dealers
 
-cleaned_landings<-read_dta(here("data_folder","main","commercial", paste0("landings_cleaned_",vintage_string,".dta")))
-#cams_gears<-haven::read_dta(here("data_folder","main","commercial", paste0("cams_gears_",vintage_string,".dta")))
+cleaned_landings<-read_dta(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.dta")))
+#cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
-camsid_specific_stats<-read_dta(here("data_folder","main","commercial", paste0("camsid_specific_cleaned_",vintage_string,".dta")))
+camsid_specific_stats<-read_dta(here("data_folder","main","commercial", glue("camsid_specific_cleaned_",vintage_string,".dta")))
 
-daily_ma<-read_dta(here("data_folder","main","commercial", paste0("daily_ma_",vintage_string,".dta")))
+daily_ma<-read_dta(here("data_folder","main","commercial", glue("daily_ma_{vintage_string}.dta")))
 
-state_ma<-read_dta(here("data_folder","main","commercial", paste0("state_ma_",vintage_string,".dta")))
+state_ma<-read_dta(here("data_folder","main","commercial", glue("state_ma_{vintage_string}.dta")))
 
-gear_ma<-read_dta(here("data_folder","main","commercial", paste0("gear_ma_",vintage_string,".dta")))
+gear_ma<-read_dta(here("data_folder","main","commercial", glue("gear_ma_{vintage_string}.dta")))
 
 
-stockarea_ma<-read_dta(here("data_folder","main","commercial", paste0("stockarea_ma_",vintage_string,".dta")))
+stockarea_ma<-read_dta(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.dta")))
 
-dlrid_historical<-read_dta(here("data_folder","main","commercial", paste0("dlrid_historical_stats_",vintage_string,".dta")))
-dlrid_lag<-read_dta(here("data_folder","main","commercial", paste0("dlrid_lag_stats_",vintage_string,".dta")))
+dlrid_historical<-read_dta(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.dta")))
+dlrid_lag<-read_dta(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.dta")))
+
+grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.dta")))
 
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
@@ -159,6 +163,14 @@ cleaned_landings<-cleaned_landings %>%
 
 
 
+# merge in moving_average_prices  statistics
+cleaned_landings<-cleaned_landings %>%
+  left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
+
+
+
+
+
 # NAs for Transaction count and lndlb can be replaced by zero.
 # cleaned_landings<-cleaned_landings %>%
 #   mutate(TransactionCountJumbo=replace_na(TransactionCountJumbo),
@@ -195,6 +207,15 @@ cleaned_landings<-cleaned_landings %>%
       month>=7  ~ 2,
       .default=0)
       ) 
+
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(Price_Diff_J=priceR_CPI-JumboMA14price,
+         Price_Diff_L=priceR_CPI-LargeMA14price,
+         Price_Diff_M=priceR_CPI-MediumMA14price,
+         Price_Diff_S=priceR_CPI-SmallMA14price)
+
+
 
 #Use the variable labels to convert to factors 
 
@@ -254,7 +275,27 @@ combined_dataset<-combined_dataset %>%
         year=fct_drop(year),
         state=fct_drop(state)) 
 
-write_rds(combined_dataset, file=here("data_folder","main","commercial",paste0("BSB_original_combined_dataset",vintage_string,".Rds")))
+# order the years and states. I'm also ordering the . I chose not to order the months, because month12 of one year is next to month 1 of the following
+combined_dataset<-combined_dataset %>%
+  mutate(state=forcats::fct_relevel(state,c("CN","ME","NH", "MA","RI","CT","NY","NJ","PA","DE","MD","VA","NC","SC")) ) %>%
+  mutate(year=ordered(year),
+         region=ordered(region),
+         semester=ordered(semester),
+         state=ordered(state)
+  )
+
+# Encode catch share
+combined_dataset<-combined_dataset %>%
+  mutate(catch_share=case_when(
+    state %in% c("MD","VA","DE") ~ "CatchShare",
+    state %in% c("NC","NJ","NY","CT","RI","MA","NH","PA","ME") ~ "Non CatchShare"
+    )
+  ) %>%
+  mutate(catch_share=ordered(as.factor(catch_share)))
+
+
+
+write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 
 
 dlr_variability <- combined_dataset %>%
@@ -297,19 +338,20 @@ combined_dataset<-combined_dataset %>%
 
 
 
+
 # put the unclassifieds into a dataset
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
 
-write_rds(unclassified_dataset, file=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".Rds")))
-haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",paste0("BSB_unclassified_dataset",vintage_string,".dta")))
+write_rds(unclassified_dataset, file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.Rds")))
+haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}dta")))
 
 # put everything else in a dataset
 
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") 
 
-write_rds(estimation_dataset, file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
-haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".dta")))
+write_rds(estimation_dataset, file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.Rds")))
+haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.dta")))
 
 
