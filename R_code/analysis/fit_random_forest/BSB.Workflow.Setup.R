@@ -39,7 +39,7 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
              oob.error = TRUE,
              keep.inbag=TRUE,
              write.forest=TRUE,
-             proximity = TRUE,
+             seed=8675309,
              probability = TRUE) 
 
 
