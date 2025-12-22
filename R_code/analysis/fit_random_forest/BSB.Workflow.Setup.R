@@ -39,7 +39,7 @@ tune_spec <- rand_forest(
              num.threads=!!my.ranger.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="impurity",
+             importance="permutation",
              oob.error = TRUE,
              keep.inbag=TRUE,
              probability = TRUE,
@@ -69,55 +69,12 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 # I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
 if  (search_type=="Initial"){
   rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(1L, 20L)),           # Number of variables per split
+    mtry(range = c(1L, 30L)),           # Number of variables per split
     min_n(range = c(5L, 30L)),         # Minimum observations per node
-    size = 25                          # Grid size for initial exploration
+    size = 16                          # Grid size for initial exploration
   )
   
 }
-
-if  (search_type=="Final"){
-  
-  # Custom Grid 
-  if (modeltype=="standard"){
-    mtry<-seq(26,41)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="nocluster"){
-    mtry<-seq(25,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  }else if (modeltype=="fiveclass"){
-    mtry<-seq(1,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="noc5class"){
-    mtry<-seq(1,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="South_NOC"){
-    mtry<-seq(25,npredict)
-    rf_grid<-as.data.frame(mtry)
-  } else if (modeltype=="North_NOC"){
-    mtry<-seq(26,npredict)
-    rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="North_region_NOC"){
-      mtry<-seq(1,npredict)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="South_region_NOC"){
-      mtry<-seq(1,npredict)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="nocluster_Tsubset"){
-      mtry<-seq(15,30)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="noc_3waysplit"){
-      mtry<-seq(15,30)
-      rf_grid<-as.data.frame(mtry)
-    } else {
-    stop("Unknown modeltype")
-  }
-}
-
 
 # Overwite mtry rf_grid for testing=true to speed prototyping
 if  (search_type=="Prototype"){
