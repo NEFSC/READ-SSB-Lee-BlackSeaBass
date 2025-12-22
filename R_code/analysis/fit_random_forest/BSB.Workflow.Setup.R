@@ -59,7 +59,7 @@ hardhat::extract_parameter_set_dials(BSB.Ranger.Workflow)
 
 # pass in a bunch of metrics
 # if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
-class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, sensitivity, specificity, precision, bal_accuracy, average_precision, accuracy , roc_auc)
+class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
 ## Tuning
