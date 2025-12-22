@@ -28,9 +28,13 @@
 #' 
 #  respect.unordered.factors="order",
 
-
-
-ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
+# configure the tuning part of the model.
+tune_spec <- rand_forest(
+  trees = 500,
+  mtry = tune(),
+  min_n = tune(),
+) %>%
+  set_mode("classification") %>%
   set_engine("ranger",
              num.threads=!!my.ranger.threads, 
              na.action="na.learn", 
@@ -38,38 +42,38 @@ ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %
              importance="impurity",
              oob.error = TRUE,
              keep.inbag=TRUE,
-             write.forest=TRUE,
-             seed=8675309,
-             probability = TRUE) 
-
-
-case_weights_allowed(ranger_model)
+             probability = TRUE,
+             write.forest=TRUE)
+case_weights_allowed(tune_spec)
 
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
 BSB.Ranger.Workflow <-
   workflow() %>%
-  add_model(ranger_model) %>% 
+  add_model(tune_spec) %>% 
   add_recipe(BSB.Classification.Recipe) %>%
   add_case_weights(weighting)
 
 
-# BSB.cf.Workflow <-
-#   workflow() %>%
-#   add_model(cf_model) %>% 
-#   add_recipe(BSB.Classification.Recipe)
+hardhat::extract_parameter_set_dials(BSB.Ranger.Workflow)
 
-
+# pass in a bunch of metrics
+# if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
+class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_accuracy, mn_log_loss,average_precision, accuracy, brier_class, roc_auc)
 
 
 ## Tuning
 # 
 # Set up a set of mtry to search over. 
 
-# I have about 40 predictors, so I'll specify a coarse initial grid with 15 points, 
+# I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
 if  (search_type=="Initial"){
-  rf_grid<-  grid_regular(
-    mtry(range = c(1, npredict)), levels=15)
+  rf_grid<-  param_grid <- grid_space_filling(
+    mtry(range = c(1L, 20L)),           # Number of variables per split
+    min_n(range = c(5L, 30L)),         # Minimum observations per node
+    size = 25                          # Grid size for initial exploration
+  )
+  
 }
 
 if  (search_type=="Final"){
@@ -117,51 +121,10 @@ if  (search_type=="Final"){
 
 # Overwite mtry rf_grid for testing=true to speed prototyping
 if  (search_type=="Prototype"){
-  mtry<-c(2,5,15,npredict)
-  rf_grid<-as.data.frame(mtry)
+  rf_grid<-  param_grid <- grid_space_filling(
+    mtry(range = c(2L, 10L)),           # Number of variables per split
+    min_n(range = c(5L, 10L)),         # Minimum observations per node
+    size = 4                          # Grid size for initial exploration
+  )
 }
-
-  
-
-
-
-
-
-
-# configure the tuning part of the model.
-tune_spec <- rand_forest(
-  mtry = tune(),
-  trees = 500,
-  min_n = 5,
-) %>%
-  set_mode("classification") %>%
-  set_engine("ranger",
-             num.threads=!!my.ranger.threads, 
-             na.action="na.learn", 
-             respect.unordered.factors="order",
-             importance="impurity",
-             oob.error = TRUE,
-             keep.inbag=TRUE,
-             proximity = TRUE,
-             probability = TRUE,
-             write.forest=TRUE)
-
-
-
-
-
-# make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
-# steps as the model.
-tune_wf <- 
-  workflow() %>%
-  add_model(tune_spec) %>%
-  add_recipe(BSB.Classification.Recipe) %>%
-  add_case_weights(weighting) 
-
-
-hardhat::extract_parameter_set_dials(tune_wf)
-
-# pass in a bunch of metrics
-# if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
-class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_accuracy, mn_log_loss,average_precision, accuracy, brier_class, roc_auc)
 
