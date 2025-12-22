@@ -27,14 +27,25 @@
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 
+
+
+################################################
+# need to propagate some changes around the formula into other files.
+################################################
+################################################
+
+
+
+
+
+
 search_type<-"Initial"
-# search_type in "Initial", "Prototype", or "Final")
+# search_type in "Initial", "Prototype")
 
 testing_fraction<-0.30
 
 
 # how much of the data to hold out for final validation
-training_fraction<-0.90
 
 start_time<-Sys.time()
 modeltype<-"standard"
@@ -64,7 +75,9 @@ library("knitr")
 library("kableExtra")
 library("viridis")
 library("glue")
+library("future")
 library("conflicted")
+
 
 #deal with conflicts
 conflicts_prefer(dplyr::filter())
@@ -95,16 +108,14 @@ if(platform == 'Windows'){
 }
 
 if (runClass %in% c('Local', 'Windows')){
-  my.ranger.threads<-6
-} else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-8
-}else if (runClass %in% c('DynamicContainer')){ 
-  my.ranger.threads<-16
-
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+  my.parallel.threads<-5
 }
-
-
+my.ranger.threads<-3
 lbs_per_mt<-2204.62
+
+
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -160,26 +171,24 @@ if  (search_type=="Prototype"){
 # 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("data_split{estimation_vintage}.Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
 
 
- # for reproducibility
- set.seed(4587315)
 
-
-# When testing, take a subset of the data. This is just to test how my code is working   
-if  (search_type=="Prototype"){
- estimation_dataset$rand<-runif(nrow(estimation_dataset))
- estimation_dataset<-estimation_dataset %>%
-     dplyr::filter(rand<=testing_fraction)
-}
 
 # construct the "case weights" variable here and trim out the extra factor levels from market_desc.
 estimation_dataset<-estimation_dataset %>%
      mutate(weighting = frequency_weights(weighting),
             market_desc=fct_drop(market_desc))
 
-keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
+# When testing, take a subset of the data. This is just to test how my code is working   
+if  (search_type=="Prototype"){
+  estimation_dataset$rand<-runif(nrow(estimation_dataset))
+  estimation_dataset<-estimation_dataset %>%
+    dplyr::filter(rand<=testing_fraction)
+}
+
+keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
 keep_cols<-c(keep_cols,"shore","nofederal","permit", "hullid")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
@@ -190,22 +199,33 @@ keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 # keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 # keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
 keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
-keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+#keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+keep_cols<-c(keep_cols, "Price_Diff_J","Price_Diff_L", "Price_Diff_M","Price_Diff_S") 
 
 
 estimation_dataset<- estimation_dataset %>%
   select(all_of(keep_cols))
 
 set.seed(2824)
-# 80% of the data in the training, and 20% in the holdout sample, not weighted.
+# 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
-data_split <- group_initial_split(data=estimation_dataset, prop=training_fraction, group=dlrid) 
+data_split <- group_initial_validation_split(
+  data=estimation_dataset,
+  prop = c(0.7, 0.15),
+  group=dlrid  # Maintain class balance across splits
+)
+
+
+
 train_data <- training(data_split)
 test_data <- testing(data_split)
+validation_data <- validation(data_split)
+
 readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
 nrow(train_data)
 nrow(test_data)
+nrow(validation_data)
 
 
 
@@ -214,35 +234,80 @@ nrow(test_data)
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
 source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-
-
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+set.seed(123)
 
-set.seed(457)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
+
+plan("multisession", workers=my.parallel.threads)
+set.seed(8675309)
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
 
 tune_res <- tune_grid(
-    BSB.Ranger.Workflow,
+  BSB.Ranger.Workflow,
   resamples = myfolds,
   grid = rf_grid,
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
 
+plan(sequential)
+
 write_rds(tune_res, file=here("results","ranger", tune_file_name))
 end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
 
-# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
-best_tree <- tune_res %>%
-  select_best(metric = "brier_class")
+bayes_param <- BSB.Ranger.Workflow %>% 
+  extract_parameter_set_dials() %>% 
+  update(mtry = finalize(mtry(), train_data))
 
+
+
+# Do a tune_bayes
+plan("multisession", workers=my.parallel.threads)
+set.seed(9035768)
+
+start_time_bt<-Sys.time()
+
+tune_res2 <- tune_bayes(
+  object=BSB.Ranger.Workflow,
+  resamples = myfolds,
+  initial = tune_res,
+  param_info=bayes_param,
+  iter = 20,                     # 
+  control = control_bayes(
+    verbose = TRUE,
+    save_pred = TRUE,             # Save predictions for analysis
+    save_workflow = FALSE,        # Save memory
+    extract = NULL,              # Don't extract additional info
+    parallel_over = "everything" # Parallelize everything possible
+    ),
+    metrics=metric_set(mn_log_loss)
+)
+end_time_bt<-Sys.time()
+end_time_bt-start_time_bt
+
+plan(sequential)
+write_rds(tune_res2, file=here("results","ranger", tune_file_name))
+
+
+
+
+
+
+
+
+
+
+# Select the best Rforest based on log loss   Do a final fit on the full training dataset, predict on the validation dataset. Save the data
+
+best_tree <- tune_res2 %>%
+  select_best(metric = "mn_log_loss")
 best_tree
 
 # finalize model by picking the best model hyperparameters
@@ -256,17 +321,23 @@ final_fit <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
-
-
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 
 # print out the metrics
 final_fit %>%
-  collect_metrics()
+collect_metrics()
+
 
 end_time<-Sys.time()
 end_time
+
+
+
+
+
+
+
 
 end_time-start_time
 
