@@ -115,6 +115,8 @@ if (runClass %in% c('Local', 'Windows')){
 my.ranger.threads<-3
 lbs_per_mt<-2204.62
 
+options(future.globals.maxSize = 2 * 1024^3)
+
 
 #############################################################################
 my_images<-here("images")
@@ -240,7 +242,7 @@ set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
-plan("multisession", workers=my.parallel.threads)
+plan("multicore", workers=my.parallel.threads)
 set.seed(8675309)
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
@@ -269,7 +271,7 @@ bayes_param <- BSB.Ranger.Workflow %>%
 
 
 # Do a tune_bayes
-plan("multisession", workers=my.parallel.threads)
+plan("multicore", workers=my.parallel.threads)
 set.seed(9035768)
 
 start_time_bt<-Sys.time()
