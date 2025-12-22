@@ -71,7 +71,7 @@ if  (search_type=="Initial"){
   rf_grid<-  param_grid <- grid_space_filling(
     mtry(range = c(1L, 30L)),           # Number of variables per split
     min_n(range = c(5L, 30L)),         # Minimum observations per node
-    size = 16                          # Grid size for initial exploration
+    size = 12                          # Grid size for initial exploration
   )
   
 }
