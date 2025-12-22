@@ -235,57 +235,13 @@ rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
 
 tune_res <- tune_grid(
-  tune_wf,
+    BSB.Ranger.Workflow,
   resamples = myfolds,
   grid = rf_grid,
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
 
-
-# Search over 2 sets of parameters
-# #Search over mtry and trees
-# rf_grid2 <-  grid_regular(
-#     mtry(range = c(1, 20)), levels=10)
-#      trees(range=c(100,1000), levels=5)
-#     )
-# 
-# 
-# # configure the tuning part of the model.
-# tune_spec2 <- rand_forest(
-#   mtry = tune(),
-#   trees = tune(),
-#   min_n = 5,
-# ) %>%
-#   set_mode("classification") %>%
-#   set_engine("ranger",num.threads=!!my.ranger.threads, na.action="na.learn", respect.unordered.factors="order", importance="impurity")
-# 
-# 
-# 
-# 
-# # make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
-# # steps as the model.
-# tune_wf2 <- workflow() %>%
-#   add_recipe(BSB.Classification.Recipe) %>%
-#   add_model(tune_spec2)
-# # search over mtry and trees
-# 
-# 
-# hardhat::extract_parameter_set_dials(tune_wf2)
-# 
-# 
-# start_time_tune<-Sys.time()
-# 
-# tune_res <- tune_grid(
-#   tune_wf2,
-#   resamples = myfolds,
-#   grid = rf_grid2,
-#   control=rf_control_grid,
-#   metrics=class_and_probs_metrics
-# )
-# 
-# 
-# 
 
 write_rds(tune_res, file=here("results","ranger", tune_file_name))
 end_time_tune<-Sys.time()
@@ -302,7 +258,7 @@ best_tree
 
 # finalize model by picking the best model hyperparameters
 final_wf <- 
-  tune_wf %>% 
+  BSB.Ranger.Workflow,
   finalize_workflow(best_tree)
 
 
