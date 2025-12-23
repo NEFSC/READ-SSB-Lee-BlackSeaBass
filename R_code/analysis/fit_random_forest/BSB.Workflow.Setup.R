@@ -69,8 +69,8 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 # I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
 if  (search_type=="Initial"){
   rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(1L, 30L)),           # Number of variables per split
-    min_n(range = c(5L, 30L)),         # Minimum observations per node
+    mtry(range = c(1L, npredict)),           # Number of variables per split
+    min_n(range = c(5L, 50L)),         # Minimum observations per node
     size = 12                          # Grid size for initial exploration
   )
   
@@ -79,8 +79,8 @@ if  (search_type=="Initial"){
 # Overwite mtry rf_grid for testing=true to speed prototyping
 if  (search_type=="Prototype"){
   rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(2L, 10L)),           # Number of variables per split
-    min_n(range = c(5L, 10L)),         # Minimum observations per node
+    mtry(range = c(2L, npredict)),           # Number of variables per split
+    min_n(range = c(5L, 50L)),         # Minimum observations per node
     size = 4                          # Grid size for initial exploration
   )
 }

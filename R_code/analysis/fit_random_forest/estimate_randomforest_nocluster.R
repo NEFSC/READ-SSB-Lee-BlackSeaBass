@@ -27,13 +27,14 @@
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 
-search_type<-"Final"
-# search_type in "Initial", "Prototype", or "Final")
 
-testing_fraction<-0.30
 
+search_type<-"Initial"
+# search_type in "Initial", "Prototype")
+#search_type<-"Prototype"
+
+testing_fraction<-1					  
 # how much of the data to hold out for final validation
-training_fraction<-0.90
 start_time<-Sys.time()
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
@@ -44,6 +45,7 @@ library("here")
 # load tidyverse and related
 library("tidyverse")
 library("scales")
+library("glue")
 
 # load tidyverse and related
 library("tidymodels")
@@ -61,6 +63,8 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
+library("future")
+		   
 library("conflicted")
 
 #deal with conflicts
@@ -81,25 +85,30 @@ platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
   if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-    runClass<-'DynamicContainer'
-  } else{ 
-    runClass <- 'Container'
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
   }
-}
+ 
 
 if(platform == 'Windows'){
   runClass<-'Windows'
 }
 
 if (runClass %in% c('Local', 'Windows')){
-  my.ranger.threads<-6
-} else if (runClass %in% c('Container')){ 
-  my.ranger.threads<-8
-}else if (runClass %in% c('DynamicContainer')){ 
-  my.ranger.threads<-16
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+					  
+												
+  my.parallel.threads<-2
   
 }
+my.ranger.threads<-7
+lbs_per_mt<-2204.62
+# a parallel instance here seems to use around 12-15gb of ram.  So 2 parallel and 7 threads uses about half of my ram, there's a little creep up.
 
+options(future.globals.maxSize = 2 * 1024^3)
 
 lbs_per_mt<-2204.62
 #############################################################################
@@ -113,14 +122,14 @@ vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
-data_save_name<-paste0("nocluster_data_split",estimation_vintage,".Rds")
-tune_file_name<-paste0("BSB_ranger_nocluster_tune",estimation_vintage,".Rds")
-final_fit_file_name<-paste0("BSB_ranger_nocluster_results",estimation_vintage,".Rds")
+data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
+tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
+final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
 
 if  (search_type=="Prototype"){
-  data_save_name<-paste0("nocluster_data_split_TEST",estimation_vintage,".Rds")
-  tune_file_name<-paste0("BSB_ranger_nocluster_tune_TEST",estimation_vintage,".Rds")
-  final_fit_file_name<-paste0("BSB_ranger_nocluster_results_TEST",estimation_vintage,".Rds")
+  data_save_name<-glue("nocluster_data_split_TEST{estimation_vintage}.Rds")
+  tune_file_name<-glue("BSB_ranger_nocluster_tune_TEST{estimation_vintage}.Rds")
+  final_fit_file_name<-glue("BSB_ranger_nocluster_results_TEST{estimation_vintage}.Rds")
   
 }
 
@@ -156,12 +165,17 @@ if  (search_type=="Prototype"){
 # 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",paste0("BSB_estimation_dataset",vintage_string,".Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
 
 
 # for reproducibility
 set.seed(4587315)
 
+
+# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
+estimation_dataset<-estimation_dataset %>%
+     mutate(weighting = frequency_weights(weighting),
+            market_desc=fct_drop(market_desc))
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if  (search_type=="Prototype"){
@@ -170,13 +184,9 @@ if  (search_type=="Prototype"){
     dplyr::filter(rand<=testing_fraction)
 }
 
-# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
-estimation_dataset<-estimation_dataset %>%
-  mutate(weighting = frequency_weights(weighting),
-         market_desc=fct_drop(market_desc))
 
-keep_cols<-c("market_desc","dlrid","camsid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB")
-keep_cols<-c(keep_cols,"shore","nofederal","permit", "hullid")
+keep_cols<-c("market_desc","myl_id","dlrid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
+keep_cols<-c(keep_cols,"shore","nofederal")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
 keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
@@ -185,24 +195,30 @@ keep_cols<-c(keep_cols,"MA7_gearQJumbo", "MA7_gearQLarge","MA7_gearQMedium", "MA
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 # keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 # keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
-keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall","LagSharePoundsUnclassified")
-keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall")
+#keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
+keep_cols<-c(keep_cols, "Price_Diff_J","Price_Diff_L", "Price_Diff_M") 
 
 
 estimation_dataset<- estimation_dataset %>%
   select(all_of(keep_cols))
 
 set.seed(2824)
-# 80% of the data in the training, and 20% in the holdout sample, not weighted.
-# split on strata=market_desc, although I don't think this is strictly necessary. 
-data_split <- initial_split(data=estimation_dataset, prop=training_fraction) 
+# 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
+# consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
+data_split <- initial_validation_split(
+  data=estimation_dataset,
+  prop = c(0.7, 0.15)
+)
 train_data <- training(data_split)
 test_data <- testing(data_split)
+validation_data <- validation(data_split)
 
 readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
 nrow(train_data)
 nrow(test_data)
+nrow(validation_data)
 
 
 
@@ -217,9 +233,12 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
-set.seed(457)
+set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::vfold_cv(train_data, strata=market_desc, v = 10)
+
+plan("multisession", workers=my.parallel.threads)
+set.seed(8675309)					  
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
@@ -231,17 +250,56 @@ tune_res <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
+plan(sequential)
 
 
 write_rds(tune_res, file=here("results","ranger", tune_file_name))
 end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
+bayes_param <- BSB.Ranger.Workflow %>% 
+  extract_parameter_set_dials() %>% 
+  update(mtry = finalize(mtry(), train_data))
+
+
+
+# Do a tune_bayes
+plan("multisession", workers=my.parallel.threads)
+set.seed(9035768)
+
+start_time_bt<-Sys.time()
+
+tune_res2 <- tune_bayes(
+  object=BSB.Ranger.Workflow,
+  resamples = myfolds,
+  initial = tune_res,
+  param_info=bayes_param,
+  iter = 30,                     # 
+  control = control_bayes(
+    verbose = TRUE,
+    no_improve=10,
+    save_pred = TRUE,             # Save predictions for analysis
+    save_workflow = FALSE,        # Save memory
+    extract = NULL,              # Don't extract additional info
+    parallel_over = "everything" # Parallelize over resamples to save memory
+    ),
+    metrics=metric_set(mn_log_loss)
+)
+end_time_bt<-Sys.time()
+end_time_bt-start_time_bt
+
+plan(sequential)
+write_rds(tune_res2, file=here("results","ranger", tune_file_name))
+
+autoplot(tune_results, type = "performance") +
+  labs(title = "Did Bayesian optimization converge?")
+
+
 
 # Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
-best_tree <- tune_res %>%
-  select_best(metric = "brier_class")
+best_tree <- tune_res2 %>%
+  select_best(metric = "mn_log_loss")
 
 best_tree
 
@@ -270,3 +328,5 @@ end_time
 
 end_time-start_time
 sessionInfo()
+
+cat("All done")
