@@ -42,7 +42,7 @@
 search_type<-"Initial"
 # search_type in "Initial", "Prototype")
 
-testing_fraction<-0.30
+testing_fraction<-1.0
 
 
 # how much of the data to hold out for final validation
@@ -110,9 +110,9 @@ if(platform == 'Windows'){
 if (runClass %in% c('Local', 'Windows')){
   my.parallel.threads<-parallel::detectCores() -2 
 } else if (runClass %in% c('Container','DynamicContainer')){ 
-  my.parallel.threads<-5
+  my.parallel.threads<-2
 }
-my.ranger.threads<-3
+my.ranger.threads<-7
 lbs_per_mt<-2204.62
 
 options(future.globals.maxSize = 2 * 1024^3)
@@ -214,7 +214,7 @@ set.seed(2824)
 data_split <- group_initial_validation_split(
   data=estimation_dataset,
   prop = c(0.7, 0.15),
-  group=dlrid  # Maintain class balance across splits
+  group=dlrid  # grouping of dlrid, so they are strictly in our out of a split
 )
 
 
@@ -242,7 +242,7 @@ set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
 myfolds<-rsample::group_vfold_cv(train_data, group=dlrid, v = 10, balance="observations")
 
-plan("multicore", workers=my.parallel.threads)
+plan("multisession", workers=my.parallel.threads)
 set.seed(8675309)
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
@@ -271,7 +271,7 @@ bayes_param <- BSB.Ranger.Workflow %>%
 
 
 # Do a tune_bayes
-plan("multicore", workers=my.parallel.threads)
+plan("multisession", workers=my.parallel.threads)
 set.seed(9035768)
 
 start_time_bt<-Sys.time()
@@ -281,13 +281,14 @@ tune_res2 <- tune_bayes(
   resamples = myfolds,
   initial = tune_res,
   param_info=bayes_param,
-  iter = 20,                     # 
+  iter = 30,                     # 
   control = control_bayes(
     verbose = TRUE,
+    no_improve=10,
     save_pred = TRUE,             # Save predictions for analysis
     save_workflow = FALSE,        # Save memory
     extract = NULL,              # Don't extract additional info
-    parallel_over = "everything" # Parallelize everything possible
+    parallel_over = "everything" # Parallelize over resamples to save memory
     ),
     metrics=metric_set(mn_log_loss)
 )
@@ -334,7 +335,12 @@ collect_metrics()
 end_time<-Sys.time()
 end_time
 
-
+# Look at calibration. Diagnose how well it works.
+# If it's bad/mediocre, fit a beta/isotonic model.
+# use the results to predict on the out of sample.
+# See Multinomial_calibration_weighted_valid.Rmd for what to do. 
+# probably doesn't handle weighted models off the jump, so you'll have to un-weight 
+# to do the probability graphics.
 
 
 
