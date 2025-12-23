@@ -232,10 +232,29 @@ cleaned_landings<-cleaned_landings %>%
   mutate(status=factor(status,levels=c("MATCH","DLR_ORPHAN_SPECIES","DLR_ORPHAN_TRIP","PZERO"))
   )
 
+# Construct shore and nofederal
 cleaned_landings<-cleaned_landings %>%
-  mutate(shore=as.numeric(hullid=="FROM_SHORE"),
-         nofederal=as.numeric(str_detect(camsid, "^000000*"))
+  mutate(shore=as.integer(hullid=="FROM_SHORE"),
+         nofederal=as.integer(str_detect(camsid, "^000000*"))
 )
+
+# convert landed pounds and trip_level_BSB to integer
+cleaned_landings<-cleaned_landings %>%
+  mutate(lndlb=as.integer(lndlb),
+         trip_level_BSB=as.integer(trip_level_BSB))
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(StockareaOtherQJumbo=as.integer(StockareaOtherQJumbo),
+         StockareaOtherQLarge=as.integer(StockareaOtherQLarge),
+         StockareaOtherQMedium=as.integer(StockareaOtherQMedium),
+         StockareaOtherQSmall=as.integer(StockareaOtherQSmall)
+  )
+cleaned_landings<-cleaned_landings %>%
+  mutate(StateOtherQJumbo=as.integer(StateOtherQJumbo),
+         StateOtherQLarge=as.integer(StateOtherQLarge),
+         StateOtherQMedium=as.integer(StateOtherQMedium),
+         StateOtherQSmall=as.integer(StateOtherQSmall)
+  )
 
 
 # 
@@ -292,6 +311,20 @@ combined_dataset<-combined_dataset %>%
     )
   ) %>%
   mutate(catch_share=ordered(as.factor(catch_share)))
+
+# generate a compact group id variable to take the place of camsid, market_desc, dlrid
+combined_dataset<-combined_dataset %>%
+  arrange(camsid,dlrid, market_desc)%>%
+  group_by(camsid,dlrid, market_desc)%>%
+  mutate(myl_id=cur_group_id()) %>%
+  ungroup()
+
+combined_dataset<-combined_dataset %>%
+  mutate(myl_id=as.integer(myl_id))
+
+
+
+
 
 
 
