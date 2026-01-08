@@ -28,140 +28,60 @@
 #' 
 #  respect.unordered.factors="order",
 
-
-
-ranger_model<-rand_forest(mode="classification", trees = 500, min_n=5, mtry=3) %>%
-  set_engine("ranger",
-             num.threads=!!my.ranger.threads, 
-             na.action="na.learn", 
-             respect.unordered.factors="order",
-             importance="impurity",
-             oob.error = TRUE,
-             keep.inbag=TRUE,
-             write.forest=TRUE,
-             seed=8675309,
-             probability = TRUE) 
-
-
-case_weights_allowed(ranger_model)
-
-
-# Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
-BSB.Ranger.Workflow <-
-  workflow() %>%
-  add_model(ranger_model) %>% 
-  add_recipe(BSB.Classification.Recipe) %>%
-  add_case_weights(weighting)
-
-
-# BSB.cf.Workflow <-
-#   workflow() %>%
-#   add_model(cf_model) %>% 
-#   add_recipe(BSB.Classification.Recipe)
-
-
-
-
-## Tuning
-# 
-# Set up a set of mtry to search over. 
-
-# I have about 40 predictors, so I'll specify a coarse initial grid with 15 points, 
-if  (search_type=="Initial"){
-  rf_grid<-  grid_regular(
-    mtry(range = c(1, npredict)), levels=15)
-}
-
-if  (search_type=="Final"){
-  
-  # Custom Grid 
-  if (modeltype=="standard"){
-    mtry<-seq(26,41)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="nocluster"){
-    mtry<-seq(25,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  }else if (modeltype=="fiveclass"){
-    mtry<-seq(1,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="noc5class"){
-    mtry<-seq(1,npredict)
-    rf_grid<-as.data.frame(mtry)
-    
-  } else if (modeltype=="South_NOC"){
-    mtry<-seq(25,npredict)
-    rf_grid<-as.data.frame(mtry)
-  } else if (modeltype=="North_NOC"){
-    mtry<-seq(26,npredict)
-    rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="North_region_NOC"){
-      mtry<-seq(1,npredict)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="South_region_NOC"){
-      mtry<-seq(1,npredict)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="nocluster_Tsubset"){
-      mtry<-seq(15,30)
-      rf_grid<-as.data.frame(mtry)
-    } else if (modeltype=="noc_3waysplit"){
-      mtry<-seq(15,30)
-      rf_grid<-as.data.frame(mtry)
-    } else {
-    stop("Unknown modeltype")
-  }
-}
-
-
-# Overwite mtry rf_grid for testing=true to speed prototyping
-if  (search_type=="Prototype"){
-  mtry<-c(2,5,15,npredict)
-  rf_grid<-as.data.frame(mtry)
-}
-
-  
-
-
-
-
-
-
 # configure the tuning part of the model.
 tune_spec <- rand_forest(
-  mtry = tune(),
   trees = 500,
-  min_n = 5,
+  mtry = tune(),
+  min_n = tune(),
 ) %>%
   set_mode("classification") %>%
   set_engine("ranger",
              num.threads=!!my.ranger.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="impurity",
+             importance="permutation",
              oob.error = TRUE,
              keep.inbag=TRUE,
-             proximity = TRUE,
              probability = TRUE,
              write.forest=TRUE)
+case_weights_allowed(tune_spec)
 
 
-
-
-
-# make a turning workflow. This combines the BSB.Classification.Recipe "data declaration" steps and new "tuning"
-# steps as the model.
-tune_wf <- 
+# Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
+BSB.Ranger.Workflow <-
   workflow() %>%
-  add_model(tune_spec) %>%
+  add_model(tune_spec) %>% 
   add_recipe(BSB.Classification.Recipe) %>%
-  add_case_weights(weighting) 
+  add_case_weights(weighting)
 
 
-hardhat::extract_parameter_set_dials(tune_wf)
+hardhat::extract_parameter_set_dials(BSB.Ranger.Workflow)
 
 # pass in a bunch of metrics
 # if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
-class_and_probs_metrics <- metric_set(sensitivity, specificity, precision, bal_accuracy, mn_log_loss,average_precision, accuracy, brier_class, roc_auc)
+class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
+
+
+## Tuning
+# 
+# Set up a set of mtry to search over. 
+
+# I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
+if  (search_type=="Initial"){
+  rf_grid<-  param_grid <- grid_space_filling(
+    mtry(range = c(1L, npredict)),           # Number of variables per split
+    min_n(range = c(5L, 50L)),         # Minimum observations per node
+    size = 12                          # Grid size for initial exploration
+  )
+  
+}
+
+# Overwite mtry rf_grid for testing=true to speed prototyping
+if  (search_type=="Prototype"){
+  rf_grid<-  param_grid <- grid_space_filling(
+    mtry(range = c(2L, npredict)),           # Number of variables per split
+    min_n(range = c(5L, 50L)),         # Minimum observations per node
+    size = 4                          # Grid size for initial exploration
+  )
+}
 
