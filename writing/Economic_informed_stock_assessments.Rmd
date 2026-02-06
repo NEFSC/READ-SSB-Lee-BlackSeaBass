@@ -273,6 +273,10 @@ After selecting the best hyperparamters, we refit the model on the entire 70% of
 
 We apply the the trained model and the probability calibration routine to the final 15% of our data as a final validation.  We report adjusted fit metrics.  The random forest model is fit in R using the ``ranger`` package; we use  ``tidymodels`` packages to facilitate tuning, training, and out-of-sample predicting.  
 
+After fitting the data, we predict out of sample on the Unclassified Landings.  We do this "probabilistically", 
+using the trained model to predict the probability of class memembership and then aggregating the 
+landed pounds to the year-, market category-, and subregion level. 
+
 ## Data
 
 Economic theory and on-the-ground subject-matter expertise (the black sea bass stock assessment and commercial fishery) guide selection of explanatory factors and factor engineering [@Mullainathan2017]. 
@@ -305,9 +309,6 @@ of information leakage^[Information leakage occurs when a model essentially
 memorizes the input data, leading to validation metrics that are overly-optimistic.  
 This can cause poor out of sample predictions.]
 
-After fitting the data, we predict out of sample on the Unclassified Landings.  We do this "probabilistically", 
-using the trained model to predict the probability of class memembership and then aggregating the 
-landed pounds to the year-, market category-, and subregion level. 
 
 ## A Simple Theoretical Model Provides Guidance About Explanatory Factors
 
