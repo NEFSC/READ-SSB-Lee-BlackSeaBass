@@ -291,7 +291,7 @@ end_time_bt-start_time_bt
 plan(sequential)
 write_rds(tune_res2, file=here("results","ranger", tune_file_name))
 
-autoplot(tune_results, type = "performance") +
+autoplot(tune_res2, type = "performance") +
   labs(title = "Did Bayesian optimization converge?")
 
 
