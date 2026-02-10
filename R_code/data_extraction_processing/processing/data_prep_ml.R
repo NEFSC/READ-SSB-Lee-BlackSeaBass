@@ -345,11 +345,8 @@ dlr_variability <- combined_dataset %>%
   arrange(sd_price)
 
 mark_in<-dlr_variability %>%
-  filter(market_desc !="Unclassified") %>%
   mutate(mark_in=case_when(
     sd_price>=0.1 ~ 1,
-    market_desc=="Unclassified" ~ 1,
-    #transactions<=4 ~ 1,
     .default = 0
   )
   ) %>%
@@ -359,30 +356,32 @@ mark_in<-dlr_variability %>%
 combined_dataset<-combined_dataset %>%
   left_join(mark_in, by=join_by(dlrid==dlrid, year==year, market_desc==market_desc)) %>%
   mutate(mark_in=as.factor(mark_in)) %>%
-  ungroup() %>%
-  filter(mark_in==1)
-
+  ungroup()
 
 
 
 # drop some columns
 combined_dataset<-combined_dataset %>%
-  select(-c("keep","mark_in"))
+  select(-c("keep"))
 
 
 
 
 # put the unclassifieds into a dataset
+# KEEP the observations coming from dealers with minimal variance.  
+# We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
 
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.Rds")))
-haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}dta")))
+haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.dta")))
 
 # put everything else in a dataset
-
+# discard the observations coming from dealers with minimal variance
 estimation_dataset<-combined_dataset %>%
-  filter(market_desc!="Unclassified") 
+  filter(market_desc!="Unclassified") %>%
+  filter(mark_in==1) %>%
+  select(-c("mark_in"))
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.Rds")))
 haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.dta")))
