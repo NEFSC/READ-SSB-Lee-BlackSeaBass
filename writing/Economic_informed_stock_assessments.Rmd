@@ -321,7 +321,6 @@ The assumption of a competitive market is critical to our ability to use prices 
 
 A perfectly competatve market is unlikely, but the law of one price suggests a few things. We should not expect the law of one price to hold perfectly and unconditionally, but in imperfectly and conditionally. That is, all black sea bass does not trade at the same price; however, black sea bass with similar attributes will trade at similar prices.  Therefore the classification model should include variables explain prices in the classification model. These include attributes like gear used, whether the fish is sold live, state of landing, daily quantity landed, and time period of landing.  We should expect the prices of similar goods to be more similar than prices of different goods, although a working definition of similar can be tricky.  In particular, instead of adding prices to the random forest model directly, we use prices to construct a distance metrics between the transaction and "typical" price of each market category.  This follows the suggestion from @Mullainathan2017 to use insights from  economic theory to guide a machine learning model's search for underlying structure. 
 
-
 Outside the DGP, we should remove them from the training dataset and refrain from predicting class membership for those those types of observations.  Intuitively, if the price does not convey any information about sizes, then we should not try to infer anything from prices. We can think of three scenarios where this is likely to occur.  
 
 First, there is less quality assurance and quality control for the species value field which we use to construct prices. While there are checks to ensure that the values are within a reasonable range, firms that do not report accurately may not be required to improve their reporting accuracy. We handle this by excluding transactions with prices that are too high (over \$15 per pound) or too low (under \$0.15 per pound).  Second, buyers and sellers may be owned by the same entity, making definition of the  *ex-vessel* prices insensitive to market forces.  Fully disentangling ownership is difficult, but inspection of the data suggested that some dealers-vessel pairs were exclusively trading with each other, suggesting some vertical integration.  Third, firms may also participate in forward contracting in which the price of fish is determined well in advance of landing.  To account  for the final two, we excluded transactions from dealer-year-market category combinations where the standard deviation of prices was less than 0.10.  Table Summary statistics describes characteristics of the full dataset and the cleaned dataset.
@@ -337,16 +336,25 @@ Economic theory and on-the-ground subject-matter expertise (the black sea bass s
 The buyers (dealers) are the entities that classify the fish and dealers are likely to have an unobserved propensity to 
 grade fish into particular classes. This unobserved heterogeneity poses two challenges.  
 
-First, including a full set of binary indicator variables to account dealer-specific 
-effects ("one-hot" encoding) can lead to both overfitting
+Traditional estimators often use a full set of binary indicator variables to account for individual-specific 
+effects; doing so in Random Forests can lead to both overfitting
 [@Breiman2001; @Hastie2023] and bias [c.f @Strobl2007; @Strobl2009]. 
 Instead we use a variation of target encoding.  Application of a standard
 target-encoding system would involve computing dealer-specific class probabilities
-over the 2015-2025 and including those probabilities as factors. This feels 
+over the 2015-2025 time period and including those probabilities as factors. This feels 
 somewhat troubling to an economist concerned about simultaneity, a concern which
-may be misplaced. Nevertheless, we compute dealer-specific class probabilities
-over the 2010-2014 time period and enter these as predictors instead. Dealers 
-that did not buy or sell black sea bass during this time have missing values.
+may be misplaced. Nevertheless, we compute annual dealer-specific class probabilities
+and enter these, with a 1 year lag, as predictors instead. Dealers 
+that did not buy or sell black sea bass in the previous year time have missing values.
+
+
+This is pretty rough notation
+\begin{equation}
+\label{dealer_specific}
+D_{cjy} = \frac{\sum_{t \in y} lndlb_{jt}} {\sum_c \sum_{t\in y} lndlb_{jt}}
+\end{equation}
+
+
 
 Second, @Roberts2017 note that standard cross-validation techniques can be overly optimistic
 when observations are dependent but are implicitly treated as independent during a random cross-validation.   This occurs because 
@@ -370,14 +378,11 @@ This can cause poor out of sample predictions.]
 The model selection metric I use should be related to that.  For example, "True" landings in each market category compared to "actual" landings in each market category, computed at the stockarea-year, stockarea-semester, or stockarea-year-semester level.  
 --->    
 
-We use CAMS data from 2015 to 2024 to train our data. The CAMS data complied by GARFO consists of dealer transactions matched to vessel trip reports. We briefly describe this datasource.  Dealer data are transaction-level entries of sales by federally permitted fish dealers, by market category, from each vessel to each dealer.   Vessel trip report data are subtrip-level reports of fishing activity by federally permitted vessels which include area fished, gear used, trip length, and estimates of quantity kept and discarded at the species level. In the Northeast United states, fishing vessels are required to file a logbook report for every combination of statistical area and subtrip. When vessels file more than one logbook per dealer sales transaction, we cannot definitively determine which which it belongs to.  That is, if a dealer record contains 500 pounds and a vessel fished in two statistical areas, CAMS allocates in proportion to the hail weights on those two trip reports.
+We use CAMS data from 2015 to 2024 to train our data. The CAMS data complied by GARFO consists of dealer transactions matched to vessel trip reports. We briefly describe this datasource.  Dealer data are transaction-level reports of fish purchases by federally permitted fish dealers from each vessel.  They are disaggregated to the trip and market category level and include landed weight (pounds) and value (nominal US Dollars).  Vessel trip report data arereports of fishing activity by federally permitted vessels that are disaggregated to the statistical area-gear-trip level and include information about area fished, gear used, trip length, and estimates of quantity kept (hail weights) and discarded at the species level.   Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.  When vessels fish in multiple statistical areas or using multiple gears, they file more than one report per trip.  One of the functions of the CAMS data system is to allocate trip-level dealer records to the appropriate statistical area.  CAMS allocates in proportion to the hail weights on those trip reports, splitting a single trip record into multiple observations.
 
+Black Sea Bass may be caught by firms without a federal fishing permit and sold to dealers without a federal dealer permit.  In some states, firms without a federal permit can fish for black sea bass in state waters (within 3 miles of land) and sell it to fish dealers who do not have a federal permit.  These sales are also in our data and the CAMS system imputes both statistical area (area adjacent to landing port) and gear used when missing. 
 
-Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports. 
-
-Black Sea Bass: sales by firms without a federal permit to dealers without a federal permit.  In some states, firms without a federal permit can fish for black sea bass in state waters and sell it to fish dealers who do not have a federal permit. These states require vessels to report their catch at a lower frequency and catch from these vessels is added into the dealer data at a higher.
-
-
+Our observational units are sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In our exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and our Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is to obtain an aggregate weight prediction of the underlying unobserved market category of Unclassified fish; we are not interested in predictions of aggregate transactions.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their freqency weight. This results in bootstrap datasets which more closely resemble the frequency weighted data (instead of the unweighted data).  We attempted to calibrate using weighted data without success and we discuss reasons and paths forward in the discussion section.
 
 <!---  
 outcome variable: market_desc
@@ -435,6 +440,8 @@ TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,Transaction
 --->
 
 Machine learning algorithms can often benefit from preprocessing of data. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  We grow 500 trees when tuning the model and when training the final model.
+
+Weights
 
 ```{r BSB_data, eval=F, echo=F}
 source(here("writing","BSB.Classification.Recipe.R"))
@@ -558,8 +565,25 @@ ggplot(mkt_preds, aes(x=year, y=predicted_mt, group=market_desc))+
 ``` 
 
 
+# Discussion
 
-## Notes
+A reasonable method for filling in gaps in historical data.
+
+Could be used for other species. 
+
+Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
+
+Could we use this to go directly to sizes? 
+
+The RF calibration didn't work so well with weighted observations.
+  - isotonic has so many ties. And the weighting produces very 'lumpy' points.
+
+Our RF model does very well at predicting observations and comparatively worse at weights. Why?
+
+Our loss function is very simple for tuning is very simple. But our data is not, it's 'ordered'.  Predicting a true Jumbo to be a Large is better than predicting it to be a Medium.
+
+
+# Conclusions
 
 
 
