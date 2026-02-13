@@ -69,9 +69,9 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 # I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
 if  (search_type=="Initial"){
   rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(1L, npredict)),           # Number of variables per split
-    min_n(range = c(5L, 50L)),         # Minimum observations per node
-    size = 12                          # Grid size for initial exploration
+    mtry(range = c(5L, 35)),           # Number of variables per split
+    min_n(range = c(5L, 100L)),         # Minimum observations per node
+    size = 24                          # Grid size for initial exploration
   )
   
 }
