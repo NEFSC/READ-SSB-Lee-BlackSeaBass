@@ -100,10 +100,17 @@ lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
 
-pred_vintage<-"2025-09-18"
+pred_vintage<-"2026-02-10"
 
-nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
-nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
+
+# Need to read in "raw" validation, "calibrated" validations.
+# At Transaction level
+# At mt level
+nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_TS_nocluster",pred_vintage, ".Rds")))
+nocal_predictions<-readRDS(here("results","ranger",paste0("aggregate_nocal_predictions_TS_nocluster",pred_vintage, ".Rds")))
+
+
+#nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
 #aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
 
 
@@ -458,20 +465,20 @@ Model tuning overview.
 
 
 ```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curve"}
-knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster_Tsubset", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocluster", pred_vintage, ".png")))
 ```
 
 Our model fits well. In-sample ROC curves from tuning are quite similar across folds
 and indicate that the tuned random forest does well at predicting market category  (Figure  \@ref(fig:rocTune))..
 
 ```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
-knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster_Tsubset", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster", pred_vintage, ".png")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
 
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
-knitr::include_graphics(here("results","ranger","final", paste0("roc_nocluster_Tsubset", pred_vintage, ".png")))
+knitr::include_graphics(here("results","ranger","final", paste0("roc_TS_nocluster", pred_vintage, ".png")))
 ```
 
 The final ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
@@ -481,48 +488,55 @@ overfit the model.
 
 ```{r validation_predictions, echo=FALSE, warning=FALSE}
 
-# "confusion matrix" predictions, in pounds, by stockarea and market_category
-testing_predictions<-nocluster_testing_predictions %>%
-  group_by(stockarea,market_desc) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum)) %>%
-  ungroup()
+aggregate_transactions<-nocluster_testing_predictions %>%
+    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
 
-# true landings by stockarea and market_category
 
-true<-nocluster_testing_predictions %>%
-  mutate(market_desc=as.character(market_desc))%>%
-    group_by(stockarea,market_desc) %>%
-    summarise(lndlb=sum(lndlb)) %>%
-  ungroup()
+aggregate_test_predictions<-test_predictions %>%
+    summarise(across(c(starts_with("pred_")), sum)) %>%
+  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
-# aggregate predictions, in pounds, by stockarea and market_category
-p1<-nocluster_testing_predictions %>%
-  group_by(stockarea) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum)) %>%
-  ungroup()
 
-p2<-p1 %>%
-  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix="pred_",values_to="predicted") 
-  
+true<-test_predictions %>%
+    group_by(market_desc) %>%
+    summarise(lndlb=sum(lndlb),
+              transactions=sum(transactions))
 
-mkt_preds<-p2 %>%
-  left_join(true, by=join_by(stockarea==stockarea, market_desc==market_desc))
-mkt_preds<-mkt_preds %>%
+Testmkt_preds<-aggregate_transactions %>%
+  left_join(true, by=join_by(market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  left_join(aggregate_test_predictions, by=join_by(market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
   mutate(predicted=predicted/lbs_per_mt,
          lndlb=lndlb/lbs_per_mt) %>%
   rename(true_mt=lndlb,
          predicted_mt=predicted,
-         subregion=stockarea)%>%
-  mutate(error=floor(100*(predicted_mt-true_mt)/true_mt))
+         predicted_transactions=ObsPredicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
+         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
 
-mkt_preds$error=paste0(mkt_preds$error,"%")
 
-knitr::kable(mkt_preds, caption='Predictions on the 10% Holdout Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+transaction_predictions<-Testmkt_preds %>%
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+
+
+knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 15% Validation Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
 ```
 
 Table \@ref(tab:validation_predictions)), aggregates the individual predictions of the market category in the validation sample. I the South We find that the model slightly over-predicts YYY and underpredicts XXX.
 
 
+```{r weighted_predictions}
+weighted_predictions<-Testmkt_preds %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+
+knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
 
 
 #  Out of Sample Predictions
@@ -601,6 +615,60 @@ Our loss function is very simple for tuning is very simple. But our data is not,
 
 ```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
+
+
+These are the predictions that come out of the non-calibrated models.
+
+```{r no_cal_validations}
+
+aggregate_nocal_transactions<-nocal_predictions%>%
+    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
+
+
+aggregate_nocal_weight_predictions<-nocal_predictions %>%
+    summarise(across(c(starts_with("pred_")), sum)) %>%
+  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+true<-test_data2%>%
+    mutate(transactions=1) %>%
+    group_by(market_desc) %>%
+    summarise(lndlb=sum(lndlb),
+              transactions=sum(transactions))
+
+nocalibrate_results<-aggregate_nocal_weight_predictions%>%
+  left_join(true, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  left_join(aggregate_nocal_transactions, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted,
+         predicted_transactions=ObsPredicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
+         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
+  
+
+transactions_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+
+
+knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+
+```{r weighted_no_calibrate_predictions}
+weights_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+knitr::kable(weights_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
 
 <!---
 The boneyard:

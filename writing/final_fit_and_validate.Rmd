@@ -18,7 +18,7 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: nocluster
+    value: TS_nocluster
     choices:
     - nocluster
     - TS_nocluster
@@ -904,6 +904,7 @@ nocal_predictions$modeltype<-modeltype
 nocal_predictions<-nocal_predictions%>%
   mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
 
+write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_predictions_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
