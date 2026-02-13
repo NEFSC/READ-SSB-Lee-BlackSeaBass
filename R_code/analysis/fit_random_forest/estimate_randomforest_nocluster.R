@@ -101,10 +101,10 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 					  
 												
-  my.parallel.threads<-2
+  my.parallel.threads<-4
   
 }
-my.ranger.threads<-7
+my.ranger.threads<-5
 lbs_per_mt<-2204.62
 # a parallel instance here seems to use around 12-15gb of ram.  So 2 parallel and 7 threads uses about half of my ram, there's a little creep up.
 
