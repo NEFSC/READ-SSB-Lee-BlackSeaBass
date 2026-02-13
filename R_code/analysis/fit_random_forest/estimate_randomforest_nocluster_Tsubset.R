@@ -104,7 +104,7 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 					  
 												
-  my.parallel.threads<-3
+  my.parallel.threads<-4
   
 }
 my.ranger.threads<-5
