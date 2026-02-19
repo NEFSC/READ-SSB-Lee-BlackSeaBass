@@ -9,7 +9,7 @@ authors:
     address: [NOAA Northeast Fisheries Science Center, 166 Water Street, Woods Hole, MA 02543, USA]
 date: "`r format(Sys.time(), '%B %d, %Y')`" 
 abstract: |
- The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  When there are few or no samples of a market category of fish, the informational content of fish prices can be used to make an inference about the size of an unsampled market category. We use the Black Sea Bass fishery in the Northeast United States to illustrate our approach to using economic data to inform stock assessments.  There are 5 common market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category; but no fish in this category were measured. A preliminary hedonic model confirms that prices vary by market category: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. We fit a categorical Random Forest to predict the probability that a transaction belongs to a particular market category using prices and other variables.  We use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing us to construct a price-informed length structure of commercial landings. 
+ The length- and age-structure of commercial landings is a crucial input to fish stock assessment. In the Northeast United States, NOAA Fisheries deploys samplers to fish dealers to measure the length of commercially landed fish.  When there are few or no samples of a market category of fish, the informational content of fish prices can be used to make an inference about the size of an unsampled market category. We use the Black Sea Bass fishery in the Northeast United States to illustrate our approach to using economic data to inform stock assessments.  There are 5 common market categories: Jumbo, Large, Medium, Small, and Unclassified.  From 2020 to 2023, 5 to 10% of commercial landings were in the “Unclassified” market category but no fish in this category were measured. A preliminary hedonic model confirms that prices vary by market category: “Unclassified” Black Sea Bass are priced between “Large” and “Medium” fish. We fit a categorical Random Forest to predict the probability that a transaction belongs to a particular market category using prices and other variables.  We use the results to predict the probability of the “Unclassified” belonging to any of the other market categories, allowing us to construct a price-informed length structure of commercial landings. 
 keywords: 
   - Hedonic Prices
   - Age structure
@@ -125,18 +125,18 @@ nocal_predictions<-readRDS(here("results","ranger",paste0("aggregate_nocal_predi
 
 The age-structure of commercial landings is a crucial input to the quantitative 
 stock assessments in the Northeast United States. In the Northeast US, commercial
-fishing vessels catch fish and sell their landed fish to fish dealers, who sort
+fishing vessels catch fish and sell their landed fish to dealers who sort
 the catch into market categories.   The National Marine Fisheries Service
 deploys biological samplers to measure the length of commercially landed fish. 
-Otoliths are collected from a subset of measured fish; this information is used
-to convert the landed weight of all market categories into numbers-at-age
+Otoliths are collected and aged from a subset of measured fish. That data are used
+to build spatiotemporally explicit age-length keys that convert the landed weight of all market categories into numbers-at-age
 of commercial landings. The stock assessment enterprise in the Northeast U.S. has a series of business 
 rules for handling gaps in the market category to age relationship that arise 
-when certain market categories are either not sampled or under sampled. This 
-typically involves borrowing from neighboring strata.
+when certain market categories are either not sampled or under-sampled. This 
+typically involves borrowing from neighboring strata, seasons, or years.
 
 In this article, we propose an approach that uses the price of fish 
-to fill this data gap. We apply this approach to the stock assessment for Black Sea Bass (*Centropristis striata*) in the Northeast United States. Dealers purchase black sea bass from fishing vessels and sort them into in market categories. From 2020 to 2023, 5 to 10% of
+to fill this data gap. We apply this approach to the stock assessment for black sea bass (*Centropristis striata*) in the Northeast United States. Dealers purchase black sea bass from fishing vessels and sort them into in market categories. From 2020 to 2023, 5 to 10% of
 commercial landings were in the “Unclassified” market category; however no fish in this category were measured. 
 
 The general approach is as follows.  As part of our exploratory data analysis, we estimate a simple hedonic model to confirm that prices vary by market category. We tune, train, and validate a random forest model to classify fish into one of the four primary market categories. Finally, we conduct out-of-sample prediction on Unclassified fish.
