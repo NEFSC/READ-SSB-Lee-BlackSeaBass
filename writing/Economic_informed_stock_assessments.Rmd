@@ -238,8 +238,33 @@ larges.
 
 ### Port Sampling for Ages and Lengths 
 
-Analysts request coverage levels of different market categories. These request are
-not always met.
+[Emily's note - huge props to Brian Linton. He gave a wicked presentation on the port sampling program a while back: 
+https://docs.google.com/presentation/d/1gldmGvkSllACS6VclQOoX5R6twfV2B6A/edit?slide=id.p55#slide=id.p55
+I only have one bit of information on cost, but can dig into it more if you feel its important. Brian just said cost per sample is going up]
+
+A port sampling program has existed in the northeast United States for more than three decades,
+collecting vital biological data like lengths, weights, ages, and stomach samples that directly support
+the fisheries stock assessment process.
+
+Throughout its history, the program has been staffed by federal port agents or contracted companies, and funded by the National Marine Fisheries Service (NMFS) with support from GARFO.
+Because staffing and financial resources are limited, sampling priorities been rigidly set through a tiered system, with those species
+having analytically assessments, high average recent landings, and high profiles being sampled most heavily. The number of lengths and ages allocated to each species are established
+through this system, but where the samples are collected across state/region, month, and market category is up to the discretion and professional recommendation
+of the stock assessment lead in the population dynamics branch at the NEFSC. Frequently those choices are made based on availability of historical data, the timing and location of
+commercial landings, and the spatiotemporal abundance of the stock.
+
+Though the number of collected lengths across the entire
+program exceeded 200,000 annually between 2015-2019 with 7 full-time port samplers, in 2024 less than 50,000 lengths were collected by 3 full-time and 3 part-time samplers.
+Efforts have been supplemented by the MAFMC and Massachusetts DMF but with falling funding sources and rising costs per sample, the amount of these critical biological data 
+is well below what it was ten years ago. A recent merger of the portside sampling program with the NEFSC observer program is anticipated to increase efficiency and sampling. 
+
+Biosamplers try their best to meet the sample requests by efficiently targeting popular ports at times where a variety of species and sized fish are likely to be landed. Often they
+may specifically target a port known to land a specific or obscure market category when those requests exist. Despite those efforts, market categories and species get missed when
+they aren't available to biosamplers. When data gaps exist, stock assessment modelers will relax the specificity of the information, i.e., borrow across regions or semesters, and in
+extreme cases may take length and age distribution data from fisheries-independent sources rather than from the catch subsamples. However, it is preferable to have unbiased and precice
+sample information to convert the total landings in pounds to landings-at-age, which are the necessary format to run age-based stock assessments like in ASAP or WHAM.
+
+
 
 ```{r BorrowedLengths,echo=FALSE,out.width="48%", fig.align='center',fig.cap="Borrowed Lengths in Black Sea Bass. Slide 8 from the 2023 BSB commerical data overview"}
 knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg")))
