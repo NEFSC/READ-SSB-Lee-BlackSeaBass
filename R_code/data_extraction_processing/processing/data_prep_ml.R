@@ -310,7 +310,6 @@ combined_dataset<-combined_dataset %>%
 
 
 
-write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 
 # Flag dlrid's that have suspiciously little variance in prices.
 dlr_variability <- combined_dataset %>%
@@ -353,6 +352,9 @@ combined_dataset<-combined_dataset %>%
               .default=mark_in)
 ) %>%
   mutate(mark_in=as.factor(mark_in))
+
+write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
+
   
 # put the unclassifieds into a dataset
 # KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
