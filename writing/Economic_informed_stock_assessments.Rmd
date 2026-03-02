@@ -511,12 +511,12 @@ aggregate_transactions<-nocluster_testing_predictions %>%
   pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
 
 
-aggregate_test_predictions<-test_predictions %>%
+aggregate_test_predictions<-nocluster_testing_predictions %>%
     summarise(across(c(starts_with("pred_")), sum)) %>%
   pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
 
-true<-test_predictions %>%
+true<-nocluster_testing_predictions %>%
     group_by(market_desc) %>%
     summarise(lndlb=sum(lndlb),
               transactions=sum(transactions))
@@ -649,7 +649,7 @@ aggregate_nocal_weight_predictions<-nocal_predictions %>%
   pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
 
-true<-test_data2%>%
+true<-nocal_predictions%>%
     mutate(transactions=1) %>%
     group_by(market_desc) %>%
     summarise(lndlb=sum(lndlb),
