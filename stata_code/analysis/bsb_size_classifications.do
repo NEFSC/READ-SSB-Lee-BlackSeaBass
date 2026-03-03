@@ -1,3 +1,7 @@
+
+log using $my_results/bsb_size_classifications_${in_string}.smcl, replace
+
+
 **********************************************************************
 * Purpose: 	code to estimate estimate simple hedonic and classification models.
 * Inputs:
@@ -669,3 +673,4 @@ assert insample==1
 save "$data_main\commercial\mlogit_estimation_dataset_${vintage_string}.dta", replace
 
 
+log close
