@@ -196,7 +196,8 @@ est store uw
 
 
 collect dims
-collect style showbase all
+collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell result[N], nformat(%12.0fc)
 collect style cell border_block, border(right, pattern(nil))
@@ -246,6 +247,7 @@ collect export $my_results/hedonic_table_market_cats.md, replace
 
 collect layout (state#result year#result month#result) (model)
 collect style showbase off
+collect style showomit off
 collect title "Unweighted and Weighted Hedonic Real Price Regression (2013-2024) \label{HedonicTableB}"
 collect export $my_results/hedonic_tableB.tex, replace tableonly
 
@@ -269,7 +271,8 @@ est store NomU
 
 
 collect dims
-collect style showbase all
+collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell result[N], nformat(%12.0fc)
 collect style cell border_block, border(right, pattern(nil))
@@ -306,6 +309,7 @@ collect export $my_results/hedonic_tableNomA.md, replace
 
 collect layout (state#result year#result month#result) (model)
 collect style showbase off
+collect style showomit off
 collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2013-2024) \label{HedonicTableNomB}"
 collect export $my_results/hedonic_tableNomB.tex, replace tableonly
 
@@ -344,6 +348,7 @@ collect get _r_b _r_se e(N), tag(model[(Mlogit)])
 
 collect dims
 collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell border_block, border(right, pattern(nil))
 collect style cell result[_r_se], sformat("(%s)")
@@ -412,6 +417,7 @@ collect get _r_b _r_se e(N), tag(model[(Mlogit)])
 
 collect dims
 collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell border_block, border(right, pattern(nil))
 collect style cell result[_r_se], sformat("(%s)")
@@ -498,6 +504,7 @@ collect get _r_b _r_se e(N), tag(model[(Mlogit)])
 
 collect dims
 collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell border_block, border(right, pattern(nil))
 collect style cell result[_r_se], sformat("(%s)")
@@ -581,7 +588,8 @@ collect get _r_b _r_se e(N), tag(model[(ologitR)])
 
 
 collect dims
-collect style showbase all
+collect style showbase off
+collect style showomit off
 collect style cell, nformat(%5.3f)
 collect style cell result[N], nformat(%12.0fc)
 collect style cell border_block, border(right, pattern(nil))
