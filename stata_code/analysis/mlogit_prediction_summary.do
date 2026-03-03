@@ -13,7 +13,7 @@
 
 
 clear
-use "${my_datapull}/data_folder/main/commercial/mlogit_estimation_dataset_${in_string}.dta", replace
+use "${data_main}/commercial/mlogit_estimation_dataset_${vintage_string}.dta", replace
 est drop _all
 
 est use "$my_results/class2.ster", number(1)
