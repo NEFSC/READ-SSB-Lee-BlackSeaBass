@@ -263,27 +263,10 @@ cleaned_landings<-cleaned_landings %>%
 # Final Tidyup
 ###############################################################################
 
-#Estimate on: 
-#1.  Nominal prices that are above $0.15 per pound and below 15
-#1.  North Carolina to Mass
-#1.  2015 to 2024 data
-
-combined_dataset<-cleaned_landings %>%
-   mutate(keep = case_when(year<2015~ 0,
-                           year>2024~ 0,
-                           price<0.15 ~ 0,
-                           price>15 ~ 0,
-                           is.na(price) ~ 0,
-                           state =="CN"  ~ 0,
-                           state =="FL"  ~ 0, 
-                           state =="PA"  ~ 0,
-                           state =="SC"  ~ 0,
-                           .default=1)
-          )
-
+# Keep  2013 to 2024 data
 # deal with factors
-combined_dataset<-combined_dataset %>%
-    filter(keep==1 )%>%
+combined_dataset<-cleaned_landings %>%
+    filter(year>=2013 & year<=2024) %>%
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
     mutate(year=forcats::as_factor(year)) %>%
     mutate(month=forcats::as_factor(month)) %>%
@@ -307,8 +290,7 @@ combined_dataset<-combined_dataset %>%
 combined_dataset<-combined_dataset %>%
   mutate(catch_share=case_when(
     state %in% c("MD","VA","DE") ~ "CatchShare",
-    state %in% c("NC","NJ","NY","CT","RI","MA","NH","PA","ME") ~ "Non CatchShare"
-    )
+    .default="Non CatchShare")
   ) %>%
   mutate(catch_share=ordered(as.factor(catch_share)))
 
@@ -328,18 +310,17 @@ combined_dataset<-combined_dataset %>%
 
 
 
-write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 
-
+# Flag dlrid's that have suspiciously little variance in prices.
 dlr_variability <- combined_dataset %>%
   mutate(price=value/lndlb) %>%
   group_by(dlrid, year, market_desc ) %>%
   summarise(transactions=n(),
-            value=sum(value),
+            value=sum(value, na.rm=TRUE),
             lndlb=sum(lndlb),
-            mean_price=mean(price),
-            sd_price=sd(price),
-            mad_price=mad(price)
+            mean_price=mean(price, na.rm=TRUE),
+            sd_price=sd(price, na.rm=TRUE),
+            mad_price=mad(price, na.rm=TRUE)
   )%>%
   mutate(cv=sd_price/mean_price) %>%
   arrange(sd_price)
@@ -355,20 +336,28 @@ mark_in<-dlr_variability %>%
 
 combined_dataset<-combined_dataset %>%
   left_join(mark_in, by=join_by(dlrid==dlrid, year==year, market_desc==market_desc)) %>%
-  mutate(mark_in=as.factor(mark_in)) %>%
   ungroup()
 
 
-
-# drop some columns
+# Flag observaions with bad prices, bad pricing data, or from wierd states. 
 combined_dataset<-combined_dataset %>%
-  select(-c("keep"))
+  mutate(mark_in=case_when(
+              price<0.15 ~ 0,
+              price>12 ~ 0,
+              is.na(price) ~ 0,
+              state =="CN"  ~ 0,
+              state =="FL"  ~ 0, 
+              state =="PA"  ~ 0,
+              state =="SC"  ~ 0,
+              .default=mark_in)
+) %>%
+  mutate(mark_in=as.factor(mark_in))
 
+write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 
-
-
+  
 # put the unclassifieds into a dataset
-# KEEP the observations coming from dealers with minimal variance.  
+# KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
@@ -377,7 +366,7 @@ write_rds(unclassified_dataset, file=here("data_folder","main","commercial",glue
 haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.dta")))
 
 # put everything else in a dataset
-# discard the observations coming from dealers with minimal variance
+# discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") %>%
   filter(mark_in==1) %>%
