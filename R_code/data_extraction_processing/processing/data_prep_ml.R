@@ -354,6 +354,7 @@ combined_dataset<-combined_dataset %>%
   mutate(mark_in=as.factor(mark_in))
 
 write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
+haven::write_dta(combined_dataset, path=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.dta")))
 
   
 # put the unclassifieds into a dataset
