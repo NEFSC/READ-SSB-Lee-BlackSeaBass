@@ -44,7 +44,7 @@ destring month, replace
 
 ********************************* */
 
-collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region status)
+collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region stockarea status)
 
 
 gen price=value/lndlb

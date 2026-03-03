@@ -53,7 +53,7 @@ Aggregating to stockarea drops out a few observations.
 
 ********************************* */
 
-collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region status)
+collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region stockarea status)
 
 
 gen price=value/lndlb
@@ -151,7 +151,7 @@ This is because the two weighted regressions are actually identical.
 
 
 /* just adding stockarea to the regression doesn't do much. the north stock gets about $0.04 or 0.05 per lb */
-regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.region ib(5).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea ib(5).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
 est store simplearea
 
 /* adding interactions of stockarea and state and stockareax month produces some interesting stuff 
@@ -161,7 +161,7 @@ North stock get $0.64 per lb more than the south stock in Jan in NJ.   In other 
 
 The "month" coefficients are now interpretable as the monthly premium for the south stock.  These are also consistent with the simpler model.
 */
-regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.region##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
 est store interacted_area
 
 
@@ -170,7 +170,7 @@ est store interacted_area
 gen tripdays=hours(record_land-record_sail)/24
 gen interact=tripdays~=.
 replace tripdays=0 if tripdays==.
-regress price (c.tripdays##c.tripdays)#i.interact ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.region##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
+regress price (c.tripdays##c.tripdays)#i.interact ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
 
 
 /* are there many camsid with different gears? */
@@ -195,7 +195,7 @@ browse if switchers>=1
 sort camsid
 drop t
 sort camsid lndlb
-order lndlb region dlrid, after(firstgear)
+order lndlb stockarea dlrid, after(firstgear)
 sort camsid firstgear mygear
 order market_desc tlg
 
@@ -204,9 +204,9 @@ tempfile base_data
 save `base_data', replace
 
 
-collapse (sum) lndlb, by(state region year)
+collapse (sum) lndlb, by(state stockarea year)
 browse
-reshape wide lndlb, i(year state) j(region)
+reshape wide lndlb, i(year state) j(stockarea)
 foreach var of varlist lndlb1 lndlb2{
 	replace `var'=0 if `var'==.
 }
@@ -244,10 +244,6 @@ use `base_data', clear
 */
 
 
-label def cams_status  1 "DLR_ORPHAN_SPECIES" 2 "DLR_ORPHAN_TRIP" 0 "MATCH" 3 "PZERO" 
-encode status, gen(mystatus) label(cams_status)
-
-
 
 
 /* first multinomial logit spec */
@@ -259,7 +255,7 @@ est store class1
 
 collect create classification, replace
 
-mlogit market_desc price ib(1).month ib(5).mygear i.region i3.mystatus [fweight=weighting] if market_desc<=4  & `logical_subset' & year==2022, baseoutcome(4) rrr
+mlogit market_desc price ib(1).month ib(5).mygear i.stockarea i4.status [fweight=weighting] if market_desc<=4  & `logical_subset' & year==2022, baseoutcome(4) rrr
 collect get _r_b _r_se e(N), tag(model[(Mlogit)])
 
 
