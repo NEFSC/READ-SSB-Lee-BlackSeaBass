@@ -343,7 +343,7 @@ combined_dataset<-combined_dataset %>%
 combined_dataset<-combined_dataset %>%
   mutate(mark_in=case_when(
               price<0.15 ~ 0,
-              price>15 ~ 0,
+              price>12 ~ 0,
               is.na(price) ~ 0,
               state =="CN"  ~ 0,
               state =="FL"  ~ 0, 
