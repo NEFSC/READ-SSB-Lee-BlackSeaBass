@@ -15,29 +15,54 @@
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
 
-use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+use  "${data_main}\commercial\BSB_original_combined_dataset${in_string}.dta", replace
+
+
+
+/* to look at omitted transactions, do this:
+use  "${data_main}\commercial\BSB_original_combined_dataset${in_string}.dta", replace
+keep if mark_in==0
+
+*/
+keep if mark_in==1
+
+/* handle factor variables */
+/* adjust the market_desc levels */
+
+replace market_desc=6 if market_desc==5
+label define market_desc 6 "Unclassified", add
+label define market_desc 5 "", modify
+label list market_desc
+
+
+/* decode year and month*/
+
+decode year, gen(myyear)
+drop year
+rename myyear year
+destring year, replace
+
+decode month, gen(mymonth)
+drop month
+rename mymonth month
+destring month, replace
+
 
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
 /************************** Is this the right collapse?************
 ********************************* */
 
-collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month area status)
+collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region status)
 gen price=value/lndlb
 gen priceR_CPI=valueR_CPI/lndlb
 
 
 
-
-gen keep=1
-
-/* drop small time market codes, states, grades, market descriptions */
-replace keep=0 if inlist(state, 99,12,23,33,42,45) /* no canada, florida, maine, nh, pa, sc*/
-replace keep=0 if price>=15
-
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
-label var total "Total"
+replace total=total/1000
+label var total "Total landings (000s)"
 
 /* these egens are daily sums. I'm not sure how to put them into the data prep step and then collapse (first might work) , so I will put them after */
 /*  market level quantity supplied */
@@ -74,12 +99,10 @@ mdesc largerQ smallerQ
 /**********************************************************************************************************************/
 /* what do I want to estimate on? */
 /* Nominal prices that are between $0.15 and $15lb.
-North Carolina to Mass
 
 */
 
-
-local logical_subset keep==1 & year>=2018 & price>.15
+local logical_subset year>=2013 & price>.15 & price<=12
 
 
 
@@ -90,7 +113,7 @@ local logical_subset keep==1 & year>=2018 & price>.15
 
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-/* make a table of average lbs and std dev */
+/* make a table of average lbs and std dev 
 collect clear
 
 collect create summary_means, replace
@@ -98,11 +121,11 @@ sort year market_desc
 collect: by year market_desc: summ weighting
 collect dims
 collect style cell, nformat(%5.1f)
-collect title "Landings per Transaction by year and Market Category \label{FSavglbs}"
+collect title "Landed pounds per Transaction by year and Market Category \label{FSavglbs}"
 
-collect layout (year[2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
 collect export $my_results/FS_avg_lbs.tex, replace tableonly
-collect title "Landings per Transaction by year and Market Category"
+collect title "Landed pounds per Transaction by year and Market Category"
 
 collect export $my_results/FS_avg_lbs.md, replace
 
@@ -110,26 +133,29 @@ collect export $my_results/FS_avg_lbs.md, replace
 collect style cell, nformat(%8.0gc)
 collect title "Number of Observations by year and Market Category \label{FStransactions}"
 
-collect layout (year[2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
 collect export $my_results/FS_transactions.tex, replace tableonly
 
 collect title "Number of Observations by year and Market Category"
-collect export $my_results/FS_transactions.md, replace
+collect export $my_results/FS_transactions.md, replace*/
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
 
 /**********************************************************************************************************************/
 /********************Same tables, but just on the data that I will estimate on******************************************/
+
+sort year market_desc
+
 /* make a table of average lbs and std dev */
 collect clear
 
 collect create trimmed_sample, replace
-collect: by year market_desc: summ weighting
+collect: by year market_desc: summ weighting if `logical_subset'
 collect dims
 collect style cell, nformat(%5.1f)
 collect title "Landings per Transaction by year and Market Category, Estimation Sample \label{ESTavglbs}"
 
-collect layout (year[2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
 collect export $my_results/EST_avg_lbs.tex, replace tableonly
 
 collect title "Landings per Transaction by year and Market Category, Estimation Sample"
@@ -139,7 +165,7 @@ collect export $my_results/EST_avg_lbs.md, replace
 collect style cell, nformat(%8.0gc)
 collect title "Number of Observations by year and Market Category, Estimation Sample \label{ESTtransactions}"
 
-collect layout (year[2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
 collect export $my_results/EST_transactions.tex, replace tableonly
 
 collect title "Number of Observations by year and Market Category, Estimation Sample"
@@ -158,11 +184,11 @@ collect export $my_results/EST_transactions.md, replace
 /* simple hedonic regression */
 collect create hedonic, replace
 
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(44).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(4).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
 collect get _r_b _r_se e(N), tag(model[Weighted])
 est store weighted
 
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(44).state c.total##c.total i.year i.month if `logical_subset', noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(4).state c.total##c.total i.year i.month if `logical_subset', noc
 collect get _r_b _r_se e(N), tag(model[Unweighted])
 est store uw
 
@@ -184,32 +210,33 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024)"
 collect preview
 
 /* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
 collect export $my_results/hedonic_table.md, replace
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTable}"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024) \label{HedonicTable}"
 collect export $my_results/hedonic_table.tex, replace tableonly
 
 
 /* split the regression into two tables */
-collect layout (colname[market_desc mygear grade_desc total total#total]#result result[r2 N]) (model)
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTableA}"
+collect layout (market_desc#result mygear#result grade_desc#result colname[total total#total]#result result[r2 N]) (model)
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024) \label{HedonicTableA}"
 collect export $my_results/hedonic_tableA.tex, replace tableonly
 
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024)"
 collect export $my_results/hedonic_tableA.md, replace
 
 
 
 
 /* Just print the market category results */
-collect layout (colname[market_desc grade_desc]#result result[r2 N]) (model)
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTableA}"
+collect layout (market_desc#result grade_desc#result result[r2 N]) (model)
+
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024) \label{HedonicTableA}"
 collect export $my_results/hedonic_table_market_cats.tex, replace tableonly
 
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024)"
 collect export $my_results/hedonic_table_market_cats.md, replace
 
 
@@ -217,12 +244,12 @@ collect export $my_results/hedonic_table_market_cats.md, replace
 
 
 
-collect layout (colname[state year month]#result) (model)
+collect layout (state#result year#result month#result) (model)
 collect style showbase off
-collect title "Unweighted and Weighted Hedonic Real Price Regression (2018-2024) \label{HedonicTableB}"
+collect title "Unweighted and Weighted Hedonic Real Price Regression (2013-2024) \label{HedonicTableB}"
 collect export $my_results/hedonic_tableB.tex, replace tableonly
 
-collect title "Unweighted and Weighted Hedonic Real Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Hedonic Real Price Regression (2013-2024)"
 collect export $my_results/hedonic_tableB.md, replace 
 
 
@@ -232,11 +259,11 @@ collect export $my_results/hedonic_tableB.md, replace
 collect create hedonicNominal, replace
 
 
-regress price  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(44).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+regress price  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(4).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
 collect get _r_b _r_se e(N), tag(model[Weighted])
 est store NomW
 
-regress price  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(44).state c.total##c.total i.year i.month if `logical_subset', noc
+regress price  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(4).state c.total##c.total i.year i.month if `logical_subset', noc
 collect get _r_b _r_se e(N), tag(model[Unweighted])
 est store NomU
 
@@ -256,37 +283,34 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2018-2024) \label{HedonicTableNom}"
+collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2013-2024) \label{HedonicTableNom}"
 collect preview
 
 /* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
 collect export $my_results/hedonic_tableNom.tex, replace tableonly
 
-collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2013-2024)"
 collect export $my_results/hedonic_tableNom.md, replace
 
 
 /* split the regression into two tables */
-collect layout (colname[market_desc mygear grade_desc total total#total]#result result[r2 N]) (model)
-collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024) \label{HedonicTableNomA}"
+collect layout (market_desc#result mygear#result grade_desc#result colname[total total#total]#result result[r2 N]) (model)
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2013-2024) \label{HedonicTableNomA}"
 collect export $my_results/hedonic_tableNomA.tex, replace tableonly
 
-collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024)"
+
+
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2013-2024)"
 collect export $my_results/hedonic_tableNomA.md, replace 
 
 
-collect layout (colname[state year month]#result) (model)
+collect layout (state#result year#result month#result) (model)
 collect style showbase off
-collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024) \label{HedonicTableNomB}"
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2013-2024) \label{HedonicTableNomB}"
 collect export $my_results/hedonic_tableNomB.tex, replace tableonly
 
-collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2018-2024)"
+collect title "Unweighted and Weighted Nominal Hedonic Price Regression (2013-2024)"
 collect export $my_results/hedonic_tableNomB.md, replace 
-
-/* when I do this:
-reghdfe price ib(4).market_desc ib(5).mygear ib(1).grade_desc ib(44).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], absorb(hullid)
-the constant terms is the price of small.
-*/
 
 
 
@@ -303,7 +327,7 @@ the constant terms is the price of small.
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
 /* first multinomial logit spec with real prices */
-mlogit market_desc priceR_CPI ib(1).month ibn.mygear ib(2018).year ib(44).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
+mlogit market_desc priceR_CPI ib(1).month ibn.mygear ib(2013).year ib(4).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
 predict pr*
 
 est store class1
@@ -335,7 +359,7 @@ collect preview
 
 
 
-collect layout (colname[priceR_CPI mygear month _cons o._cons]#result) (coleq) 
+collect layout (colname[priceR_CPI]#result mygear#result month#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -350,7 +374,7 @@ collect export $my_results/mlogitA.md, replace
 
 
 
-collect layout (colname[state year _cons o._cons]#result) (coleq) 
+collect layout (state#result year#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -371,7 +395,7 @@ collect export $my_results/mlogitB.md, replace
 /* Use nominal prices */
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
-mlogit market_desc price ib(1).month ibn.mygear ib(2018).year ib(44).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
+mlogit market_desc price ib(1).month ibn.mygear ib(2013).year ib(4).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
 est store class2
 
 est save "$my_results/class2.ster", replace
@@ -401,8 +425,8 @@ collect label levels result r2_p "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
 collect preview
 
-collect layout (colname[price mygear month _cons o._cons]#result) (coleq) 
 
+collect layout (colname[price]#result mygear#result month#result) (coleq) 
 
 
 collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category\label{mlogitNomA}"
@@ -414,7 +438,7 @@ collect title "Relative Risk Ratios after Multinomial Logistic Regression to Pre
 collect export $my_results/mlogitNomA.md, replace 
 
 
-collect layout (colname[state year]#result) (coleq) 
+collect layout (state#result year#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -430,8 +454,8 @@ collect title "Relative Risk Ratios after Multinomial Logistic Regression to Pre
 collect export $my_results/mlogitNomB.md, replace 
 
 
+collect layout (colname[price]#result mygear#result) (coleq) 
 
-collect layout (colname[price mygear]#result) (coleq) 
 collect title "Relative Risk Ratios after Multinomial Logistic Regression to Predict the Market Category"
 collect export $my_results/mlogitNom_short.md, replace 
 
@@ -459,7 +483,7 @@ egen tv=total(value*_est_class2)
 gen mean_price=tv/tl
 gen price_centered=price-mean_price
 
-mlogit market_desc price_centered ib(1).month ibn.mygear ib(2018).year ib(44).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
+mlogit market_desc price_centered ib(1).month ibn.mygear ib(2013).year ib(4).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(2) noconstant
 est store class3
 
 
@@ -487,7 +511,7 @@ collect label levels result r2_p "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
 collect preview
 
-collect layout (colname[price_centered mygear month _cons o._cons]#result) (coleq) 
+collect layout (colname[price_centered]#result mygear#result month#result) (coleq) 
 
 
 
@@ -500,7 +524,7 @@ collect title "Relative Risk Ratios after Multinomial Logistic Regression to Pre
 collect export $my_results/mlogitNomA_centered.md, replace 
 
 
-collect layout (colname[state year]#result) (coleq) 
+collect layout (state#result year#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -539,10 +563,10 @@ I'm less happy about the ordered logit.
 */
 gen order=4-market_desc
 
-ologit order price ib(1).month ib(5).mygear ib(2018).year ib(44).state  [fweight=weighting] if market_desc<=4 & `logical_subset', or
+ologit order price ib(1).month ib(5).mygear ib(2013).year ib(4).state  [fweight=weighting] if market_desc<=4 & `logical_subset', or
 est store ologit_nominal
 
-ologit order priceR ib(1).month ib(5).mygear ib(2018).year ib(44).state [fweight=weighting] if market_desc<=4 & `logical_subset', or
+ologit order priceR_CPI ib(1).month ib(5).mygear ib(2013).year ib(4).state [fweight=weighting] if market_desc<=4 & `logical_subset', or
 est store ologitR
 
 
@@ -623,18 +647,17 @@ browse if year>=2019 & market_desc>=5
 
 
 
-local logical_subset keep==1 & year>=2018 & price>.15
 keep if `logical_subset' & market_desc<=4
 compress
 
-mlogit market_desc price_centered ib(1).month ibn.mygear ib(2018).year ib(44).state  [fweight=weighting], baseoutcome(2) noconstant
+mlogit market_desc price_centered ib(1).month ibn.mygear ib(2013).year ib(44).state  [fweight=weighting], baseoutcome(2) noconstant
 
 
 
 
-gen insample= market_desc<=4 & keep==1 & year>=2018 & price>.15
-assert insampl==1
+gen insample= `logical_subset'
+assert insample==1
 
-save "$data_main\commercial\mlogit_estimation_dataset_${vintage_string}.dta"
+save "$data_main\commercial\mlogit_estimation_dataset_${vintage_string}.dta", replace
 
 
