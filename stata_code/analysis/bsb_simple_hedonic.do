@@ -1,3 +1,5 @@
+log using $my_results/bsb_simple_hedonic_${in_string}.smcl, replace
+
 **********************************************************************
 * Purpose: 	code to estimate simple  hedonic models. There is some code to try some mixed linear models, but I didn't go too far down that road.
 * Inputs:
@@ -97,6 +99,7 @@ est store hullFEs
 reghdfe priceR_CPI i.year i.month ibn.market_desc ib(freq).mygear ib(freq).grade_desc c.total##c.total [fweight=weighting], cluster(dlr_date) absorb(hullid)
 est store weighted_hullFEs
 
+log close
 
 
 

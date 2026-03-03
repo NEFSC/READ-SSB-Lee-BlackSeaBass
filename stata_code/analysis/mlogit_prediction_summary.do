@@ -1,3 +1,5 @@
+log using $my_results/mlogit_prediction_summary_${in_string}.smcl, replace
+
 **********************************************************************
 * Purpose: 	code to predict class probability after mlogit model.
 * Inputs:
@@ -71,3 +73,4 @@ renvars rowfreq_*, subst("_pred" "")
 
 keep market_desc rowfreq_*
 export delimited using "$my_results/mlogit_predictions_row_freq.csv", replace
+log close

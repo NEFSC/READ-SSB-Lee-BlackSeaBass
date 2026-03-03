@@ -1,3 +1,5 @@
+log using $my_results/bsb_size_classificationsV2_${in_string}.smcl, replace
+
 **********************************************************************
 * Purpose: 	code to estimate more complex  classification models.
 * Inputs:
@@ -316,4 +318,4 @@ mlogit market_desc price if market_desc<=4  & `logical_subset' & year>=2018 [fwe
 est store simple_weighted
 
 
-
+log close

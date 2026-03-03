@@ -1,3 +1,6 @@
+log using $my_results/fmm_tries_${in_string}.smcl, replace
+
+
 **********************************************************************
 * Purpose: 	experiment with finite mixture models.
 * Inputs:
@@ -155,3 +158,4 @@ twoway (kdensity cl if market_desc==2) (kdensity cl if market_desc==3)
 
 */
 
+log close
