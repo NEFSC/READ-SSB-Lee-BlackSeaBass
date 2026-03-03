@@ -1,14 +1,15 @@
 **********************************************************************
 * Purpose: 	code to estimate simple  hedonic models. There is some code to try some mixed linear models, but I didn't go too far down that road.
 * Inputs:
-*   - landings_cleaned_$date.dta (from wrappers)
+*   - BSB_original_combined_dataset$date.dta (from wrappers)
 *
 * Outputs:
 *   -  hedonic models by ols and classification models by mlogit 
 *   - omitted_transactions.dta a dataset of cams transactions that are excluded from the estimation
 **********************************************************************
 
-use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+*use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+use  "${data_main}\commercial\BSB_original_combined_dataset${in_string}.dta", replace
 
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
