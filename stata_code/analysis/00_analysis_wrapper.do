@@ -14,4 +14,4 @@ do "$analysis_code/bsb_size_classifications_V2.do"
 
 
 /* predictions */
-do "$analysis_code/mlogit_prediction_sumary.do"
+do "$analysis_code/mlogit_prediction_summary.do"
