@@ -61,7 +61,7 @@ Aggregating to stockarea drops out a few observations.
 
 
 ********************************* */
-collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region status)
+collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region stockarea status)
 
 
 gen price=value/lndlb
@@ -123,12 +123,12 @@ keep if year>=2018 & price>.15 & price<=12
 
 
 /* simple hedonic regression */
-regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.region ib(34).state c.total##c.total i.year i.month  [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea ib(34).state c.total##c.total i.year i.month  [fweight=weighting], noc
 est store weighted
 
 
 /* simple hedonic regression on Jumbos and Larges*/
-regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.region ib(34).state c.total##c.total i.year i.month  [fweight=weighting] if market_desc<=2, noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea ib(34).state c.total##c.total i.year i.month  [fweight=weighting] if market_desc<=2, noc
 est store JandL
 
 
