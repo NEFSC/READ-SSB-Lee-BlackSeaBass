@@ -55,9 +55,9 @@ combined_dataset<-combined_dataset %>%
 
 
 # Plot. 
-p<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=10), aes(x=priceR_CPI, weight=lndlb, after_stat(density)))+ 
-  geom_histogram(binwidth=0.25) + 
-  facet_wrap(~ market_desc,ncol = 1, strip.position="right") +
+p<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=10), aes(x=priceR_CPI, weight=lndlb ))+ 
+  geom_histogram(binwidth=0.25, fill='white', colour='black') + 
+  facet_grid(rows=vars(market_desc),cols=NULL, scales = 'free') + 
   labs(x = "Real Price") 
 
 # save to png and Rds       
@@ -69,16 +69,17 @@ ggsave(here("images","exploratory","wprice_histograms_vertical_NR.png"), plot=p)
 # Emily's adapted markdown code
 ################################################################################
 
-library(tidyverse)
 # Located in /writing but not sure if you need an extra "here" to call it
 # Github ignores it, so let me send it to you separately?
-load('Landings.lengths.1989-2024.Rdata')
+load(here("data_folder","main","commercial", "Landings.lengths.1989-2024.Rdata"))
+
+
 
 # Random specifications for the size of plots I think
-fyr <- 1989
+fyr <- 2013
 lyr <- 2024
 save.fig <- 'y'
-fig.type <- 'wmf'
+fig.type <- 'png'
 fig.ht.hist <- 8.3
 fig.wd.hist <- 7.3
 
@@ -339,7 +340,7 @@ lfplot.mktcomb <- plot.data %>%
   facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free')
 lfplot.mktcomb
 fname <- 'LenFq.Mktcomb'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')), type = fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 # # Lattice
 # len.mktcomb <- len.all %>%
@@ -349,7 +350,7 @@ if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')), type
 # lfplot.mktcomb.lat <- xyplot(as.numeric(NUMLEN)~as.numeric(LENGTH) | as.factor(MKTCOMB), data=len.mktcomb, layout=c(1,n.mktcombs), type='h', scales=list(x=list(alternating=1, relation="same"), y=list(relation="free")), xlab="Length", ylab="Frequency", as.table=TRUE)
 #   print(lfplot.mktcomb.lat)
 # fname <- 'LenFq.Mktcomb.lattice'
-# if(save.fig=='y') { savePlot(file=file.path(lenfq.dir, paste(fname,fig.type,sep='.')),type=fig.type) }  
+#if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ### B)
@@ -365,7 +366,7 @@ lfplot.mkt <- plot.data %>%
   facet_grid(rows=vars(MKTNM), cols=NULL, scales = 'free')
 lfplot.mkt
 fname <- 'LenFq.Mkt'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ### C)
@@ -384,7 +385,7 @@ lfplot.region <- plot.data %>%
   facet_grid(rows=vars(REGION), cols=NULL, scales = 'free')
 lfplot.region
 fname <- 'LenFq.Region'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 # Keep unknown region
@@ -399,7 +400,7 @@ lfplot.region.unk <- plot.data %>%
   facet_grid(rows=vars(REGION), cols=NULL, scales = 'free')
 lfplot.region.unk
 fname <- 'LenFq.Region.Unknown'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ### D)
@@ -416,7 +417,7 @@ lfplot.qtr <- plot.data %>%
   facet_grid(rows=vars(QTR), cols=NULL, scales = 'free')
 lfplot.qtr
 fname <- 'LenFq.Qtr'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ### E)
@@ -433,7 +434,7 @@ lfplot.sem <- plot.data %>%
   facet_grid(rows=vars(SEMESTER), cols=NULL, scales = 'free')
 lfplot.sem
 fname <- 'LenFq.Sem'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }  
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 
@@ -481,7 +482,7 @@ lfplot.mktcomb.yrbin <- fig.data %>%
   facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free')
 print(lfplot.mktcomb.yrbin)
 fname <- 'LenFq.MktComb.YrBin'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ### B)  Region
@@ -502,7 +503,7 @@ lapply(seq_along(len.all.yrbin), function(x) {
   assign( paste("lfplot.region",x,sep='.'), fig, envir = .GlobalEnv)
   print(get(paste("lfplot.region",x,sep='.')))
   fname <- paste('LenFq.Region',names(len.all.yrbin)[x],sep='.')
-  if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 })
 
 # fill
@@ -520,8 +521,7 @@ lfplot.mktcomb.region <- fig.data %>%
   facet_grid(rows=vars(yr.bin), cols=NULL, scales = 'free')
 print(lfplot.mktcomb.region)
 fname <- 'LenFq.Region.YrBin'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
-
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 ##### 4) Across all years, do combined market category length distributions vary across regions and do region length distributions vary across market category? #####
@@ -550,7 +550,7 @@ lfplot.region.mktcomb <- plot.data %>%
   facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free')
 print(lfplot.region.mktcomb)
 fname <- 'LenFq.Region.Mktcomb'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 # B) Facet = region, fill = market
 
@@ -560,7 +560,7 @@ lfplot.mktcomb.region <- plot.data %>%
   facet_grid(rows=vars(REGION), cols=NULL, scales = 'free')
 print(lfplot.mktcomb.region)
 fname <- 'LenFq.Mktcomb.Region'
-if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 
 
 
@@ -591,7 +591,7 @@ lapply(seq_along(len.all.region), function(x) {
   assign( paste("lfplot.mktcomb.yrbin",reg,sep='.'), fig, envir = .GlobalEnv)
   print(get(paste("lfplot.mktcomb.yrbin",reg,sep='.')))
   fname <- paste('LenFq.MktComb.Yrbin', reg, sep='.')
-  if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 })
 
 
@@ -620,7 +620,7 @@ lapply(seq_along(len.all.yrbin), function(x) {
   assign( paste("lfplot.mktcomb.region",x,sep='.'), fig, envir = .GlobalEnv)
   print(get(paste("lfplot.mktcomb.region",x,sep='.')))
   fname <- paste('LenFq.MktComb.Region', bin, sep='.')
-  if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 })
 
 
@@ -648,7 +648,7 @@ lapply(seq_along(len.all.region), function(x) {
   assign( paste("lfplot.mktcomb.gr",reg,sep='.'), fig, envir = .GlobalEnv)
   print(get(paste("lfplot.mktcomb.gr",reg,sep='.')))
   fname <- paste('LenFq.MktComb.Gr', reg, sep='.')
-  if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 })
 
 
@@ -690,7 +690,7 @@ lapply(seq_along(len.all.gr), function(x) {
   assign( paste("lfplot.mktcomb.reg",gr,sep='.'), fig, envir = .GlobalEnv)
   print(get(paste("lfplot.mktcomb.reg",gr,sep='.')))
   fname <- paste('LenFq.MktComb.Region', gr, sep='.')
-  if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
 })
 
 
@@ -731,7 +731,7 @@ lapply(seq_along(len.all.gr.yrbin), function(g) {
     assign( paste("lfplot.mktcomb.reg",gr,y,sep='.'), fig, envir = .GlobalEnv)
     print(get(paste("lfplot.mktcomb.reg",gr,y,sep='.')))
     fname <- paste('LenFq.MktComb.Region', gr, bin, sep='.')
-    if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+    if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
   }) # end of y lapply
 }) # end of g lapply
 
@@ -769,7 +769,7 @@ lapply(seq_along(len.all.gr.region), function(g) {
     assign( paste("lfplot.mktcomb.yrbin", reg, gr, sep='.'), fig, envir = .GlobalEnv)
     print(get(paste("lfplot.mktcomb.yrbin", reg, gr, sep='.')))
     fname <- paste('LenFq.MktComb.Yrbin', reg, gr, sep='.')
-    if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+    if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
   }) # end of y lapply
 }) # end of g lapply
 
@@ -808,6 +808,6 @@ lapply(seq_along(len.all.region.yrbin), function(r) {
     assign( paste("lfplot.mktcomb.gr", reg, y, sep='.'), fig, envir = .GlobalEnv)
     print(get(paste("lfplot.mktcomb.gr", reg, y, sep='.')))
     fname <- paste('LenFq.MktComb.Gr', reg, bin, sep='.')
-    if(save.fig=='y') { savePlot(file=file.path(paste(fname,fig.type,sep='.')),type=fig.type) }
+    if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
   }) # end of y lapply
 }) # end of g lapply
