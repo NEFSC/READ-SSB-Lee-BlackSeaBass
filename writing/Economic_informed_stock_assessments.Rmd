@@ -263,19 +263,17 @@ extreme cases may take length and age distribution data from fisheries-independe
 sample information to convert the total landings in pounds to landings-at-age, which are the necessary format to run age-based stock assessments like in ASAP or WHAM.
 
 
-
-```{r BorrowedLengths,echo=FALSE,out.width="48%", fig.align='center',fig.cap="Borrowed Lengths in Black Sea Bass. Slide 8 from the 2023 BSB commerical data overview"}
-knitr::include_graphics(here("images","background",c("2023_BSB_UNIT_TOR2_commercialdata_slide8.jpg")))
+```{r LenHist2,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2013-2024."}
+knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.Region.Color.2009-2013.png"),here("images","background","LenFq.Mktcomb.Region.Color.2014-2018.png")))
 ```
 
-Figure \@ref(fig:BorrowedLengths) illustrates the problem generally.  Pink in the bar graphs are good, this means there were enough measured fish in a market category.  Everything else indicates a certain amount of "borrowing" of data, where lengths are taken from market-area-semester combination.  
+Figure \@ref(fig:LenHist2) illustrates these data gaps; there are no biosamples for Unclassified fish in the South region after 2013.  In both time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is likely to produce catch-at-length estimates that are too large.  Filling data gaps in the North with data from the South is likely to produce catch-at-length estimates that are too small.  Within a region, borrowing data from a bordering market category is also likely to produce poor estimates of catch-at-length.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. In more recent years, a moderate shift to the right in the small, medium, and large market categories.  Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves us in an uncomfortable place. 
 
 
 
 # Methods and Data
 
-The goal of this research is to accurately predict the true market category of the unclassified fish
-aggregated at the year-, semester-, and subregion. Neither the accuracy of an individual prediction nor the causal mechanisms by which one factor affects market category is of interest.  Machine learning approaches, which focus on accurate prediction of an outcome variable instead of the causal relationship between predictors and outcome, are attractive methods [@Varian2014; @Mullainathan2017; @Athey2019].  These approaches have proliferated in fisheries, ecology, and economics [@Rubbens2023; @Kuhn2024; @Akselrud2024]. Applications include from classifying fishing activity with Vessel Monitoring Systems or Autotmatic Identification Systems [@Russo2011], building predictive models of fishing vessel trip costs [@Chan2021] and prices [@francca2024price], and image processing [@Alvarez-Ellacuria2020].
+The goal of this research is to employ the economic information contained in prices to leave that uncomfortable place.  Because the stock assessment inputs our aggregated at the year-, semester-, and region, our goal is to generate accurate prediction of the true market category of the unclassified fish at that level. Neither the accuracy of an individual prediction nor the causal mechanisms by which one factor affects market category is of interest.  Machine learning approaches, which focus on accurate prediction of an outcome variable instead of the causal relationship between predictors and outcome, are attractive methods [@Varian2014; @Mullainathan2017; @Athey2019].  These approaches have proliferated in fisheries, ecology, and economics [@Rubbens2023; @Kuhn2024; @Akselrud2024]. Applications include from classifying fishing activity with Vessel Monitoring Systems or Autotmatic Identification Systems [@Russo2011], building predictive models of fishing vessel trip costs [@Chan2021] and prices [@francca2024price], and image processing [@Alvarez-Ellacuria2020].
 
 ## Modeling Probability of Class Membership with a Random Forest
 
@@ -480,7 +478,7 @@ Model tuning overview.
 ## Tuning results
 
 
-```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curve"}
+```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
 knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocluster", pred_vintage, ".png")))
 ```
 
@@ -493,7 +491,7 @@ knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
 
-```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
+```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
 knitr::include_graphics(here("results","ranger","final", paste0("roc_TS_nocluster", pred_vintage, ".png")))
 ```
 
@@ -539,7 +537,7 @@ transaction_predictions<-Testmkt_preds %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`) %>%
     mutate(
     predicted_transactions = comma(predicted_transactions, accuracy = 1),
-    transactions = comma(transactions, accuracy = 1)                        
+    transactions = comma(transactions, accuracy = 0.1)                        
   )
 
 
@@ -564,15 +562,15 @@ kable(
 
 ```
 
-Table \@ref(tab:transaction-predictions)), aggregates the individual predictions of the market category in the validation sample. I the South We find that the model slightly over-predicts YYY and underpredicts XXX.
+Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions), illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
 
 
 ```{r weighted_predictions, echo=FALSE}
 weighted_predictions<-Testmkt_preds %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`) %>%
     mutate(
-    true_mt = comma(true_mt, accuracy = 1),
-    predicted_mt = comma(predicted_mt, accuracy = 1)                        
+    true_mt = comma(true_mt, accuracy = 0.1),
+    predicted_mt = comma(predicted_mt, accuracy = 0.1)                        
   )
 
 
@@ -721,15 +719,15 @@ nocalibrate_results<-nocalibrate_results%>%
 transactions_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)%>%
     mutate(
-    predicted_transactions = comma(predicted_transactions, accuracy = 1),
+    predicted_transactions = comma(predicted_transactions, accuracy = 0.1),
     transactions = comma(transactions, accuracy = 1)                        
   )
 
 weights_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`)%>%
     mutate(
-    true_mt = comma(true_mt, accuracy = 1),
-    predicted_mt = comma(predicted_mt, accuracy = 1)                        
+    true_mt = comma(true_mt, accuracy =0.1),
+    predicted_mt = comma(predicted_mt, accuracy = 0.1)                        
   )
 
 ```
