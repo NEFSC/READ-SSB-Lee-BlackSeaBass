@@ -245,22 +245,19 @@ A port sampling program has existed in the northeast United States for more than
 collecting vital biological data like lengths, weights, ages, and stomach samples that directly support
 the fisheries stock assessment process.
 
-Throughout its history, the program has been staffed by federal port agents or contracted companies, and funded by the National Marine Fisheries Service (NMFS) with support from GARFO.
-Because staffing and financial resources are limited, sampling priorities been rigidly set through a tiered system, with those species
-having analytically assessments, high average recent landings, and high profiles being sampled most heavily. The number of lengths and ages allocated to each species are established
-through this system, but where the samples are collected across state/region, month, and market category is up to the discretion and professional recommendation
-of the stock assessment lead in the population dynamics branch at the NEFSC. Frequently those choices are made based on availability of historical data, the timing and location of
-commercial landings, and the spatiotemporal abundance of the stock.
+Throughout its history, the program has been staffed by federal port agents or contracted companies, and funded by the National Marine Fisheries Service (NMFS).
+Because staffing and financial resources are limited, sampling priorities been rigidly set through a two-stage  prioritization system.  In the first stage, stocks 
+with analytical assessments, high average recent landings, and high profiles are allocated more samples.  In the second stage, the stock assessment lead uses their knowledge of the fishery and assessment to request samples from particular regions, times of year, and market categories.  These decisions heavily influenced by availability of historical data, timing and location of
+commercial landings, spatio-temporal abundance of the stock, and stock assessment model.
 
 Though the number of collected lengths across the entire
 program exceeded 200,000 annually between 2015-2019 with 7 full-time port samplers, in 2024 less than 50,000 lengths were collected by 3 full-time and 3 part-time samplers.
 Efforts have been supplemented by the MAFMC and Massachusetts DMF but with falling funding sources and rising costs per sample, the amount of these critical biological data 
 is well below what it was ten years ago. A recent merger of the portside sampling program with the NEFSC observer program is anticipated to increase efficiency and sampling. 
 
-Biosamplers try their best to meet the sample requests by efficiently targeting popular ports at times where a variety of species and sized fish are likely to be landed. Often they
-may specifically target a port known to land a specific or obscure market category when those requests exist. Despite those efforts, market categories and species get missed when
-they aren't available to biosamplers. When data gaps exist, stock assessment modelers will relax the specificity of the information, i.e., borrow across regions or semesters, and in
-extreme cases may take length and age distribution data from fisheries-independent sources rather than from the catch subsamples. However, it is preferable to have unbiased and precice
+Biosamplers try to meet the sample requests by efficiently targeting ports at times where a variety of species and sized fish are likely to be landed. Often they
+may specifically target a port known to land a specific or obscure market category to fulfill the scientific requests. These requests may go unfulfilled, causing data gaps. When data gaps exist, stock assessment modelers will relax the specificity of the information, i.e., borrow across regions or semesters, and in
+extreme cases may take length and age distribution data from fisheries-independent sources rather than from the catch subsamples. However, it is preferable to have unbiased and precise
 sample information to convert the total landings in pounds to landings-at-age, which are the necessary format to run age-based stock assessments like in ASAP or WHAM.
 
 
@@ -601,6 +598,8 @@ ggplot(mkt_preds, aes(x=year, y=predicted_mt, group=market_desc))+
 A reasonable method for filling in gaps in historical data.
 
 Could be used for other species. 
+
+Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
 
 Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
 
