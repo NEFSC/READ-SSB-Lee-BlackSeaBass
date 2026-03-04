@@ -169,7 +169,7 @@ class temporarily more available during certain years.
 
 
 ```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories, 2013-2024."}
-knitr::include_graphics(c(here("images","background","length_frequencies_by_market_categories.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
+knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
 ```
 
 
