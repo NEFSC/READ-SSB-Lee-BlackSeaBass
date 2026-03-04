@@ -17,13 +17,15 @@ keywords:
 bibliography: "PricesInStockAssessment.bib"
 link-citations: yes
 header-includes:
-- \usepackage{graphicx}
-
 - \usepackage{float}
 - \usepackage{pdflscape}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{makecell}
 - \newcommand{\blandscape}{\begin{landscape}}
 - \newcommand{\elandscape}{\end{landscape}}
-output: 
+output:
   bookdown::pdf_book:
     base_format: rticles::oup_article
     keep_tex: yes
@@ -166,8 +168,8 @@ class temporarily more available during certain years.
 
 
 
-```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories."}
-knitr::include_graphics(c(here("images","background","length_frequencies_by_market_categories.png"),here("images","exploratory","wprice_histograms_vertical.png")))
+```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories, 2013-2024."}
+knitr::include_graphics(c(here("images","background","length_frequencies_by_market_categories.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
 ```
 
 
@@ -534,29 +536,75 @@ Testmkt_preds<-Testmkt_preds %>%
 
 
 transaction_predictions<-Testmkt_preds %>%
-  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`) %>%
+    mutate(
+    predicted_transactions = comma(predicted_transactions, accuracy = 1),
+    transactions = comma(transactions, accuracy = 1)                        
+  )
 
 
-knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 15% Validation Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+
+kable(
+  transaction_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Calibrated Predictions using the Validation Sample",
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "transaction-predictions"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  ) 
+
+
 
 ```
 
-Table \@ref(tab:validation_predictions)), aggregates the individual predictions of the market category in the validation sample. I the South We find that the model slightly over-predicts YYY and underpredicts XXX.
+Table \@ref(tab:transaction-predictions)), aggregates the individual predictions of the market category in the validation sample. I the South We find that the model slightly over-predicts YYY and underpredicts XXX.
 
 
-```{r weighted_predictions}
+```{r weighted_predictions, echo=FALSE}
 weighted_predictions<-Testmkt_preds %>%
-  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`) %>%
+    mutate(
+    true_mt = comma(true_mt, accuracy = 1),
+    predicted_mt = comma(predicted_mt, accuracy = 1)                        
+  )
 
-knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+
+
+
+kable(
+  weighted_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Calibrated Predictions using the Validation Sample",
+  col.names = c("Market Category", "Actual Metric Tons", "Predicted Metric Tons", "Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "weighted-predictions"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  )
+
+
 
 ```
+
+Another things goes ehre.
 
 
 #  Out of Sample Predictions
 out of sample predictions not done yet
 
-```{r nocluster_oos_predictions, eval=FALSE, echo=FALSE,warning=FALSE, fig.align='center'}
+```{r nocluster_oos_predictions, eval=FALSE, echo=FALSE,warning=FALSE}
 full_oos_predictions<-aggregate_oos_predictions %>%
   group_by(stockarea,year, market_desc) %>%
     summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small,lndlb), sum))%>%
@@ -616,6 +664,8 @@ Our loss function is very simple for tuning is very simple. But our data is not,
 # Conclusions
 
 
+\clearpage
+
 
 <!---
 \newpage
@@ -635,7 +685,7 @@ Our loss function is very simple for tuning is very simple. But our data is not,
 
 These are the predictions that come out of the non-calibrated models.
 
-```{r no_cal_validations}
+```{r no_cal_validations, eval=TRUE, results='hide', echo=FALSE}
 
 aggregate_nocal_transactions<-nocal_predictions%>%
     summarise(across(c(starts_with(".pred_")), sum)) %>%
@@ -648,7 +698,6 @@ aggregate_nocal_weight_predictions<-nocal_predictions %>%
 
 
 true<-nocal_predictions%>%
-    mutate(transactions=1) %>%
     group_by(market_desc) %>%
     summarise(lndlb=sum(lndlb),
               transactions=sum(transactions))
@@ -670,21 +719,68 @@ nocalibrate_results<-nocalibrate_results%>%
   
 
 transactions_nocalibrate_predictions<-nocalibrate_results %>%
-  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)%>%
+    mutate(
+    predicted_transactions = comma(predicted_transactions, accuracy = 1),
+    transactions = comma(transactions, accuracy = 1)                        
+  )
 
-
-knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-
-```
-
-
-```{r weighted_no_calibrate_predictions}
 weights_nocalibrate_predictions<-nocalibrate_results %>%
-  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
-knitr::kable(weights_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)%>%
+    mutate(
+    true_mt = comma(true_mt, accuracy = 1),
+    predicted_mt = comma(predicted_mt, accuracy = 1)                        
+  )
 
 ```
 
+```{r nocalibrate_table, echo=FALSE}
+
+
+
+
+kable(
+  transactions_nocalibrate_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Uncalibrated Predictions on the Validation Sample (transactions)",
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "uncal-trans-predictions"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  ) 
+
+
+
+
+```
+
+
+```{r weighted_no_calibrate_predictions, echo=FALSE}
+
+kable(
+  weights_nocalibrate_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Uncalibrated Predictions on the Validation Sample (mt)",
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "uncal-weights-predictions"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  ) 
+
+```
+
+
+more text here!
 
 <!---
 The boneyard:
