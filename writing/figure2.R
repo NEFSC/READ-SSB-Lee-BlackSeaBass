@@ -1,4 +1,4 @@
-# Code to make the graphics 
+# Code to make figure2 
 
 
 library("here")
@@ -27,46 +27,6 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 here::i_am("writing/figure1.R")
 
-
-
-my_images<-here("images")
-descriptive_images<-here("images","descriptive")
-exploratory_images<-here("images","exploratory")
-
-dataset_name<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_original_combined_dataset*.Rds"))
-dataset_name<-max(dataset_name)
-vintage_string<-gsub("BSB_original_combined_dataset","",dataset_name)
-vintage_string<-gsub(".Rds","",vintage_string)
-
-combined_dataset<-read_rds(here("data_folder","main","commercial", dataset_name))
-
-combined_dataset<-combined_dataset %>%
-  filter(mark_in==1 | market_desc=="Unclassified")
-
-# To upper case, rename as SMALL_COMB, and relevel to re-order
-combined_dataset<-combined_dataset %>%
-  mutate(market_desc=str_to_upper(market_desc))%>%
-  mutate(market_desc = if_else(market_desc == "SMALL", 
-                               "SMALL.COMB", 
-                               market_desc))
-combined_dataset<-combined_dataset %>%
-  mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL.COMB", "MEDIUM", "LARGE", "JUMBO")))
-
-
-windows(record = TRUE)
-
-
-# Plot. 
-price.mktcomb<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=12), aes(x=priceR_CPI, weight=lndlb,y=after_stat(density) ))+ 
-  geom_histogram(binwidth=0.25, fill='white', colour='black') + 
-  facet_grid(rows=vars(market_desc),cols=NULL) + 
-  labs(x = "Real Price") 
-price.mktcomb
-savePlot(here("images","exploratory","wprice_histograms_vertical_NR.png"), type = "png")
-
-#write_rds(p, file=here("images","exploratory","wprice_histograms_vertical_NR.Rds"))
-####################################################################################################
-####################################################################################################
 ####################################################################################################
 # Biosampling data 
 ####################################################################################################
@@ -80,8 +40,8 @@ load(here("data_folder","main","commercial", "Landings.lengths.1989-2024.Rdata")
 
 
 # Random specifications for the size of plots I think
-fyr <- 2013
-lyr <- 2024
+fyr <- 2009
+lyr <- 2018
 save.fig <- 'y'
 fig.type <- 'png'
 fig.ht.hist <- 8.3
@@ -329,21 +289,78 @@ n.mktcombs <- length(mktcombs)
 
 windows(record = TRUE)
 
-### A)
-# Plot length frequencies by combined market categories
+################!!!!!!!!!!!!!!!!! Here is where we can change the breakdown by years and just plot those years of interest
+# Create year bins
+yr.bins <- bind_cols(YEAR = as.integer(yrs), 
+                     bins = rep(1:2, each = 5) 
+) %>%
+  group_by(bins) %>%
+  mutate( yr.bin = str_c(min(YEAR), max(YEAR), sep='-') ) %>%
+  ungroup() %>%
+  select(-bins)
+uniq.yr.bins <- yr.bins %>% distinct(yr.bin) %>% pull()
 
-# Ggplot
-plot.data <- len.all %>% 
-  select(MKTCOMB, LENGTH, NUMLEN) %>%
-  uncount(NUMLEN) %>% ungroup() %>%
-  mutate(MKTCOMB = factor(MKTCOMB, levels = mktcombs))
-nbins <- length(min(plot.data$LENGTH):max(plot.data$LENGTH))
-lfplot.mktcomb <- plot.data %>% 
-  ggplot() +
-  geom_histogram(aes(x=LENGTH,y=after_stat(density)), bins=nbins, fill='white', colour='black') +
-  facet_grid(rows=vars(MKTCOMB), cols=NULL) + 
-  labs(x="Length (cm)")
-lfplot.mktcomb
-fname <- 'LenFq.Mktcomb'
-if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
+# Merge year bins with len.all
+dim(len.all)
+len.all <- len.all %>%
+  left_join(., yr.bins)
+dim(len.all)
+unique(len.all$yr.bin)
 
+# Split by yr bin into list for plotting
+len.all.yrbin <- split(len.all, len.all$yr.bin)
+
+
+
+
+
+
+
+
+
+
+
+##########THIS IS THE KEY FIGURE 2 ################
+# JUST need to tune the year bins #################
+##### 6) For each year bin, does market category length distribution vary by region? #####
+# Separate plot for each year bin; market category is facet, fill is region
+
+
+windows(record = TRUE)
+lapply(seq_along(len.all.yrbin), function(x) {
+  # x <- 1
+  bin <- names(len.all.yrbin)[x]
+  fig.data <- len.all.yrbin[[x]] %>%
+    select(yr.bin, REGION, MKTCOMB, LENGTH, NUMLEN) %>%
+    filter(REGION %in% regions) %>%
+    uncount(NUMLEN) %>% ungroup() %>%
+    mutate(MKTCOMB = factor(MKTCOMB, levels = mktcombs),
+           REGION = factor(REGION, levels = regions) )
+  nbins <- length(min(fig.data$LENGTH):max(fig.data$LENGTH))
+  
+  fig.base <- fig.data %>%
+    ggplot() +
+    geom_histogram(aes(x=LENGTH, fill=REGION), alpha=0.4, bins=nbins, colour='black', position='identity') +
+    facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free') +
+    ggtitle(bin)
+  
+  fig.color<-fig.base+
+    scale_fill_manual(values = c("#E69F00", "#0072B2"))  # Wong colorblind-safe palette
+  
+  
+  assign( paste("lfplot.mktcomb.region",x,sep='.'), fig.color, envir = .GlobalEnv)
+  print(get(paste("lfplot.mktcomb.region",x,sep='.')))
+  fname <- paste('LenFq.MktComb.Region.Color', bin, sep='.')
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }
+  
+  fig.bw<-fig.base+
+    scale_fill_grey(start = 0.3, end = 0.7)
+  
+    assign( paste("lfplot.mktcomb.region",x,sep='.'), fig.bw, envir = .GlobalEnv)
+  print(get(paste("lfplot.mktcomb.region",x,sep='.')))
+  fname <- paste('LenFq.MktComb.Region.BW', bin, sep='.')
+  if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }
+  
+  
+  
+})
