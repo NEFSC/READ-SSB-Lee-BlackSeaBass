@@ -50,27 +50,31 @@ combined_dataset<-combined_dataset %>%
                                "SMALL.COMB", 
                                market_desc))
 combined_dataset<-combined_dataset %>%
-  mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL_COMB", "MEDIUM", "LARGE", "JUMBO")))
+  mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL.COMB", "MEDIUM", "LARGE", "JUMBO")))
 
+
+windows(record = TRUE)
 
 
 # Plot. 
-p<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=10), aes(x=priceR_CPI, weight=lndlb ))+ 
+price.mktcomb<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=12), aes(x=priceR_CPI, weight=lndlb,y=after_stat(density) ))+ 
   geom_histogram(binwidth=0.25, fill='white', colour='black') + 
-  facet_grid(rows=vars(market_desc),cols=NULL, scales = 'free') + 
+  facet_grid(rows=vars(market_desc),cols=NULL) + 
   labs(x = "Real Price") 
+price.mktcomb
+savePlot(here("images","exploratory","wprice_histograms_vertical_NR.png"), type = "png")
 
-# save to png and Rds       
-# decent, but i'll have to fiddle with options a little more to get the sizing correct.
-ggsave(here("images","exploratory","wprice_histograms_vertical_NR.png"), plot=p)
 #write_rds(p, file=here("images","exploratory","wprice_histograms_vertical_NR.Rds"))
+####################################################################################################
+####################################################################################################
+####################################################################################################
+# Biosampling data 
+####################################################################################################
+####################################################################################################
 
-################################################################################
-# Emily's adapted markdown code
-################################################################################
+# Load in Length data
 
-# Located in /writing but not sure if you need an extra "here" to call it
-# Github ignores it, so let me send it to you separately?
+
 load(here("data_folder","main","commercial", "Landings.lengths.1989-2024.Rdata"))
 
 
@@ -336,8 +340,9 @@ plot.data <- len.all %>%
 nbins <- length(min(plot.data$LENGTH):max(plot.data$LENGTH))
 lfplot.mktcomb <- plot.data %>% 
   ggplot() +
-  geom_histogram(aes(x=LENGTH), bins=nbins, fill='white', colour='black') +
-  facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free')
+  geom_histogram(aes(x=LENGTH,y=after_stat(density)), bins=nbins, fill='white', colour='black') +
+  facet_grid(rows=vars(MKTCOMB), cols=NULL) + 
+  labs(x="Length (cm)")
 lfplot.mktcomb
 fname <- 'LenFq.Mktcomb'
 if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
