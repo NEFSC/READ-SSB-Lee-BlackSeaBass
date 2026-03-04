@@ -1,3 +1,5 @@
+log using $my_results/bsb_size_classificationsV2_${in_string}.smcl, replace
+
 **********************************************************************
 * Purpose: 	code to estimate more complex  classification models.
 * Inputs:
@@ -8,10 +10,44 @@
 
 **********************************************************************
 
-/*  */
+/* code to estimate simple classification models */
 /*before you can run this, you must run the data extraction and commercial data processing wrappers
 */
-use  "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
+
+use  "${data_main}\commercial\BSB_original_combined_dataset${in_string}.dta", replace
+
+
+
+/* to look at omitted transactions, do this:
+use  "${data_main}\commercial\BSB_original_combined_dataset${in_string}.dta", replace
+keep if mark_in==0
+
+*/
+keep if mark_in==1
+
+/* handle factor variables */
+/* adjust the market_desc levels */
+
+replace market_desc=6 if market_desc==5
+label define market_desc 6 "Unclassified", add
+label define market_desc 5 "", modify
+label list market_desc
+
+
+/* decode year and month*/
+
+decode year, gen(myyear)
+drop year
+rename myyear year
+destring year, replace
+
+decode month, gen(mymonth)
+drop month
+rename mymonth month
+destring month, replace
+
+
+
 
 /**********************************************************************************************************************/
 /**********************************************************************************************************************/
@@ -22,7 +58,7 @@ Aggregating to stockarea drops out a few observations.
 
 ********************************* */
 
-collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month stockarea status)
+collapse (sum) value valueR_CPI lndlb livlb weighting, by(camsid hullid mygear record_sail record_land dlr_date dlrid state grade_desc market_desc dateq year month region stockarea status)
 
 
 gen price=value/lndlb
@@ -30,13 +66,11 @@ gen priceR_CPI=valueR_CPI/lndlb
 
 gen keep=1
 
-/* drop small time market codes, states, grades, market descriptions */
-replace keep=0 if inlist(state, 99,12,23,33,42,45) /* no canada, florida, maine, nh, pa, sc*/
-replace keep=0 if price>=15
 
 *replace keep=0 if inlist(market_desc,"UNCLASSIFIED")
 bysort dlr_date: egen total=total(lndlb)
-label var total "Total"
+replace total=total/1000
+label var total "Total landings (000s)"
 
 /* these egens are daily sums. I'm not sure how to put them into the data prep step and then collapse (first might work) , so I will put them after */
 /*  market level quantity supplied */
@@ -76,7 +110,7 @@ mdesc largerQ smallerQ
 North Carolina to Mass
 
 */
-local logical_subset keep==1 & year>=2018 & price>.15
+local logical_subset year>=2013 & price>.15 & price<=12
 
 
 
@@ -85,11 +119,11 @@ local logical_subset keep==1 & year>=2018 & price>.15
 /* simple hedonic regression */
 collect create hedonic, replace
 
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(34).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(34).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
 collect get _r_b _r_se e(N), tag(model[Weighted])
 est store weighted
 
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(34).state c.total##c.total i.year i.month if `logical_subset', noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib(34).state c.total##c.total i.year i.month if `logical_subset', noc
 collect get _r_b _r_se e(N), tag(model[Unweighted])
 est store uw
 
@@ -122,7 +156,7 @@ This is because the two weighted regressions are actually identical.
 
 
 /* just adding stockarea to the regression doesn't do much. the north stock gets about $0.04 or 0.05 per lb */
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea ib(34).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea ib(5).state c.total##c.total i.year i.month if `logical_subset' [fweight=weighting], noc
 est store simplearea
 
 /* adding interactions of stockarea and state and stockareax month produces some interesting stuff 
@@ -132,7 +166,7 @@ North stock get $0.64 per lb more than the south stock in Jan in NJ.   In other 
 
 The "month" coefficients are now interpretable as the monthly premium for the south stock.  These are also consistent with the simpler model.
 */
-regress priceR  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(34).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
+regress priceR_CPI  ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
 est store interacted_area
 
 
@@ -141,7 +175,7 @@ est store interacted_area
 gen tripdays=hours(record_land-record_sail)/24
 gen interact=tripdays~=.
 replace tripdays=0 if tripdays==.
-regress price (c.tripdays##c.tripdays)#i.interact ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(34).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
+regress price (c.tripdays##c.tripdays)#i.interact ibn.market_desc ib(5).mygear ib(1).grade_desc ib1.stockarea##(ib(5).state i.month) c.total##c.total i.year if `logical_subset' [fweight=weighting], noc
 
 
 /* are there many camsid with different gears? */
@@ -161,14 +195,12 @@ order t
 replace t=1 if t~=0
 bysort camsid: egen switchers=total(t)
 order switchers
-tab swi
+tab switchers
 browse if switchers>=1
 sort camsid
 drop t
 sort camsid lndlb
-order lndlb, after(firstgear)
-order stockarea, after(lndlb)
-order dlrid, after(stockarea)
+order lndlb stockarea dlrid, after(firstgear)
 sort camsid firstgear mygear
 order market_desc tlg
 
@@ -180,12 +212,10 @@ save `base_data', replace
 collapse (sum) lndlb, by(state stockarea year)
 browse
 reshape wide lndlb, i(year state) j(stockarea)
-foreach var of varlist lndlb1 lndlb2{
+foreach var of varlist lndlb2 lndlb3{
 	replace `var'=0 if `var'==.
 }
 
-
-drop if inlist(state, 99,12,23,33,42,45) /* no canada, florida, maine, nh, pa, sc*/
 
 
 decode state, gen(state_string)
@@ -199,7 +229,7 @@ foreach l of local statenames{
 	preserve
 	keep if state_string=="`l'"
 
-	graph bar (asis) lndlb1 lndlb2, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
+	graph bar (asis) lndlb2 lndlb3, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
 	graph export ${exploratory}\state_stockareas_`l'.png, as(png) width(2000) replace
 	restore
 }
@@ -219,14 +249,10 @@ use `base_data', clear
 */
 
 
-label def cams_status  1 "DLR_ORPHAN_SPECIES" 2 "DLR_ORPHAN_TRIP" 0 "MATCH" 3 "PZERO" 
-encode status, gen(mystatus) label(cams_status)
-
-
 
 
 /* first multinomial logit spec */
-mlogit market_desc price ib(1).month ib(5).mygear ib(2018).year ib(34).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(4)
+mlogit market_desc price ib(1).month ib(5).mygear ib(2018).year ib(5).state  [fweight=weighting] if market_desc<=4 & `logical_subset', rrr  baseoutcome(4)
 predict pr*
 
 est store class1
@@ -234,7 +260,7 @@ est store class1
 
 collect create classification, replace
 
-mlogit market_desc price ib(1).month ib(5).mygear i.stockarea i3.mystatus [fweight=weighting] if market_desc<=4  & `logical_subset' & year==2022, baseoutcome(4) rrr
+mlogit market_desc price ib(1).month ib(5).mygear i.stockarea i4.status [fweight=weighting] if market_desc<=4  & `logical_subset' & year==2022, baseoutcome(4) rrr
 collect get _r_b _r_se e(N), tag(model[(Mlogit)])
 
 
@@ -258,7 +284,7 @@ collect preview
 
 
 
-collect layout (colname[priceR_CPI mygear month _cons o._cons]#result) (coleq) 
+collect layout ( mygear#result month#result colname[price _cons o._cons]#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -267,7 +293,7 @@ collect style cell result[N], nformat(%12.0fc)
 collect title "Multinomial Logistic Regression to Predict the Market Category\label{mlogitA}"
 
 
-collect layout (colname[state year]#result) (coleq) 
+collect layout (state#result year#result) (coleq) 
 
 /*
 collect layout (result[r2_p N])
@@ -292,4 +318,4 @@ mlogit market_desc price if market_desc<=4  & `logical_subset' & year>=2018 [fwe
 est store simple_weighted
 
 
-
+log close
