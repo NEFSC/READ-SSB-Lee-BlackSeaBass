@@ -260,6 +260,33 @@ collect export $my_results/hedonic_tableB.md, replace
 
 
 
+margins, dydx(month) 
+marginsplot,  xla(1 "Feb" 2 "Mar" 3 "Apr" 4 "May" 5 "Jun" 6 "Jul" 7 "Aug" 8 "Sep" 9 "Oct" 10 "Nov" 11 "Dec") ytitle("Marginal effect of Month on Real Price") xtitle("Effects with respect to Jan")
+graph export $my_results/HedonicMonth.png, replace as(png) width(2000)
+
+
+margins, dydx(year) 
+
+marginsplot, xla(1 "2014" 2 "2015" 3 "2016" 4 "2017" 5 "2018" 6 "2019" 7 "2020" 8 "2021" 9 "2022" 10 "2023" 11 "2024")  ytitle("Marginal effect of Year on Real Price") xtitle("Effects Relative to 2013")
+graph export $my_results/HedonicYear.png, replace as(png) width(2000)
+
+margins, dydx(state) 
+marginsplot, recast(scatter) recastci(rspike) xla(1 "MA" 2 "CT" 3 "NY" 4 "NJ" 5 "DE" 6 "MD" 7 "VA" 8 "NC") ytitle("Marginal effect of State on Real Price") xtitle("Effects with respect to RI")
+graph export $my_results/HedonicState.png, replace as(png) width(2000)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* simple hedonic regression */
 collect create hedonicNominal, replace
