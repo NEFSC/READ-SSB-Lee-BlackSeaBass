@@ -14,17 +14,34 @@ We first estimate a simple hedonic model using data from 2013-2024. We aggregate
 
 We include transactions from New Hampshire to North Carolina where the nominal price is between \$0.15 and \$12 per pound. The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. We weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.
 
-Table \ref{HedonicTableA} contains some results of the more interesting results. There are 28.5 millions pounds of Black Sea Bass spread over 350,000 transactions during the 2018-2024 time period.  We prefer the Weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass recieved \$5.89 per pound, which Small Black Sea bass were prices at \$3.47.  Unclassified Black Sea bass were priced between the Medium and Large Market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to small fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
+The estimating equation in the hedonic model is 
+\begin{align}
+p_{id}&= \sum_{k=1}^K a_{k} Market Category_{id} + \sum_{g=1}^G b_{k} Gear_{id} + \label{hedonicEST}\\
+ &+ d Daily Landings_{d}  e Daily Landings^2_{d}  + f Live_{id} + \varepsilon_i\notag
+\end{align}
+
+We also include a set of factor variables for state, year, and month. We estimate equation \label{hedonicEST} with a full set of factor variables for Market Category, exclude 1 level from all other factors to avoid perfect linearity.  Equation \label{hedonicEST} is estimated by Ordinary Least Squares; there are undoubtedly more sophisticated models that could be used, but OLS suffices for these exploratory purposes. The omitted levels are Trawl Gear, Rhode Island, 2013, and January.  The coefficients associated with the market categories can be interpreted as the conditional average price per pound of landings in that category that were caught by trawl gear and landed in Rhode Island in January of 2013.  Coefficients for the other factor variables can be interpreted as premia or discounts relative to the omitted factor.
+
+Table \ref{HedonicTableA} contains some results of the more interesting results. There are 42.24 millions pounds of Black Sea Bass spread over 525,000 transactions during the 2013-2024 time period.  We prefer the weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass received \$5.93 per pound, which Small Black Sea bass were priced at \$3.39 per pound.  Unclassified Black Sea bass were priced between the Medium and Large Market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to Round fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
 
 
-Table \ref{HedonicTableB} shows the results for the month and state dummies. The Year dummies indicate a substantial decrease in the real price of black sea bass over the 2018-2024 period.  Prices have also fallen in nominal terms (not shown, Appendix if necessary).
+Figure \@ref(fig:HedonicMarginals) shows the results for the month, year, and state factor variables. The Year dummies indicate a substantial decrease in the real price of black sea bass over the 2013-2024 period.  Prices also vary by year, month, and state. 
+
+This exploratory analysis serves two purposes. First, it confirms that prices vary by market category; this effect persists even after conditioning out effects of gear, landing state, year, month, and aggregate supply effects.  Second, it suggest additional explanatory factors that belong in the Random Forest model. Without including these covariates, we risk confounding the effects of these explanatory variables on price.   
 
 <!---This will read a .tex file.  
  --->
 \input{../results/hedonic_tableA.tex}
 
-\input{../results/hedonic_tableB.tex}
 
+```{r HedonicMarginals,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Marginal Effects of Month, Year, and State in the Hedonic Model."}
+knitr::include_graphics(c(here("results","HedonicMonth.png"),here("results","HedonicYear.png"),
+                          here("results","HedonicState.png")))
+```
+<!---
+
+\input{../results/hedonic_tableB.tex}
+--->
 
 <!---This will read a md table. but I can't get the figure numbering and captioning to work well.
 ```{r hedonictable, echo=FALSE, results='asis', caption="MY TABLE" }
