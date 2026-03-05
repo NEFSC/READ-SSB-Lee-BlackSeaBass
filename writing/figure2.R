@@ -1,5 +1,5 @@
 # Code to make figure2 
-
+# Note, the year bins are hard-coded, which could cause problems later.
 
 library("here")
 
@@ -41,7 +41,7 @@ load(here("data_folder","main","commercial", "Landings.lengths.1989-2024.Rdata")
 
 # Random specifications for the size of plots I think
 fyr <- 2009
-lyr <- 2018
+lyr <- 2024
 save.fig <- 'y'
 fig.type <- 'png'
 fig.ht.hist <- 8.3
@@ -292,7 +292,7 @@ windows(record = TRUE)
 ################!!!!!!!!!!!!!!!!! Here is where we can change the breakdown by years and just plot those years of interest
 # Create year bins
 yr.bins <- bind_cols(YEAR = as.integer(yrs), 
-                     bins = rep(1:2, each = 5) 
+                     bins = c(rep(1:2, each = 5), rep(3, each=6)) 
 ) %>%
   group_by(bins) %>%
   mutate( yr.bin = str_c(min(YEAR), max(YEAR), sep='-') ) %>%
@@ -341,8 +341,16 @@ lapply(seq_along(len.all.yrbin), function(x) {
   fig.base <- fig.data %>%
     ggplot() +
     geom_histogram(aes(x=LENGTH, fill=REGION), alpha=0.4, bins=nbins, colour='black', position='identity') +
-    facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free') +
+    facet_grid(rows=vars(MKTCOMB), cols=NULL, scales = 'free', drop=FALSE) +
+    theme(legend.position = "none") +
     ggtitle(bin)
+  
+  # Turn on legend for the "last" plot
+  if(x==length(len.all.yrbin)){
+    
+    fig.base<-fig.base + 
+      theme(legend.position = "right")
+  }
   
   fig.color<-fig.base+
     scale_fill_manual(values = c("#E69F00", "#0072B2"))  # Wong colorblind-safe palette
