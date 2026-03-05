@@ -405,61 +405,6 @@ Black Sea Bass may be caught by firms without a federal fishing permit and sold 
 
 Our observational units are sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In our exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and our Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is to obtain an aggregate weight prediction of the underlying unobserved market category of Unclassified fish; we are not interested in predictions of aggregate transactions.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their freqency weight. This results in bootstrap datasets which more closely resemble the frequency weighted data (instead of the unweighted data).  We attempted to calibrate using weighted data without success and we discuss reasons and paths forward in the discussion section.
 
-<!---  
-outcome variable: market_desc
-id variables: dlrid,camsid 
-case (frequency) weights: weighting (pounds sold)
-
-There are 38 predictors:
-price (nominal, I should try real)
-gear
-,stockarea
-, state
-, year
-, month
-, semester
-, lndlb
-, grade_desc
-
-For observation i, daily Landings by other vessels in the same state , by market category  
-StateOtherQJumbo
-StateOtherQLarge
-StateOtherQMedium
-StateOtherQSmall
-
-For observation i, daily Landings by other vessels from the same stockarea , by market category  
-
-StockareaOtherQJumbo
-StockareaOtherQLarge
-StockareaOtherQMedium
-StockareaOtherQSmall
-
-For observation i, 7 day sum of landings by vessels from the same stockarea, by market category
-
-MA7_StockareaQJumbo
-MA7_StockareaQLarge
-MA7_StockareaQMedium
-MA7_StockareaQSmall
-
-For observation i, 7 day sum of landings by vessels from the same state, by market category
-MA7_StateQJumbo
-MA7_StateQLarge
-MA7_StateQMedium
-MA7_StateQSmall
-MA7_stockarea_trips
-MA7_state_trips
-
-could probably add a gearcategory variable.
-
-Dealer share of purchases by market category from 2010-2014   
-need to see if it's okay to leave in a less than full rank set of predictors. shares sum to 1. 
-
-ShareJumbo, ShareLarge, ShareMedium,ShareSmall, ShareUnclassified 
-
-Dealer total transactions by market category from 2010-2014   
-TransactionCountJumbo, TransactionCountLarge, TransactionCountMedium,TransactionCountSmall, TransactionCountUnclassified
---->
-
 Machine learning algorithms can often benefit from preprocessing of data. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  We grow 500 trees when tuning the model and when training the final model.
 
 Weights
@@ -483,7 +428,7 @@ knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocl
 ```
 
 Our model fits well. In-sample ROC curves from tuning are quite similar across folds
-and indicate that the tuned random forest does well at predicting market category  (Figure  \@ref(fig:rocTune))..
+and indicate that the tuned random forest does well at predicting market category  (Figure  \@ref(fig:rocTune)).
 
 ```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
 knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster", pred_vintage, ".png")))
@@ -504,7 +449,7 @@ overfit the model.
 
 aggregate_transactions<-nocluster_testing_predictions %>%
     summarise(across(c(starts_with(".pred_")), sum)) %>%
-  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="predicted_transactions")
 
 
 aggregate_test_predictions<-nocluster_testing_predictions %>%
@@ -527,12 +472,11 @@ Testmkt_preds<-Testmkt_preds %>%
   mutate(predicted=predicted/lbs_per_mt,
          lndlb=lndlb/lbs_per_mt) %>%
   rename(true_mt=lndlb,
-         predicted_mt=predicted,
-         predicted_transactions=ObsPredicted)%>%
+         predicted_mt=predicted)%>%
   mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
          `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
 
-
+# Just keep a few columns and polish them up to look nice in the manuscript.
 transaction_predictions<-Testmkt_preds %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`) %>%
     mutate(
@@ -548,7 +492,7 @@ kable(
   format    = "latex",
   booktabs  = TRUE,
   digits    = 0,
-  caption  = "Calibrated Predictions using the Validation Sample",
+  caption  = "Calibrated Predictions using the Validation Sample (Transactions)",
   col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
   escape    = TRUE,         # allows LaTeX in cell content
   label     = "transaction-predictions"
@@ -566,6 +510,8 @@ Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions), i
 
 
 ```{r weighted_predictions, echo=FALSE}
+
+# Just keep a few columns and polish them up to look nice in the manuscript.
 weighted_predictions<-Testmkt_preds %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`) %>%
     mutate(
@@ -582,7 +528,7 @@ kable(
   format    = "latex",
   booktabs  = TRUE,
   digits    = 0,
-  caption  = "Calibrated Predictions using the Validation Sample",
+  caption  = "Calibrated Predictions using the Validation Sample (weights)",
   col.names = c("Market Category", "Actual Metric Tons", "Predicted Metric Tons", "Error Rate"),
   escape    = TRUE,         # allows LaTeX in cell content
   label     = "weighted-predictions"
