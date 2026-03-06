@@ -54,6 +54,7 @@ Warnings: There is something funky going on with VA "status=PZERO" starting in 2
 library("foreign")
 library("here")
 library("tidyverse")
+library("tidymodels")
 library("scales")
 library("knitr")
 library("lubridate")
@@ -65,6 +66,7 @@ library("htmltools")
 here::i_am("writing/Economic_informed_stock_assessments.Rmd")
 # pak::pak("adletaw/captioner")
 library("captioner")
+library("glue")
 fig_nums <- captioner(prefix= "Figure")
 
 #############################################################################
@@ -102,21 +104,27 @@ lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
 
-pred_vintage<-"2026-02-10"
-
+pred_vintage<-"2026-02-11"
+data_vintage_string<-"2026-03-03"
 
 # Need to read in "raw" validation, "calibrated" validations.
 # At Transaction level
 # At mt level
-nocluster_testing_predictions<-readRDS(here("results","ranger",paste0("aggregate_test_predictions_TS_nocluster",pred_vintage, ".Rds")))
-nocal_predictions<-readRDS(here("results","ranger",paste0("aggregate_nocal_predictions_TS_nocluster",pred_vintage, ".Rds")))
+nocluster_testing_predictions<-readRDS(here("results","ranger",glue("aggregate_test_predictions_TS_nocluster{pred_vintage}.Rds")))
+nocal_predictions<-readRDS(here("results","ranger",glue("aggregate_nocal_predictions_TS_nocluster{pred_vintage}.Rds")))
+
+
+# this was created with data_prep_ml.Rmd
+data_split<-readr::read_rds(file=here("results","ranger",glue("nocluster_data_split{pred_vintage}.Rds")))
+oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{data_vintage_string}.Rds")))
+
+train_data <- training(data_split)
+test_data <- testing(data_split)
+validation_data <- validation(data_split)
 
 
 #nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
 #aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
-
-
-
 ```
 
 # Introduction
@@ -254,17 +262,18 @@ Like many machine learning models, random forests have hyperparameters which mus
 
 To address these blah, we do a bunch of good stuff.  We split our dataset three ways; we use 70% of our dataset to tune the model hyperparameters, 15% to calibrate probabilities, and 15% to validate the model.  Simulation studies by [@Barreada2024] suggest tuning over the minimum node size (*min.n*) when using random forests in probability models. The number of randomly selected predictors (*mtry*) was also tuned over. We tune over two hyperparameters by performing a 10-fold cross validation study in which we grid search over the reasonable starting values of the two parameters.  We supplement the initial grid search by performing the bayesian tuning described by @Shahriari2016. Our cross-validation was stratified by market category to ensure that the proportion of each class in the folds approximately matched the initial compositions. We selected the optimal pair of hyperparameters that had the smallest log loss criterion function averaged over the ten folds. For each fold, log loss is computed as: 
 
-$$
+\begin{equation}
+\label{logloss1}
 LogLoss = - \sum_{i=i}^N Y_{ik} ln(Pr_{ik})
-$$
+\end{equation}
 where $i$ indexes observations, $k$ indexes classes, $Y_{ik}=1$ if observation $i$ is a member of class $k$, and $Pr_{ik}$ is the predicted probability that observation $i$ is a member of class $k$.
 
 After selecting the best hyperparamters, we refit the model on the entire 70% tuning dataset.  We use the fitted model to predict class membership for the 15% calibration sample. We visually assess whether the model is well-calibrated using commonly used calibration plots [@Ojeda2023; @Barreada2024]. We also use the Relative Calibration loss methods described in [@Ferrer2025] to assess whether calibration is necessary (it is) and to select among isotonic, beta, and multinomial calibration methods.
 
 We apply the the trained model and the probability calibration routine to the final 15% of our data as a final validation.  We report adjusted fit metrics.  The random forest model is fit in R using the ``ranger`` package; we use  ``tidymodels`` packages to facilitate tuning, training, and out-of-sample predicting.  
 
-After fitting the data, we predict out of sample on the Unclassified Landings.  We do this "probabilistically", 
-using the trained model to predict the probability of class memembership and then aggregating the 
+After fitting the data, we predict out of sample on the Unclassified Landings.  We do this with  "soft probabilities", 
+using the trained model to predict the probability of class memembership^[The alternative is to assign class membership to the highest predicted class] and then aggregating the 
 landed pounds to the year-, market category-, and subregion level. 
 
 
@@ -344,8 +353,6 @@ This is pretty rough notation
 D_{cjy} = \frac{\sum_{t \in y} lndlb_{jt}} {\sum_c \sum_{t\in y} lndlb_{jt}}
 \end{equation}
 
-
-
 Second, @Roberts2017 note that standard cross-validation techniques can be overly optimistic
 when observations are dependent but are implicitly treated as independent during a random cross-validation.   This occurs because 
 the hold out data used for cross-validation is not actually independent. @Roberts2017 suggest
@@ -374,12 +381,96 @@ Black Sea Bass may be caught by firms without a federal fishing permit and sold 
 
 Our observational units are sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In our exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and our Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is to obtain an aggregate weight prediction of the underlying unobserved market category of Unclassified fish; we are not interested in predictions of aggregate transactions.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their freqency weight. This results in bootstrap datasets which more closely resemble the frequency weighted data (instead of the unweighted data).  We attempted to calibrate using weighted data without success and we discuss reasons and paths forward in the discussion section.
 
-Machine learning algorithms can often benefit from preprocessing of data. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  We grow 500 trees when tuning the model and when training the final model.
+
+```{r summary_statistics, eval=T, echo=F}
+source(here("writing","BSB.Classification.Recipe.R"))
+
+```
+
+
+Machine learning algorithms can often benefit from preprocessing of data. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the greatest decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  We grow 500 trees when tuning the model and when training the final model.
 
 Weights
 
-```{r BSB_data, eval=F, echo=F}
-source(here("writing","BSB.Classification.Recipe.R"))
+```{r BSB_data, eval=T, echo=F}
+#stack together the data_split, tagging by partition
+estimation_dataset <- bind_rows(
+  training(data_split)   %>% mutate(partition = "train"),
+  validation(data_split) %>% mutate(partition = "validation"),
+  testing(data_split)    %>% mutate(partition = "test")
+)
+
+my_selection<-c("priceR_CPI","lndlb")
+
+
+
+count_obs<-  estimation_dataset %>%
+      group_by(market_desc) %>%
+      summarise(n = n(), total_mt = sum(lndlb/lbs_per_mt, na.rm = TRUE)) %>%
+      pivot_longer(
+        cols = c(n, total_mt),
+        names_to = "variable",
+        values_to = "value"
+      ) %>%
+      pivot_wider(
+        names_from  = market_desc,
+        values_from = value
+      ) %>%
+      mutate(
+        variable = if_else(variable == "n", "N", variable),
+        stat = "",
+        across(-c(variable, stat), ~as.character(round(.x, 1)))
+      ) %>%
+  relocate(variable, stat, Jumbo, Large, Medium, Small)
+
+
+summary_numerics<-estimation_dataset %>%
+  group_by(market_desc) %>%
+  summarise(across(
+    all_of(my_selection),
+    list(
+      mean = ~mean(.x, na.rm = TRUE),
+      se   = ~sd(.x, na.rm = TRUE) / sqrt(sum(!is.na(.x)))
+    )
+  )) %>%
+  pivot_longer(
+    cols = -market_desc,
+    names_to = c("variable", "stat"),
+    names_sep = "_(?=[^_]+$)"
+  )%>%
+  mutate(value = if_else(stat == "se", paste0("(", round(value, 3), ")"), as.character(round(value, 3)))) %>%
+  pivot_wider(
+    names_from  = market_desc,
+    values_from = value
+  ) %>%
+  arrange(variable, stat) %>%
+  mutate(variable = if_else(stat == "se", "", variable))%>%
+    relocate(variable, stat, Jumbo, Large, Medium, Small)
+
+summary_numerics<-summary_numerics %>%
+  bind_rows(count_obs) %>%
+  select(-stat)
+
+
+
+kable(
+  summary_numerics,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Summary Statistics",
+  col.names = c("Variable", "Jumbo", "Large", "Medium", "Small"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "summary_numerics-table"
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  ) 
+
+
+
+
 
 ```
 
@@ -387,17 +478,17 @@ source(here("writing","BSB.Classification.Recipe.R"))
 
 # Results
 
-Model tuning overview.
+Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibrate on 15\%, and validate on the final 15\% holdout sample. We present results of the initial tuning, calibration, and validation.  To summarize, the initial tuning found optimal hyperparameter values of $mtry=19$ and $min_n=66$ respectively.  The calibration steps find moderate gain from isotonic calibration, and the validation shows the model fits well. 
 
-## Tuning results
+## Tuning and Calibration results
 
 
 ```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
 knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocluster", pred_vintage, ".png")))
 ```
 
-Our model fits well. In-sample ROC curves from tuning are quite similar across folds
-and indicate that the tuned random forest does well at predicting market category  (Figure  \@ref(fig:rocTune)).
+In-sample ROC curves from tuning are quite similar across folds
+and the initial steepness indicates the tuned random forest is good (Figure  \@ref(fig:rocTune)).
 
 ```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
 knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster", pred_vintage, ".png")))
@@ -405,13 +496,13 @@ knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
 
-```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
-knitr::include_graphics(here("results","ranger","final", paste0("roc_TS_nocluster", pred_vintage, ".png")))
+The calibration step \@ref(fig:calibrationplots) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).  
+
+```{r calibrationplots,echo=FALSE,out.width="48%",fig.show='hold', fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
+knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.png"),glue("cal_isovalidate_windownocluster{pred_vintage}.png") ) ) )
 ```
 
-The final ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
-overfit the model.
-
+ROC curves, on the 'test data' belong here.  So does a confusion matrix or heatmap belongs here. 
 
 
 ```{r validation_predictions, echo=FALSE, warning=FALSE}
@@ -594,6 +685,19 @@ Our loss function is very simple for tuning is very simple. But our data is not,
 
 ```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
+
+## Additional Model fit and diagnostics
+
+### Pre-calibration ROC curve
+```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
+knitr::include_graphics(here("results","ranger","final", glue("roc_TS_nocluster{pred_vintage}.png")))
+```
+
+The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
+overfit the model.
+
+
+### Pre-calibration confusion matrix and aggregate predictions
 
 
 These are the predictions that come out of the non-calibrated models.
