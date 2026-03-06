@@ -167,24 +167,8 @@ manage with stringent possession limits.  Strong year classes can make a size
 class temporarily more available during certain years.
 
 
-
-```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories, 2013-2024."}
-knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
-```
-
-
-Fishing vessels catch fish and deliver it to buyers (fish dealer) who classify the fish into market categories and pay the vessel.  This market structure, in which the quantity and quality supplied is determined before prices adjust to equalize quantity supplied and quantity demanded, is common in fish markets [@Barten1989; @Kristofersson2007;@Gobillon2017].  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[Following the stock assessment, "Mixed or Unsized" is aggregated with "Unclassified";  "Extra Small" and "PeeWee" are aggregated with Small category; "Extra Large" is aggregated with "Jumbo"].  Figure \@ref(fig:length-histograms) illustrates that fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. No standardized definition of the market categories exists and the definitions themselves may vary over time (year-to-year, month-to-month) and geography (state-to-state or stock area to stock area).  Many fish dealers act just as wholesalers, simply selling whole fish to processors, restaurants, or final consumers. Other fish dealers are vertically integrated with some downstream entities, processing and selling filleted fish to downstream customers. Integration of the harvest and wholesale/dealer activities also occurs.
-
-The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
-
-Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicTableA}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.50.  Interestingly, the Unclassified market category has an average price of \$4.40 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
-
-## Regulatory Environment
-
 The fishery is jointly managed by the ASFMC and the MAFMC. Regulations are enacted 
-by GARFO.  There is also a South Atlantic stock, south of Cape Hatteras that is managed by the SAFMC.
-
-From 1996 through 2003, the fishery was managed primarily by quarterly catch 
+by GARFO.  From 1996 through 2003, the fishery was managed primarily by quarterly catch 
 limits for the entire fishery. There were early closures in 1999 (Quarters 2,3,4),
 2000 (2,3,4), and 2001 (all). Quota was allocated to each state staring in 2003
 (Amendment 13) and is monitored based on landed state. In 2021, the formula 
@@ -198,8 +182,18 @@ have IFQ programs that started in 2004. Current minimum size limits are 11"
 or 12".  Possession limits vary widely by state; the IFQ states do not have 
 possession limits while Massachusetts and Rhode Island use seasonally varying 
 limits that have been as strict as 50 lbs/day or as loose as 1,500 lbs per week.
-Nearly all states require a vessel operator to have a limited access permit to 
-land black sea bass in that state.
+
+
+```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories, 2013-2024."}
+knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
+```
+
+
+Fishing vessels catch fish and deliver it to buyers (fish dealer) who classify the fish into market categories and pay the vessel.  This market structure, in which the quantity and quality supplied is determined before prices adjust to equalize quantity supplied and quantity demanded, is common in fish markets [@Barten1989; @Kristofersson2007;@Gobillon2017].  There are four prevalent market categories (Jumbo, Large, Medium/Market, and Small), plus an "Unclassified" category^[Following the stock assessment, "Mixed or Unsized" is aggregated with "Unclassified";  "Extra Small" and "PeeWee" are aggregated with Small category; "Extra Large" is aggregated with "Jumbo"].  Figure \@ref(fig:length-histograms) illustrates that fish in the "Unclassified" or "Mixed" category are precisely that, an unobserved combination of the other market categories. No standardized definition of the market categories exists and the definitions themselves may vary over time (year-to-year, month-to-month) and geography (state-to-state or stock area to stock area).  Many fish dealers act just as wholesalers, simply selling whole fish to processors, restaurants, or final consumers. Other fish dealers are vertically integrated with some downstream entities, processing and selling filleted fish to downstream customers. Integration of the harvest and wholesale/dealer activities also occurs.
+
+The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
+
+Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicTableA}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  Interestingly, the Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
 
 
 
@@ -214,34 +208,9 @@ aggregate in structured habitats and are caught near reefs and wrecks. Though bl
 
 Before 2023, reference point calculations for black sea bass had been taken from two Age Structured Assessment Program (ASAP) models, north or south of Hudson Canyon. Since 2023, the black sea bass stock assessment model has been a single age-based Woods Hole Assessment Model (WHAM) with movement assumed and estimated between the northern and southern subregions, albeit with a strong prior derived from a priori tagging data [@Miller2025]. Each subunit has distinct assumed life history input like weight at age, length-weight relationships, and maturity at age. The assessment model also estimates distinct parameters for each subunit including abundance, recruitment, fishing mortality, and selectivity. Because the recruitment is distinct, the subunits can have noticeably different size compositions, and the northern subunit had large age classes in 2012 and 2018. 
 
-The assessment model is fit to catch data from the commercial and recreational fishery, and two sources of fisheries-independent indices: model-based indices from a VAST model [@Thorson2019; @Hansell2026]and recreational catch-per-angler indices. The conversion from raw catch data to catch-at-age necessitates using portside and observer sampling data of lengths and ages (via otoliths). Because such data can be highly spatiotemporally dependent, these data are aggregated to the year, semester (Jan-Jun or Jul-Aug), and region (north or south).
-
-[Emily's note - leaving in these notes of Min Yang's, but not sure if they're relevant to description of life history and stock assessment. Maybe I should add more though?]
-
-
-Is there Size clustering in the ocean? Either in time or in space?
-  Do big fish hang out in one spot at one time?
-  Do smaller fish hang on in a different spot?
-
-* Recent landings in the stock area by market category: catching fish is patchy.
-If vessels are catching alot of larges, they are going to keep catching lots of 
-larges.
-
-* Recent landings in the state by market category: Same. In addition, there's 
-    persistent "demand" if vessels can move around. processors and customers
-    are set up for certain things.
-* today's landings from a stock area by market category by other boats: same as above
-* today's landings from a in a state by market category by other boats
-* state and stock area trips
-* lndlb (trip level landings by market category)
-* trip level landings of black sea bass -- trips with large quantities might
-    be more likely to sort. 
+The assessment model is fit to catch data from the commercial and recreational fishery, and two sources of fisheries-independent indices: model-based indices from a VAST model [@Thorson2019; @Hansell2026] and recreational catch-per-angler indices. The conversion from raw catch data to catch-at-age necessitates using portside and observer sampling data of lengths and ages (via otoliths). Because such data can be highly spatiotemporally dependent, these data are aggregated to the year, semester (Jan-Jun or Jul-Aug), and region (north or south).
 
 ### Port Sampling for Ages and Lengths 
-
-[Emily's note - huge props to Brian Linton. He gave a wicked presentation on the port sampling program a while back: 
-https://docs.google.com/presentation/d/1gldmGvkSllACS6VclQOoX5R6twfV2B6A/edit?slide=id.p55#slide=id.p55
-I only have one bit of information on cost, but can dig into it more if you feel its important. Brian just said cost per sample is going up]
 
 A port sampling program has existed in the northeast United States for more than three decades,
 collecting vital biological data like lengths, weights, ages, and stomach samples that directly support
@@ -263,11 +232,11 @@ extreme cases may take length and age distribution data from fisheries-independe
 sample information to convert the total landings in pounds to landings-at-age, which are the necessary format to run age-based stock assessments like in ASAP or WHAM.
 
 
-```{r LenHist2,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2013-2024."}
-knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.Region.Color.2009-2013.png"),here("images","background","LenFq.Mktcomb.Region.Color.2014-2018.png")))
+```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
+knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 
-Figure \@ref(fig:LenHist2) illustrates these data gaps; there are no biosamples for Unclassified fish in the South region after 2013.  In both time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is likely to produce catch-at-length estimates that are too large.  Filling data gaps in the North with data from the South is likely to produce catch-at-length estimates that are too small.  Within a region, borrowing data from a bordering market category is also likely to produce poor estimates of catch-at-length.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. In more recent years, a moderate shift to the right in the small, medium, and large market categories.  Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves us in an uncomfortable place. 
+Figure \@ref(fig:LenHist2) illustrates these data gaps and their attendant problems; there are no biosamples for Unclassified fish in the South region after 2013 and very few in the north, particularly after 2018^[All measured Unclassified fish in the 2019-2024 time period came from a 2 week time period in a single port in 2020.  There are also relatively few samples of Jumbo in the South from 2014-2018 and Small in the North from 2019-2024.].  In all three time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is therefore likely to produce catch-at-length estimates that are too large. Within a region, borrowing data from a bordering market category is also likely to produce poor estimates of catch-at-length.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves the stock assessment scientists in an uncomfortable place. 
 
 
 
