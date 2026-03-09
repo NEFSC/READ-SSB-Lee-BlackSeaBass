@@ -206,26 +206,29 @@ Tuning vintage is `r tuning_vintage`.
 
 Final fit vintage is `r finalfit_vintage`.
 
-```{r load_in_data and tuning_results, include=FALSE}
-# this was created with data_prep_ml.Rmd
-data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+```{r load_in_tuning_results, include=FALSE}
 tune_res<-readr::read_rds(file=here("results","ranger",glue("{tuning_pattern}{tuning_vintage}.Rds")))
-oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+#oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
 
-train_data <- training(data_split)
-test_data <- testing(data_split)
-validation_data <- validation(data_split)
-
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-search_type<-"Initial"
+#source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+#search_type<-"Initial"
 
 
-source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+#source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 
 ```
 
-```{r final_fit}
+
+# Tuning
+
+How well did the tuning work?
+
+
+
+
+```{r check_convergence}
+# Did the bayesian model converge or is one of the grid-searchs best?
 
 bayesian_results<-autoplot(tune_res, type = "performance") +
   labs(title = "Did Bayesian optimization converge?")
@@ -233,7 +236,7 @@ bayesian_results<-autoplot(tune_res, type = "performance") +
  ggsave(here("results","ranger","tune",glue("bayesian_tune_{modeltype}{tuning_vintage}.png")), plot=bayesian_results)
 
  write_rds(bayesian_results, file=here("results","ranger","final",glue("bayesian_tune_{modeltype}{finalfit_vintage}.Rds")))
-
+rm(bayesian_results)
 
  #It didn't find anything better.
 
@@ -247,6 +250,8 @@ best_config<-best_tree %>%
 
 best_config
 ```
+
+# do the metrics look okay?
 
 ```{r }
 
@@ -266,6 +271,11 @@ For noclusterTS, the grid search was pretty good, with mtry=18, min_n=17 produci
 # I have an 'if' exists statement going on here, because it takes a little while to fit the model. If I've already fit the model, I'll just read it in.
 # the first time, my code bombed out because I didn't have storage space. Now, the full fit worked, so it's safer to eval=FALSE this chunk
 
+
+source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+search_type<-"Initial"
+source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+
 final_wf <- 
   BSB.Ranger.Workflow %>% 
   finalize_workflow(best_tree)
@@ -279,6 +289,7 @@ final_fit <-
 
 write_rds(final_fit, file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 }
+gc()
 ```
 
 ```{r brier_class, eval=FALSE}
@@ -334,7 +345,7 @@ log_loss<- mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
  ggsave(here("results","ranger","tune",glue("mn_log_loss_mtry_{modeltype}{tuning_vintage}.png")), plot=log_loss)
 
  write_rds(log_loss, file=here("results","ranger","final",glue("mn_log_loss_mtry_{modeltype}{finalfit_vintage}.Rds")))
-
+rm(log_loss)
  
 min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
   geom_point(show.legend = TRUE) + 
@@ -342,7 +353,7 @@ min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
 
   ggsave(here("results","ranger","tune",glue("mn_log_loss_min_n_{modeltype}{tuning_vintage}.png")), plot=min_n)
  write_rds(min_n, file=here("results","ranger","final",glue("mn_log_loss_min_n_{modeltype}{finalfit_vintage}.Rds")))
-
+rm(min_n)
  p<- plot_ly(mn_log_loss, 
         x = ~mtry, 
         y = ~min_n, 
@@ -354,7 +365,7 @@ min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
 )
 
  saveWidget(p, here("results","ranger","tune",glue("mn_log_loss{modeltype}{tuning_vintage}.html")), selfcontained = TRUE)
-
+rm(p)
   
 ```
 
@@ -380,6 +391,7 @@ not_good
 # A ROC curve from tuning . I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
+rm(tune_res)
 
 # pull the probability names
 prob_names<-colnames(predictions) 
@@ -398,10 +410,11 @@ roc_plot<-predictions %>%
    facet_wrap(~.level) + 
   geom_line(show.legend = TRUE) 
 
-print(last_plot())
+roc_plot
 
 ggsave(here("results","ranger","tune",glue("roc_tune_{modeltype}{tuning_vintage}.png")), plot=roc_plot)
 
+rm(roc_plot)
 
 pr_plot<-predictions %>%
   group_by(id) %>%
@@ -415,8 +428,9 @@ pr_plot<-predictions %>%
 
 ggsave(here("results","ranger","tune",glue("pr_curve_tune_{modeltype}{tuning_vintage}.png")), plot=pr_plot)
 
-
-  
+rm(pr_plot)
+  rm(predictions)
+gc()
 ```
 
 # Load in the final model
@@ -424,8 +438,14 @@ ggsave(here("results","ranger","tune",glue("pr_curve_tune_{modeltype}{tuning_vin
 read in the final model, extract the recipe and the predictors, extract the predictions
 
 ```{r load_final_model}
+# # this was created with data_prep_ml.Rmd
+# data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+# 
+# train_data <- training(data_split)
+# test_data <- testing(data_split)
+# validation_data <- validation(data_split)
+# rm(data_split)
 
-rm(tune_res)
 
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
@@ -478,150 +498,6 @@ ggsave(here("results","ranger","final",glue("vip{modeltype}{finalfit_vintage}.pn
 
 ```
 Variable importance measures are the Prices and the Dealer proporption variables. 
-
-
-```{r ROC_Curve}
-
-# Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
-final_roc<-final_predictions %>%
-  roc_curve(truth=market_desc, 
-            any_of(prob_names),
-            case_weights=.case_weights)  %>%
-  autoplot()
-ggsave(here("results","ranger","final",glue("roc_{modeltype}{finalfit_vintage}.png")), plot=final_roc)
-
-
-```
-
-
-```{r pub_ready_ROC}
-# --- 1. Compute per-class ROC curve data ---
-roc_data <- final_predictions %>%
-  roc_curve(
-    truth = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    case_weights=.case_weights
-  )
-
-
-roc_dataUW <- final_predictions %>%
-  roc_curve(
-    truth = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
-  )
-
-
-
-# --- 2. Compute per-class AUC for annotation ---
-auc_data <- final_predictions %>%
-  roc_auc(
-    truth     = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    estimator = "macro"
-  )
-
-# --- 3. Colour palette — four classes ---
-class_colours <- c(
-  "Jumbo"  = "#1B6CA8",   # deep blue
-  "Large"  = "#E05C2A",   # burnt orange
-  "Medium" = "#2E8B57",   # sea green
-  "Small"  = "#7B3F9E"    # purple
-)
-
-# --- 4. Build the figures ---
-p_facet <- ggplot(roc_data,
-                  aes(x = 1 - specificity, y = sensitivity)) +
-  geom_abline(slope = 1, intercept = 0,
-              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
-  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ .level, ncol = 4) +
-  scale_colour_manual(values = class_colours) +
-  scale_x_continuous(
-    name   = "1 \u2212 Specificity (False Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_y_continuous(
-    name   = "Sensitivity (True Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  coord_equal() +
-  theme_bw(base_size = 9) +
-  theme(
-    strip.background = element_rect(fill = "grey92", colour = "grey40"),
-    strip.text       = element_text(size = 8, face = "bold"),
-    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor = element_blank(),
-    axis.title       = element_text(size = 8),
-    axis.text        = element_text(size = 7, colour = "grey20"),
-    plot.margin      = margin(4, 6, 4, 4, "pt")
-  )
-# --- 5. Save at ICES JMS specifications ---
-ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
-
-
-
-
-# --- 6. Build the unweighted figure ---
-p_facet <- ggplot(roc_dataUW,
-                  aes(x = 1 - specificity, y = sensitivity)) +
-  geom_abline(slope = 1, intercept = 0,
-              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
-  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ .level, ncol = 4) +
-  scale_colour_manual(values = class_colours) +
-  scale_x_continuous(
-    name   = "1 \u2212 Specificity (False Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_y_continuous(
-    name   = "Sensitivity (True Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  coord_equal() +
-  theme_bw(base_size = 9) +
-  theme(
-    strip.background = element_rect(fill = "grey92", colour = "grey40"),
-    strip.text       = element_text(size = 8, face = "bold"),
-    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor = element_blank(),
-    axis.title       = element_text(size = 8),
-    axis.text        = element_text(size = 7, colour = "grey20"),
-    plot.margin      = margin(4, 6, 4, 4, "pt")
-  )
-
-ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
-
-
-
-```
-
-
-
-
-
-
-
-
-
-
 
 
 ```{r PR_Curve}
@@ -796,6 +672,15 @@ validation_data_multicalib_applied <-
   cal_apply(calibrate_multinom)
 
 
+# subesequent testing shows this is the best calibration, so we save it.
+write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+
+
+
+
+
+
+
 iso_applied_window<-cal_plot_windowed(validation_data_isocalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
 iso_applied_window
@@ -856,24 +741,330 @@ rCalLoss
 
 
 
+
+
+
+```{r ROC_Curve}
+
+# Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
+final_roc<-validation_data_isocalib_applied %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+
+
+
+final_roc_nocal<-validation_data %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("final_uncal_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+
+
+```
+
+
+
+
+
+```{r pub_ready_ROC_calibrated}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- validation_data %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=.case_weights
+  )
+
+
+roc_dataUW <- validation_data %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- validation_data %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("final_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("final_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r pub_ready_ROC_calibrated}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- validation_data_isocalib_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=.case_weights
+  )
+
+
+roc_dataUW <- validation_data_isocalib_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- validation_data_isocalib_applied %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```{r final_model_testing}
 
-
-test_data2 <- augment(final_workflow,test_data )
+test_data<-training(data_split)
+test_data <- augment(final_workflow,test_data)
 
 
 
 
 
 #Plot the "raw" predictions
-uncalibrated<-cal_plot_windowed(test_data2, truth = market_desc, step_size = 0.05,include_points=FALSE)
+uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05,include_points=FALSE)
 
 ggsave(here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.png")), plot=uncalibrated)
 write_rds(uncalibrated, file=here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.Rds")))
 
 
 test_data_calibration_applied <-
-  test_data2 %>%
+  test_data %>%
   cal_apply(calibrate_iso)
 
 # Plot the calibrated predictions
@@ -893,7 +1084,7 @@ write_rds(calibrated, file=here("results","ranger","final",glue("validation_cali
 # Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
 # (ESPR_raw - ESPR_cal)/ESPR_raw
 
-ESPR_raw<-test_data2 %>%
+ESPR_raw<-test_data %>%
   mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
   pull(.estimate)
 
@@ -1020,7 +1211,7 @@ Here are the predictions (transactions and mt) for the hold-out sample, without 
 
 
 # keep just a few columns
-test_data_nocalibration_applied<-test_data2%>%
+test_data_nocalibration_applied<-test_data%>%
   select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
 
 # predicted pounds per transaction in the validation dataset.
@@ -1066,7 +1257,7 @@ aggregate_nocal_weight_predictions<-nocal_predictions %>%
   pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
 
-true<-test_data2%>%
+true<-test_data%>%
     mutate(transactions=1) %>%
     group_by(market_desc) %>%
     summarise(lndlb=sum(lndlb),
