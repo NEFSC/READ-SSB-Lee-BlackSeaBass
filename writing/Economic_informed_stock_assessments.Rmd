@@ -502,7 +502,15 @@ The calibration step \@ref(fig:calibrationplots) illustrates an issue that commo
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.png"),glue("cal_isovalidate_windownocluster{pred_vintage}.png") ) ) )
 ```
 
-ROC curves, on the 'test data' belong here.  So does a confusion matrix or heatmap belongs here. 
+Validation ROC curve (Figure  \@ref(fig:roc_Valid)). 
+
+```{r roc_Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Validation Sampletuning"}
+knitr::include_graphics(here("results","ranger","tune", paste0("final_roc_curve", pred_vintage, ".pdf")))
+```
+
+
+Soft confusion matrix or heatmap belongs here. 
+
 
 
 ```{r validation_predictions, echo=FALSE, warning=FALSE}
@@ -697,6 +705,8 @@ The pre-calibration ROC curve is similar to the individual tuning curves (Figure
 overfit the model.
 
 
+
+
 ### Pre-calibration confusion matrix and aggregate predictions
 
 
@@ -795,6 +805,7 @@ kable(
   ) 
 
 ```
+### Hard prediction confusion matrix
 
 
 more text here!
