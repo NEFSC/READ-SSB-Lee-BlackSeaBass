@@ -489,7 +489,141 @@ final_roc<-final_predictions %>%
             case_weights=.case_weights)  %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("roc_{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+
+
 ```
+
+
+```{r pub_ready_ROC}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- final_predictions %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=.case_weights
+  )
+
+
+roc_dataUW <- final_predictions %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- final_predictions %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
 ```{r PR_Curve}
 # PR curve
 final_pr<-final_predictions %>%
