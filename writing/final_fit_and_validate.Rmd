@@ -377,7 +377,7 @@ not_good
 # Some in-sample results from Tuning
 
 ```{r roc}
-# A ROC curve. I'm not sure if this is quite right, but I think it is.
+# A ROC curve from tuning . I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
 
@@ -391,7 +391,9 @@ roc_plot<-predictions %>%
   dplyr::filter(.config==best_config) %>%
   group_by(id) %>%
   #dplyr::filter(!id %in% not_good) %>%
-  roc_curve(market_desc, any_of(prob_names)) %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
   ggplot(aes(x=1-specificity,y=sensitivity, colour=id)) +
    facet_wrap(~.level) + 
   geom_line(show.legend = TRUE) 
@@ -405,7 +407,9 @@ pr_plot<-predictions %>%
   group_by(id) %>%
   dplyr::filter(.config==best_config) %>%
 #  dplyr::filter(!id %in% not_good) %>%
-  pr_curve(market_desc, any_of(prob_names))%>% ggplot(aes(x=recall,y=precision, colour=id)) +
+  pr_curve(truth=market_desc, any_of(prob_names),
+                       case_weights=.case_weights)  %>%
+ ggplot(aes(x=recall,y=precision, colour=id)) +
    facet_wrap(~.level) + 
   geom_line(show.legend = TRUE) 
 
@@ -480,7 +484,9 @@ Variable importance measures are the Prices and the Dealer proporption variables
 
 # Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
 final_roc<-final_predictions %>%
-  roc_curve(market_desc, any_of(prob_names))  %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("roc_{modeltype}{finalfit_vintage}.png")), plot=final_roc)
 ```
