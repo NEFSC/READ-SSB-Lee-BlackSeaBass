@@ -1,0 +1,1162 @@
+---
+title: "Black Sea Bass: Calibrate and Validate"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    keep_md: yes
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+params:
+  modeltype:
+    value: TS_nocluster
+    choices:
+    - nocluster
+    - TS_nocluster
+
+---
+
+# Summary and Housekeeping
+
+
+ My "final fit" bombed out because I didn't have drive space.  This is code to
+ 
+1. Read in the tune result and eyeball them.
+2. Pick the best set of tuning parameters.
+3. Fit a final model. 
+4. Calibrate probabilities using a 'testing sample'
+5. Validate on a validation sample. 
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ **********************************************************************
+* Purpose: 	Read in outputs of machine learning models 
+* Inputs: These three can be adjusted by changing the "modeltype"
+*   - Data file
+*   - tuning results file
+*   - final results file
+
+
+* Outputs:
+*   - Graphs of tuning quality and final model fit
+*   - Aggregate predictions for the testing (validation) dataset and the entire dataset (train+test)
+
+
+**********************************************************************
+
+ 
+ --->
+```{r global_options, include=FALSE}
+
+modeltype<-params$modeltype
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+library("ggrepel")
+# load tidyverse and related
+library("tidymodels")
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+library("probably")
+library("discrim")
+library("betacal")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("glue")
+
+#3d plots
+library("htmlwidgets")
+library("plotly")
+
+library("conflicted")
+
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+ 
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+					  
+												
+  my.parallel.threads<-2
+  
+}
+my.ranger.threads<-7
+
+here::i_am("writing/calibration_and_validation.Rmd")
+
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+} else if (modeltype=="TS_nocluster"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
+}else {
+  stop("Unknown modeltype")
+}
+
+
+
+
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, dev="png",
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# My "final fit" bombed out because I didn't have drive space.  
+# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
+# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
+# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
+# finalfit_vintage<-max(finalfit_vintage)
+
+finalfit_vintage<-tuning_vintage
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
+
+
+```
+
+
+# Load in the final model
+
+read in the final model, extract the recipe and the predictors, extract the predictions
+
+```{r load_final_model}
+# # this was created with data_prep_ml.Rmd
+# data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+# 
+# train_data <- training(data_split)
+# test_data <- testing(data_split)
+# validation_data <- validation(data_split)
+# rm(data_split)
+
+
+final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+
+
+# What is the workflow
+final_workflow<-extract_workflow(final_fit)
+
+# And the recipe
+extract_recipe(final_fit)
+
+preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
+ dplyr::filter(role=="predictor")
+
+num_preds<-nrow(preds)
+
+final_predictions<-final_fit %>%
+  collect_predictions()
+
+# pull the probability names
+prob_names<-colnames(predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+# look at the fit metrics
+final_fit_metrics<-final_fit %>%
+  collect_metrics()
+final_fit_metrics
+
+all.metrics %>%
+  dplyr::filter(.config==best_config) 
+
+```
+
+Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
+
+
+## Validation Diagnostics
+
+Look at the VIP, ROC, and PR curves
+
+```{r VIP}
+# Look at variable importance. I want to see all the predictors.
+# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Permutation"
+vip_plot<-final_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip(num_features = num_preds)
+ggsave(here("results","ranger","final",glue("vip{modeltype}{finalfit_vintage}.png")), plot=vip_plot)
+
+
+```
+Variable importance measures are the Prices and the Dealer proporption variables. 
+
+
+```{r PR_Curve}
+# PR curve
+final_pr<-final_predictions %>%
+  pr_curve(market_desc,  any_of(prob_names)) %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_pr)
+```
+
+# Validation and Calibration 
+
+Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if I have systematic under or over prediction.
+
+
+```{r Validation_predictions}
+# Apply the Final fit to the validation dataset
+
+validation_data <- augment(final_workflow,validation_data)
+
+#The validation plots indicate characteristic issues with probability trees. All models are underconfident. Groups of observations with a 75% predicted probability of Jumbo have a true probability of Jumbo of almost 90%.  Groups of observations with a predicted probability of ~15% probabilty of Jumbo have a true probability closer to 10%.
+
+# Calibration should fix this.
+
+cal_window<-validation_data %>%
+  cal_plot_windowed(truth = market_desc, step_size = 0.025, include_points = FALSE)
+cal_window
+ggsave(here("results","ranger","final",glue("cal_windowed_{modeltype}{finalfit_vintage}.png")), plot=cal_window)
+
+cal_breaks<-validation_data %>%
+  cal_plot_breaks(truth = market_desc, step_size = 0.025, include_points = FALSE)
+ggsave(here("results","ranger","final",glue("cal_breaks_{modeltype}{finalfit_vintage}.png")), plot=cal_breaks)
+
+cal_logistic<-validation_data %>%
+  cal_plot_logistic(truth = market_desc)
+cal_logistic
+ggsave(here("results","ranger","final",glue("cal_logistic_{modeltype}{finalfit_vintage}.png")), plot=cal_logistic)
+
+```
+
+
+Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
+
+```{r calibration_models}
+
+calibrate_beta <- cal_estimate_beta(validation_data, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+calibrate_iso <- cal_estimate_isotonic(validation_data, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+calibrate_multinom <- cal_estimate_multinomial(validation_data, 
+                                        truth=market_desc, 
+                                        estimate=.pred_Jumbo:.pred_Small,
+                                        smooth=TRUE)
+
+# weights <- validation_data$lndlb
+# 
+# calibrate_multinomW <- cal_estimate_multinomial(validation_data, 
+#                                         truth=market_desc, 
+#                                         estimate=.pred_Jumbo:.pred_Small,
+#                                         smooth=FALSE, parameters=NULL, weights=lndlb)
+
+
+```
+
+```{r explore_validations, eval=FALSE}
+# This section 'unweights' the validation data and then tries to fit a calibration.
+# It doesn't work too well, in part because the initial cal_plot is non-monotone. 
+# The observation-level model is textbook smooth, the unweighted one is not. 
+# This makes the parametric (beta, multi SMOOTH=FALSE) fit poorly
+# The multi Smooth and isotonic "should" fit better. 
+# The isotonic takes forever to run, because it has to do alot of comparisons.
+
+validation_expanded <- validation_data %>%
+  uncount(weights = weighting)
+
+# this dataset is massive. take a 5% sample, just to see what is going on.
+
+validation_sub<-initial_split(validation_expanded,prop=0.90)
+tt<-testing(validation_sub)
+
+
+tt %>%
+    cal_plot_windowed(truth = market_desc,step_size = 0.05)
+
+tt %>%
+  cal_plot_breaks(truth = market_desc, step_size = 0.025)
+
+
+calibrate_betaTT <- cal_estimate_beta(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+calibrate_multiTT <- cal_estimate_multinomial(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=TRUE)
+
+calibrate_isoTT <- cal_estimate_isotonic(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+
+WT_data_calib_applied<-  tt %>%
+  cal_apply(calibrate_multiTT)
+
+
+WT_data_calib_applied %>%
+    cal_plot_windowed(truth = market_desc,step_size = 0.05)
+
+
+
+W_ESPR_raw<-tt %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+W_ESPR_multi<-WT_data_calib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+CalLoss<-W_ESPR_raw-W_ESPR_multi
+rCalLoss<-100*CalLoss/W_ESPR_raw
+
+CalLoss
+rCalLoss
+
+
+# calibrate_iso <- cal_estimate_isotonic(validation_expanded, 
+#                                    truth=market_desc, 
+#                                    estimate=.pred_Jumbo:.pred_Small,
+#                                    smooth=FALSE)
+
+
+
+
+
+validation_exp_data_isocalib_applied <-
+  validation_expanded %>%
+  cal_apply(calibrate_iso)
+
+validation_exp_data_isocalib_applied %>%
+  cal_plot_breaks(truth = market_desc, step_size = 0.025)
+
+
+```
+
+
+
+
+
+```{r apply_calibration}
+# This is fine for testing out things, but the final judging is done on the 'testing' dataset
+
+validation_data_isocalib_applied <-
+  validation_data %>%
+  cal_apply(calibrate_iso)
+
+validation_data_betacalib_applied <-
+  validation_data %>%
+  cal_apply(calibrate_beta)
+
+validation_data_multicalib_applied <-
+  validation_data %>%
+  cal_apply(calibrate_multinom)
+
+
+# subesequent testing shows this is the best calibration, so we save it.
+write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+
+
+
+
+
+
+
+iso_applied_window<-cal_plot_windowed(validation_data_isocalib_applied,
+                  truth = market_desc, step_size = 0.05, include_points =FALSE)
+iso_applied_window
+
+ggsave(here("results","ranger","final",glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.png")), plot=iso_applied_window)
+
+write_rds(iso_applied_window, file=here("results","ranger","final",glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.Rds")))
+
+
+#Multi looks a little rough
+multi_applied_window<-cal_plot_windowed(validation_data_multicalib_applied,
+                  truth = market_desc, step_size = 0.05, include_points =FALSE)
+multi_applied_window
+ggsave(here("results","ranger","final",glue("cal_multicalibrate_window{modeltype}{finalfit_vintage}.png")), plot=multi_applied_window)
+
+write_rds(multi_applied_window, file=here("results","ranger","final",glue("cal_multicalibrate_window{modeltype}{finalfit_vintage}.Rds")))
+
+
+beta_applied_window<-cal_plot_windowed(validation_data_betacalib_applied,
+                  truth = market_desc, step_size = 0.05, include_points =FALSE)
+ggsave(here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.png")), plot=beta_applied_window)
+
+write_rds(beta_applied_window, file=here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.Rds")))
+
+
+# Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
+# (ESPR_raw - ESPR_cal)/ESPR_raw
+
+ESPR_raw<-validation_data %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_caliso<-validation_data_isocalib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_calbeta<-validation_data_betacalib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_calmulti<-validation_data_multicalib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+# the difference between these metrics is the calibration loss (A little weird). But basically, the "goodness of fit metric" improves when I apply a calibration. the multinomial model doesn't work so well. But Iso and Beta do. Iso is slightly better, so we will use that.
+ESPR_raw
+ESPR_caliso
+ESPR_calbeta
+ESPR_calmulti
+
+CalLoss<-ESPR_raw-ESPR_caliso
+rCalLoss<-100*CalLoss/ESPR_raw
+
+CalLoss
+rCalLoss
+```
+
+
+
+
+
+
+
+```{r ROC_Curve}
+
+# Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
+final_roc<-validation_data_isocalib_applied %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+
+
+
+final_roc_nocal<-validation_data %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights)  %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("final_uncal_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+
+
+```
+
+
+
+
+
+```{r pub_ready_ROC_calibrated}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- validation_data %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=.case_weights
+  )
+
+
+roc_dataUW <- validation_data %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- validation_data %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("final_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("final_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r pub_ready_ROC_calibrated}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- validation_data_isocalib_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=.case_weights
+  )
+
+
+roc_dataUW <- validation_data_isocalib_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- validation_data_isocalib_applied %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r final_model_testing}
+
+test_data<-training(data_split)
+test_data <- augment(final_workflow,test_data)
+
+
+
+
+
+#Plot the "raw" predictions
+uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05,include_points=FALSE)
+
+ggsave(here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.png")), plot=uncalibrated)
+write_rds(uncalibrated, file=here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.Rds")))
+
+
+test_data_calibration_applied <-
+  test_data %>%
+  cal_apply(calibrate_iso)
+
+# Plot the calibrated predictions
+
+calibrated<-cal_plot_windowed(test_data_calibration_applied, truth = market_desc, step_size = 0.05,include_points=FALSE)
+
+calibrated
+
+ggsave(here("results","ranger","final",glue("validation_calibrated_{modeltype}{finalfit_vintage}.png")), plot=calibrated)
+
+write_rds(calibrated, file=here("results","ranger","final",glue("validation_calibrated_{modeltype}{finalfit_vintage}.Rds")))
+
+
+
+#cal_plot_breaks(test_data_calibration_applied, truth = market_desc, num_breaks=20,include_points=FALSE)
+
+# Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
+# (ESPR_raw - ESPR_cal)/ESPR_raw
+
+ESPR_raw<-test_data %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+ESPR_cal<-test_data_calibration_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_raw
+ESPR_cal
+
+CalLoss<-ESPR_raw-ESPR_cal
+rCalLoss<-100*CalLoss/ESPR_raw
+
+#  The iso calibration improves model fit a bit. 
+
+CalLoss
+rCalLoss
+
+```
+
+# Calibrated Predictions
+
+In this section, I predict out of sample on my 'test' dataset with the calibration applied 
+
+
+```{r extract_predictions}
+### pull a few categories, compute a prob*lndlb variable, sum 
+
+
+# keep just a few columns
+test_data_calibration_applied<-test_data_calibration_applied %>%
+  select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
+
+# predicted pounds per transaction in the validation dataset.
+# multiply the prediction by the landed pounds to get predicted pounds in each class. 
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    test_data_calibration_applied[[paste0("pred_", l)]] <- test_data_calibration_applied[[paste0(".pred_", l)]] * test_data_calibration_applied$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+# Sum up the predictions by year, market category, and stockarea. 
+test_predictions<-test_data_calibration_applied %>%
+   group_by(stockarea, year,market_desc) %>%
+  select(-.pred_class) %>%
+  mutate(transactions=1) %>%
+  summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
+   ungroup()
+test_predictions$modeltype<-modeltype
+
+test_predictions<-test_predictions %>%
+  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
+
+write_rds(test_predictions, file=here("results","ranger",glue("aggregate_test_predictions_{modeltype}{finalfit_vintage}.Rds")))
+
+#test_predictions<-test_predictions %>%
+#  dplyr::filter(year %in% c(2021,2022,2023,2024))
+
+```
+
+## Probabalistic Predictions of the class of each transaction
+
+Here are the predictions (transactions and mt) for the hold-out sample, using the probability calibrations.
+
+```{r topline_validation}
+
+aggregate_transactions<-test_predictions %>%
+    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
+
+
+aggregate_test_predictions<-test_predictions %>%
+    summarise(across(c(starts_with("pred_")), sum)) %>%
+  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+true<-test_predictions %>%
+    group_by(market_desc) %>%
+    summarise(lndlb=sum(lndlb),
+              transactions=sum(transactions))
+
+Testmkt_preds<-aggregate_transactions %>%
+  left_join(true, by=join_by(market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  left_join(aggregate_test_predictions, by=join_by(market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted,
+         predicted_transactions=ObsPredicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
+         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
+
+
+transaction_predictions<-Testmkt_preds %>%
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+
+
+knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 15% Validation Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+```{r weighted_predictions}
+weighted_predictions<-Testmkt_preds %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+
+knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+
+Here are the predictions (transactions and mt) for the hold-out sample, without the probability calibrations.
+
+```{r aggregate_test2_predictions}
+# Subset data, construct predicted pounds, and aggregate
+
+
+### pull a few categories, compute a prob*lndlb variable, sum 
+
+
+# keep just a few columns
+test_data_nocalibration_applied<-test_data%>%
+  select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
+
+# predicted pounds per transaction in the validation dataset.
+# multiply the prediction by the landed pounds to get predicted pounds in each class. 
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    test_data_nocalibration_applied[[paste0("pred_", l)]] <- test_data_nocalibration_applied[[paste0(".pred_", l)]] * test_data_nocalibration_applied$lndlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+# Sum up the predictions by year, market category, and stockarea. 
+nocal_predictions<-test_data_nocalibration_applied%>%
+   group_by(stockarea, year,market_desc) %>%
+  select(-.pred_class) %>%
+  mutate(transactions=1) %>%
+  summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
+   ungroup()
+nocal_predictions$modeltype<-modeltype
+
+nocal_predictions<-nocal_predictions%>%
+  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
+
+write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_predictions_{modeltype}{finalfit_vintage}.Rds")))
+
+```
+
+
+
+
+
+
+
+```{r no_cal_validations}
+
+aggregate_nocal_transactions<-nocal_predictions%>%
+    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
+
+
+aggregate_nocal_weight_predictions<-nocal_predictions %>%
+    summarise(across(c(starts_with("pred_")), sum)) %>%
+  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+true<-test_data%>%
+    mutate(transactions=1) %>%
+    group_by(market_desc) %>%
+    summarise(lndlb=sum(lndlb),
+              transactions=sum(transactions))
+
+nocalibrate_results<-aggregate_nocal_weight_predictions%>%
+  left_join(true, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  left_join(aggregate_nocal_transactions, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted,
+         predicted_transactions=ObsPredicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
+         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
+  
+
+transactions_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
+
+
+knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+
+```{r weighted_no_calibrate_predictions}
+weights_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+knitr::kable(weights_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+
+
+
+
+
+
+
+
+## Lets take a look at the validation predictions by stockarea
+
+
+
+```{r Validation_Weight_Predictions_by_stockarea}
+
+# Aggregate to the stockarea- market category
+
+aggregate_test_predictions2<-test_predictions %>%
+    group_by(stockarea,market_desc) %>%
+    summarise(across(c(starts_with(".pred_"),lndlb), sum)) %>%
+  arrange(stockarea,market_desc)
+
+# true landings by stockarea and market_category
+trueTest<-test_predictions %>%
+    group_by(stockarea,market_desc) %>%
+    summarise(lndlb=sum(lndlb))
+
+
+# aggregate predictions, in pounds, by stockarea and market_category
+Tp1<-test_predictions %>%
+  group_by(stockarea) %>%
+    summarise(across(c(starts_with("pred_")), sum))
+
+Tp2<-Tp1  %>%
+  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+Testmkt_preds<-Tp2 %>%
+  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01) )
+
+
+knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (mt). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+
+```
+
+
+
+
+```{r Validation_Transaction_Predictions_by_stockarea}
+
+
+# true landings by stockarea and market_category
+trueTest<-test_predictions %>%
+    group_by(stockarea,market_desc) %>%
+    summarise(transactions=sum(transactions))
+
+
+# aggregate predictions, in transactions, by stockarea and market_category
+Tp1<-test_predictions %>%
+  group_by(stockarea) %>%
+    summarise(across(c(starts_with(".pred_")), sum))
+
+Tp2<-Tp1  %>%
+  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix=".pred_",values_to="predicted")
+
+
+Testmkt_preds<-Tp2 %>%
+  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
+
+Testmkt_preds<-Testmkt_preds %>%
+  rename(predicted_transactions=predicted) %>%
+  mutate(`Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
+
+
+knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (mt). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+```
+
+
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
