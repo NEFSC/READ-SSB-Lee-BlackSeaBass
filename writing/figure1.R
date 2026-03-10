@@ -401,7 +401,7 @@ lfplot.mktcomb <- plot.data %>%
 fname <- 'LenFq.Mktcomb'
 if(save.fig=='y'){
   ggsave(
-    here("images", "exploratory",
+    here("images", "background",
          glue("{fname}.pdf")),
     plot   = lfplot.mktcomb,
     width  = 84,
