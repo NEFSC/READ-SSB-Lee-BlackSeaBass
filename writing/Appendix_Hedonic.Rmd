@@ -4,23 +4,166 @@
 We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004, @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in a hierarchical linear model; finding that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than average.  Other attributes can impact prices: @Gobillon2017 examine buyer- and seller- effects. 
 
 
+```{r hedonicsummary,  eval=TRUE}
+# this comes out of data_prep_ml.Rmd. It's 
+bsb_original<-readr::read_rds(file=here("data_folder","main","commercial", glue("BSB_original_combined_dataset{data_vintage_string}.Rds")))
+
+bsb_original<-bsb_original %>%
+  filter(mark_in==1) 
+
+bsb_original<-bsb_original %>%
+  group_by(dlr_date) %>%
+  mutate(daily_landings=sum(lndlb, na.rm=TRUE)/1000)
+
+
+
+my_selection   <- c("priceR_CPI", "daily_landings")
+more_variables <- c("market_desc", "mygear", "grade_desc", "state", "year", "month")
+
+# Readable labels for continuous variables
+continuous_labels <- c(
+  priceR_CPI     = "Price (Real)",
+  daily_landings = "Daily landings (000s of lbs)"
+)
+# Readable labels for continuous variables
+factor_labels <- c(
+  market_desc     = "Market Category",
+  mygear          = "Gear",
+  grade_desc      = "Round/Live",
+  state           = "State",
+  year            = "Year",
+  month           = "Month"
+)
+
+
+
+# -------------------------------------------------------------------
+# Helper: weighted mean and SD
+# -------------------------------------------------------------------
+wtd_mean <- function(x, w) {
+  keep <- !is.na(x) & !is.na(w)
+  sum(x[keep] * w[keep]) / sum(w[keep])
+}
+
+wtd_sd <- function(x, w) {
+  keep <- !is.na(x) & !is.na(w)
+  xw   <- wtd_mean(x[keep], w[keep])
+  sqrt(sum(w[keep] * (x[keep] - xw)^2) / sum(w[keep]))
+}
+
+# -------------------------------------------------------------------
+# 1. weights and obs 
+# -------------------------------------------------------------------
+n_row <- tibble(
+  variable = "N",
+  level    = "",
+  Weighted   = formatC(sum(bsb_original$weighting),  format = "f", digits = 0, big.mark = ","),
+  Unweighted = formatC(nrow(bsb_original),  format = "f", digits = 0, big.mark = ",")
+)
+
+# -------------------------------------------------------------------
+# 2. Continuous variables: mean + SD row pairs
+# -------------------------------------------------------------------
+cont_rows <- purrr::map_dfr(my_selection, function(v) {
+  x <- bsb_original[[v]]
+  w <- bsb_original[["weighting"]]
+
+  mean_w  <- wtd_mean(x, w)
+  sd_w    <- wtd_sd(x, w)
+  mean_uw <- mean(x, na.rm = TRUE)
+  sd_uw   <- sd(x,   na.rm = TRUE)
+
+  bind_rows(
+    tibble(
+      variable   = continuous_labels[v],
+      level      = "",
+      Weighted   = formatC(mean_w,  format = "f", digits = 2, big.mark = ","),
+      Unweighted = formatC(mean_uw, format = "f", digits = 2, big.mark = ",")
+    ),
+    tibble(
+      variable   = "",
+      level      = "",
+      Weighted   = paste0("(", formatC(sd_w,  format = "f", digits = 2,
+                                       big.mark = ","), ")"),
+      Unweighted = paste0("(", formatC(sd_uw, format = "f", digits = 2,
+                                       big.mark = ","), ")")
+    )
+  )
+})
+
+# -------------------------------------------------------------------
+# 3. Factor variables: proportion per level
+# -------------------------------------------------------------------
+factor_rows <- purrr::map_dfr(more_variables, function(v) {
+  x <- bsb_original[[v]]
+  w <- bsb_original[["weighting"]]
+  lvls <- sort(unique(x[!is.na(x)]))
+
+  header <- tibble(
+    variable   = factor_labels[v],
+    level      = "",
+    Weighted   = "",
+    Unweighted = ""
+  )
+
+  level_rows <- purrr::map_dfr(lvls, function(l) {
+    idx  <- x == l & !is.na(x)
+    prop_w  <- sum(w[idx], na.rm = TRUE) / sum(w[!is.na(x)], na.rm = TRUE)
+    prop_uw <- mean(idx, na.rm = TRUE)
+
+    tibble(
+      variable   = "",
+      level      = as.character(l),
+      Weighted   = formatC(prop_w,  format = "f", digits = 3),
+      Unweighted = formatC(prop_uw, format = "f", digits = 3)
+    )
+  })
+
+  bind_rows(header, level_rows)
+})
+
+# -------------------------------------------------------------------
+# 4. Bind all sections together
+# -------------------------------------------------------------------
+summary_table <- bind_rows(cont_rows, factor_rows, n_row)
+
+kable(
+  summary_table,
+  format    = "latex",
+  booktabs  = TRUE,
+  caption   = "Weighted and unweighted summary statistics. Continuous
+               variables report mean with standard deviation in
+               parentheses. Factor variables report proportion of
+               observations in each level. Weights are pounds landed per Transaction",
+  col.names = c("Variable", "Level", "Weighted", "Unweighted"),
+  escape    = TRUE,
+  label     = "bsb-hedonic-summary",
+  align     = c("l", "l", "r", "r")
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    font_size     = 10
+  ) %>%
+  column_spec(1, width = "4cm", bold = TRUE) %>%
+  column_spec(2, width = "3cm") %>%
+  column_spec(3:4, width = "2.5cm")
+
+
+
+```
 
 ## A Simple Hedonic Model
-We first estimate a simple hedonic model using data from 2013-2024. We aggregate to the "CAMSID, market-category, gear, area, datesail, dateland, dealer" level (this is basically the CAMSID-subtrip-market category") and deflate to real prices using the CPI-U for Q1 of 2023.  We perform some aggregation of gears, aggregating to the following gear categories: "Line and Hand", "Trawl", "Gillnet", "Pot and Trap" and "All other" gears.  We aggregate the "Mixed or Unsized" market category with the "Unclassified" market category. We also aggregate the Small, Extra Small, and PeeWee into a single, Small category. Tables \ref{ESTtransactions}  and \ref{ESTavglbs} summarize the number of observations and average landings per transaction for the estimation sample.
-
-\input{../results/EST_transactions.tex}
-
-\input{../results/EST_avg_lbs.tex}
+We first estimate a simple hedonic model using data from 2013-2024. We aggregate to the "CAMSID, market-category, gear, area, datesail, dateland, dealer" level (this is basically the CAMSID-subtrip-market category") and deflate to real prices using the CPI-U for Q1 of 2023.  We perform some aggregation of gears, aggregating to the following gear categories: "Line and Hand", "Trawl", "Gillnet", "Pot and Trap" and "All other" gears.  We aggregate the "Mixed or Unsized" market category with the "Unclassified" market category. We also aggregate the Small, Extra Small, and PeeWee into a single, Small category. Table @\ref(tab:bsb-hedonic-summary) summarizes the data used to estiamte the hedonic model. 
 
 We include transactions from New Hampshire to North Carolina where the nominal price is between \$0.15 and \$12 per pound. The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. We weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.
 
 The estimating equation in the hedonic model is 
 \begin{align}
-p_{id}&= \sum_{k=1}^K a_{k} Market Category_{id} + \sum_{g=1}^G b_{k} Gear_{id} + \label{hedonicEST}\\
+p_{id}&= \sum_{k=1}^K a_{k} Market Category_{id} + \sum_{g=1}^G b_{k} Gear_{id} + \label{HedonicEstimatingEquation}\\
  &+ d Daily Landings_{d}  e Daily Landings^2_{d}  + f Live_{id} + \varepsilon_i\notag
 \end{align}
 
-We also include a set of factor variables for state, year, and month. We estimate equation \label{hedonicEST} with a full set of factor variables for Market Category, exclude 1 level from all other factors to avoid perfect linearity.  Equation \label{hedonicEST} is estimated by Ordinary Least Squares; there are undoubtedly more sophisticated models that could be used, but OLS suffices for these exploratory purposes. The omitted levels are Trawl Gear, Rhode Island, 2013, and January.  The coefficients associated with the market categories can be interpreted as the conditional average price per pound of landings in that category that were caught by trawl gear and landed in Rhode Island in January of 2013.  Coefficients for the other factor variables can be interpreted as premia or discounts relative to the omitted factor.
+We also include a set of factor variables for state, year, and month. We estimate equation \ref{HedonicEstimatingEquation} with a full set of factor variables for Market Category, exclude 1 level from all other factors to avoid perfect linearity.  Equation \ref{HedonicEstimatingEquation} is estimated by Ordinary Least Squares; there are undoubtedly more sophisticated models that could be used, but OLS suffices for these exploratory purposes. The omitted levels are Trawl Gear, Rhode Island, 2013, and January.  The coefficients associated with the market categories can be interpreted as the conditional average price per pound of landings in that category that were caught by trawl gear and landed in Rhode Island in January of 2013.  Coefficients for the other factor variables can be interpreted as premia or discounts relative to the omitted factor.
 
 Table \ref{HedonicTableA} contains some results of the more interesting results. There are 42.24 millions pounds of Black Sea Bass spread over 525,000 transactions during the 2013-2024 time period.  We prefer the weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass received \$5.93 per pound, which Small Black Sea bass were priced at \$3.39 per pound.  Unclassified Black Sea bass were priced between the Medium and Large Market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to Round fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
 
