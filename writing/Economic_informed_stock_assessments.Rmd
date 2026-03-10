@@ -38,14 +38,29 @@ output:
 
 
  <!---- 
- The hardcoded bibilography is ghastly. 
 Summary and Housekeeping
 
 I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+And a final round of data processing with data_prep_ml.R
+
+The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
+The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
+    I think this is the file that saves "aggregate_test_predictions" in a too aggregate format
+
+Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statsistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
+
+figures are made with
+figure1
+figure2
+predictions_heatmap
+
 
 I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
 
-Warnings: There is something funky going on with VA "status=PZERO" starting in 2021.  There is also something funky going on with Delaware landings, but there are no hullids/permit numbers so I don't think this will throw anything off at the vessel level.
+
+
+
+
 
 --->
 
@@ -115,6 +130,7 @@ data_vintage_string<-"2026-03-03"
 nocluster_testing_predictions<-readRDS(here("results","ranger",glue("aggregate_test_predictions_nocluster{pred_vintage}.Rds")))
 nocal_predictions<-readRDS(here("results","ranger",glue("aggregate_nocal_predictions_nocluster{pred_vintage}.Rds")))
 
+soft_testing_predictions<-readRDS(here("results","ranger",glue("soft_testing_predictions_nocluster{pred_vintage}.Rds")))
 
 # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("nocluster_data_split{pred_vintage}.Rds")))
@@ -490,14 +506,14 @@ Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibra
 
 
 ```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
-knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster", pred_vintage, ".pdf")))
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 In-sample ROC curves from tuning are quite similar across folds
 and the initial steepness indicates the tuned random forest is good (Figure  \@ref(fig:rocTune)).
 
 ```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
-knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster", pred_vintage, ".pdf")))
+knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
@@ -508,15 +524,20 @@ The calibration step \@ref(fig:calibrationplots) illustrates an issue that commo
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
-Validation ROC curve (Figure  \@ref(fig:roc_Valid)). 
 
-```{r roc_Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Validation Sampletuning"}
-knitr::include_graphics(here("results","ranger","tune", paste0("final_roc_curve", pred_vintage, ".pdf")))
+## Testing Results
+
+These figures illustate out-of-sample model performance. The ROC curve (Figure  \@ref(fig:roc_Valid)). 
+
+```{r roc_Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
 
-Soft confusion matrix or heatmap belongs here. 
-
+A confusion matrix for the calibrated model, done on "soft" predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
+```
 
 
 ```{r validation_predictions, echo=FALSE, warning=FALSE}
