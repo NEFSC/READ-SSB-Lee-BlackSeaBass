@@ -7,10 +7,6 @@ output:
     df_print: paged
     keep_md: yes
     fig_caption: yes
-  pdf_document:
-    keep_tex: yes
-    fig_caption: yes
-    number_sections: yes
 header-includes: \usepackage{setspace}\doublespacing
 urlcolor: blue
 editor_options:
@@ -18,23 +14,20 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: TS_nocluster
+    value: nocluster
     choices:
     - nocluster
     - TS_nocluster
-
 ---
 
 # Summary and Housekeeping
 
 
- My "final fit" bombed out because I didn't have drive space.  This is code to
- 
-1. Read in the tune result and eyeball them.
-2. Pick the best set of tuning parameters.
-3. Fit a final model. 
-4. Calibrate probabilities using a 'testing sample'
-5. Validate on a validation sample. 
+Calibration and Validation
+
+1. Read in the finalized model 
+2. Calibrate probabilities using a 'testing sample'
+3. Validate on a validation sample. 
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
@@ -101,6 +94,7 @@ conflicts_prefer(yardstick::spec())
 conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
+conflicts_prefer(vip::vi)
 
 # Determine what platform the code is running on and set the number of threads for ranger
 platform <- Sys.info()['sysname']
@@ -205,12 +199,12 @@ read in the final model, extract the recipe and the predictors, extract the pred
 
 ```{r load_final_model}
 # # this was created with data_prep_ml.Rmd
-# data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
-# 
+data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+# Onlyneed the test and validation 
 # train_data <- training(data_split)
-# test_data <- testing(data_split)
-# validation_data <- validation(data_split)
-# rm(data_split)
+validation_data <- validation(data_split)
+test_data <- testing(data_split)
+rm(data_split)
 
 
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
@@ -241,9 +235,6 @@ final_fit_metrics<-final_fit %>%
   collect_metrics()
 final_fit_metrics
 
-all.metrics %>%
-  dplyr::filter(.config==best_config) 
-
 ```
 
 Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
@@ -256,10 +247,76 @@ Look at the VIP, ROC, and PR curves
 ```{r VIP}
 # Look at variable importance. I want to see all the predictors.
 # The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Permutation"
-vip_plot<-final_fit %>% 
-  extract_fit_parsnip() %>% 
-  vip(num_features = num_preds)
-ggsave(here("results","ranger","final",glue("vip{modeltype}{finalfit_vintage}.png")), plot=vip_plot)
+vi_data <- final_fit %>%
+  extract_fit_parsnip() %>%
+  vi(method = "model") %>%          # pulls ranger's permutation importance
+  #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
+  mutate(Variable = forcats::fct_reorder(Variable, Importance))
+
+
+
+p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease in Accuracy",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vip{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease in Accuracy",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vipFULL{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
 
 
 ```
@@ -267,7 +324,13 @@ Variable importance measures are the Prices and the Dealer proporption variables
 
 
 ```{r PR_Curve}
-# PR curve
+# pull the probability names
+prob_names<-colnames(final_predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+
 final_pr<-final_predictions %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
@@ -280,7 +343,7 @@ Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if
 
 
 ```{r Validation_predictions}
-# Apply the Final fit to the validation dataset
+# Apply the Final fit to the validation dataset. 
 
 validation_data <- augment(final_workflow,validation_data)
 
@@ -288,19 +351,66 @@ validation_data <- augment(final_workflow,validation_data)
 
 # Calibration should fix this.
 
-cal_window<-validation_data %>%
-  cal_plot_windowed(truth = market_desc, step_size = 0.025, include_points = FALSE)
-cal_window
-ggsave(here("results","ranger","final",glue("cal_windowed_{modeltype}{finalfit_vintage}.png")), plot=cal_window)
+cal_gg <- validation_data %>%
+  cal_plot_windowed(
+    truth          = market_desc,
+    estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
+    step_size      = 0.025,
+    include_points = FALSE
+  )
 
-cal_breaks<-validation_data %>%
-  cal_plot_breaks(truth = market_desc, step_size = 0.025, include_points = FALSE)
-ggsave(here("results","ranger","final",glue("cal_breaks_{modeltype}{finalfit_vintage}.png")), plot=cal_breaks)
+# Extract data from the ggplot internals
+cal_data <- cal_gg$data
 
-cal_logistic<-validation_data %>%
-  cal_plot_logistic(truth = market_desc)
-cal_logistic
-ggsave(here("results","ranger","final",glue("cal_logistic_{modeltype}{finalfit_vintage}.png")), plot=cal_logistic)
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("cal_windowed_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cal,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+
 
 ```
 
@@ -334,90 +444,6 @@ calibrate_multinom <- cal_estimate_multinomial(validation_data,
 
 ```
 
-```{r explore_validations, eval=FALSE}
-# This section 'unweights' the validation data and then tries to fit a calibration.
-# It doesn't work too well, in part because the initial cal_plot is non-monotone. 
-# The observation-level model is textbook smooth, the unweighted one is not. 
-# This makes the parametric (beta, multi SMOOTH=FALSE) fit poorly
-# The multi Smooth and isotonic "should" fit better. 
-# The isotonic takes forever to run, because it has to do alot of comparisons.
-
-validation_expanded <- validation_data %>%
-  uncount(weights = weighting)
-
-# this dataset is massive. take a 5% sample, just to see what is going on.
-
-validation_sub<-initial_split(validation_expanded,prop=0.90)
-tt<-testing(validation_sub)
-
-
-tt %>%
-    cal_plot_windowed(truth = market_desc,step_size = 0.05)
-
-tt %>%
-  cal_plot_breaks(truth = market_desc, step_size = 0.025)
-
-
-calibrate_betaTT <- cal_estimate_beta(tt, 
-                                   truth=market_desc, 
-                                   estimate=.pred_Jumbo:.pred_Small,
-                                   smooth=FALSE)
-
-calibrate_multiTT <- cal_estimate_multinomial(tt, 
-                                   truth=market_desc, 
-                                   estimate=.pred_Jumbo:.pred_Small,
-                                   smooth=TRUE)
-
-calibrate_isoTT <- cal_estimate_isotonic(tt, 
-                                   truth=market_desc, 
-                                   estimate=.pred_Jumbo:.pred_Small,
-                                   smooth=FALSE)
-
-
-WT_data_calib_applied<-  tt %>%
-  cal_apply(calibrate_multiTT)
-
-
-WT_data_calib_applied %>%
-    cal_plot_windowed(truth = market_desc,step_size = 0.05)
-
-
-
-W_ESPR_raw<-tt %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-W_ESPR_multi<-WT_data_calib_applied %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-
-CalLoss<-W_ESPR_raw-W_ESPR_multi
-rCalLoss<-100*CalLoss/W_ESPR_raw
-
-CalLoss
-rCalLoss
-
-
-# calibrate_iso <- cal_estimate_isotonic(validation_expanded, 
-#                                    truth=market_desc, 
-#                                    estimate=.pred_Jumbo:.pred_Small,
-#                                    smooth=FALSE)
-
-
-
-
-
-validation_exp_data_isocalib_applied <-
-  validation_expanded %>%
-  cal_apply(calibrate_iso)
-
-validation_exp_data_isocalib_applied %>%
-  cal_plot_breaks(truth = market_desc, step_size = 0.025)
-
-
-```
-
 
 
 
@@ -442,20 +468,76 @@ validation_data_multicalib_applied <-
 write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
 
 
+```
+
+
+```{r plot_iso_calib}
+# Pub read isotonic calibration
+
+# Calibration should fix this.
+cal_gg <- validation_data_isocalib_applied %>%
+  cal_plot_windowed(
+    truth          = market_desc,
+    estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
+    step_size      = 0.025,
+    include_points = FALSE
+  )
+
+# Extract data from the ggplot internals
+cal_data <- cal_gg$data
 
 
 
+# --- 2. Build publication-ready faceted calibration plot ---
+iso_applied_window <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
 
-
-iso_applied_window<-cal_plot_windowed(validation_data_isocalib_applied,
-                  truth = market_desc, step_size = 0.05, include_points =FALSE)
-iso_applied_window
-
-ggsave(here("results","ranger","final",glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.png")), plot=iso_applied_window)
-
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.pdf")),
+  plot   = iso_applied_window,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
 write_rds(iso_applied_window, file=here("results","ranger","final",glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.Rds")))
+```
 
-
+```{r other_calibs}
 #Multi looks a little rough
 multi_applied_window<-cal_plot_windowed(validation_data_multicalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
@@ -516,18 +598,18 @@ rCalLoss
 final_roc<-validation_data_isocalib_applied %>%
   roc_curve(truth=market_desc, 
             any_of(prob_names),
-            case_weights=.case_weights)  %>%
+            case_weights=weighting)  %>%
   autoplot()
-ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+ggsave(here("results","ranger","final",glue("validation_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
 
 
 
 final_roc_nocal<-validation_data %>%
   roc_curve(truth=market_desc, 
             any_of(prob_names),
-            case_weights=.case_weights)  %>%
+            case_weights=weighting)  %>%
   autoplot()
-ggsave(here("results","ranger","final",glue("final_uncal_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc)
+ggsave(here("results","ranger","final",glue("validation_uncal_roc_curve{modeltype}{finalfit_vintage}.png")), plot=final_roc_nocal)
 
 
 ```
@@ -536,13 +618,13 @@ ggsave(here("results","ranger","final",glue("final_uncal_roc_curve{modeltype}{fi
 
 
 
-```{r pub_ready_ROC_calibrated}
+```{r pub_ready_ROC_uncalibrated}
 # --- 1. Compute per-class ROC curve data ---
 roc_data <- validation_data %>%
   roc_curve(
     truth = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    case_weights=.case_weights
+    case_weights=weighting
   )
 
 
@@ -555,7 +637,16 @@ roc_dataUW <- validation_data %>%
 
 
 # --- 2. Compute per-class AUC for annotation ---
-auc_data <- validation_data %>%
+auc_dataW <- validation_data %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=weighting,
+    estimator = "macro"
+  )
+
+
+auc_dataUW <- validation_data %>%
   roc_auc(
     truth     = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
@@ -602,7 +693,7 @@ p_facet <- ggplot(roc_data,
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
 # --- 5. Save at ICES JMS specifications ---
-ggsave(here("results","ranger","final",glue("final_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+ggsave(here("results","ranger","final",glue("validation_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
@@ -644,7 +735,7 @@ p_facet <- ggplot(roc_dataUW,
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
 
-ggsave(here("results","ranger","final",glue("final_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+ggsave(here("results","ranger","final",glue("validation_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
@@ -661,28 +752,13 @@ ggsave(here("results","ranger","final",glue("final_nocal_UWroc_curve{modeltype}{
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ```{r pub_ready_ROC_calibrated}
 # --- 1. Compute per-class ROC curve data ---
 roc_data <- validation_data_isocalib_applied %>%
   roc_curve(
     truth = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    case_weights=.case_weights
+    case_weights=weighting
   )
 
 
@@ -699,6 +775,7 @@ auc_data <- validation_data_isocalib_applied %>%
   roc_auc(
     truth     = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=weighting,
     estimator = "macro"
   )
 
@@ -742,7 +819,7 @@ p_facet <- ggplot(roc_data,
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
 # --- 5. Save at ICES JMS specifications ---
-ggsave(here("results","ranger","final",glue("final_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+ggsave(here("results","ranger","final",glue("validation_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
@@ -784,7 +861,7 @@ p_facet <- ggplot(roc_dataUW,
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
 
-ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
+ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
@@ -813,20 +890,20 @@ ggsave(here("results","ranger","final",glue("final_UWroc_curve{modeltype}{finalf
 
 
 
-```{r final_model_testing}
+```{r final_model_calibration}
 
-test_data<-training(data_split)
+# Predict Out of Sample on the testing holdout.
+
+
 test_data <- augment(final_workflow,test_data)
 
-
-
-
-
-#Plot the "raw" predictions
+############ How well calibrated is the model? 
+# A: Better when calibrated - same pattern as training data.
+# Plot the "raw" predictions
 uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05,include_points=FALSE)
 
-ggsave(here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.png")), plot=uncalibrated)
-write_rds(uncalibrated, file=here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.Rds")))
+#ggsave(here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.png")), plot=uncalibrated)
+#write_rds(uncalibrated, file=here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.Rds")))
 
 
 test_data_calibration_applied <-
@@ -834,16 +911,265 @@ test_data_calibration_applied <-
   cal_apply(calibrate_iso)
 
 # Plot the calibrated predictions
+# need to pub-ready this.
+
+
+
+
+
+
 
 calibrated<-cal_plot_windowed(test_data_calibration_applied, truth = market_desc, step_size = 0.05,include_points=FALSE)
 
 calibrated
 
-ggsave(here("results","ranger","final",glue("validation_calibrated_{modeltype}{finalfit_vintage}.png")), plot=calibrated)
+# Pub Ready Calibration
+# Extract data from the ggplot internals
+cal_data <- calibrated$data
 
-write_rds(calibrated, file=here("results","ranger","final",glue("validation_calibrated_{modeltype}{finalfit_vintage}.Rds")))
 
 
+# --- 2. Build publication-ready faceted calibration plot ---
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("cal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cal,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+
+# Pub Ready Calibration
+# Extract data from the ggplot internals
+uncal_data <- uncalibrated$data
+
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+p_uncal <- ggplot(uncal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("uncal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cal,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+```
+
+
+
+
+```{r pub_ready_ROC_calibrated}
+# --- 1. Compute per-class ROC curve data ---
+roc_data <- test_data_calibration_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=weighting
+  )
+
+
+roc_dataUW <- test_data_calibration_applied %>%
+  roc_curve(
+    truth = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
+  )
+
+
+
+# --- 2. Compute per-class AUC for annotation ---
+auc_data <- test_data_calibration_applied %>%
+  roc_auc(
+    truth     = market_desc,
+    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
+    case_weights=weighting,
+    estimator = "macro"
+  )
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","final",glue("testing_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+# --- 6. Build the unweighted figure ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r calibration_gains}
 
 #cal_plot_breaks(test_data_calibration_applied, truth = market_desc, num_breaks=20,include_points=FALSE)
 
@@ -869,7 +1195,6 @@ rCalLoss<-100*CalLoss/ESPR_raw
 
 CalLoss
 rCalLoss
-
 ```
 
 # Calibrated Predictions
@@ -1145,6 +1470,95 @@ knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validatio
 ```
 
 
+
+# Things that didn't work
+
+I tried to unweight and the fit another calibration. It didn't work too well.
+
+
+```{r explore_validations, eval=FALSE}
+# This section 'unweights' the validation data and then tries to fit a calibration.
+# It doesn't work too well, in part because the initial cal_plot is non-monotone. 
+# The observation-level model is textbook smooth, the unweighted one is not. 
+# This makes the parametric (beta, multi SMOOTH=FALSE) fit poorly
+# The multi Smooth and isotonic "should" fit better. 
+# The isotonic takes forever to run, because it has to do alot of comparisons.
+
+validation_expanded <- validation_data %>%
+  uncount(weights = weighting)
+
+# this dataset is massive. take a 5% sample, just to see what is going on.
+
+validation_sub<-initial_split(validation_expanded,prop=0.90)
+tt<-testing(validation_sub)
+
+
+tt %>%
+    cal_plot_windowed(truth = market_desc,step_size = 0.05)
+
+tt %>%
+  cal_plot_breaks(truth = market_desc, step_size = 0.025)
+
+
+calibrate_betaTT <- cal_estimate_beta(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+calibrate_multiTT <- cal_estimate_multinomial(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=TRUE)
+
+calibrate_isoTT <- cal_estimate_isotonic(tt, 
+                                   truth=market_desc, 
+                                   estimate=.pred_Jumbo:.pred_Small,
+                                   smooth=FALSE)
+
+
+WT_data_calib_applied<-  tt %>%
+  cal_apply(calibrate_multiTT)
+
+
+WT_data_calib_applied %>%
+    cal_plot_windowed(truth = market_desc,step_size = 0.05)
+
+
+
+W_ESPR_raw<-tt %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+W_ESPR_multi<-WT_data_calib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+CalLoss<-W_ESPR_raw-W_ESPR_multi
+rCalLoss<-100*CalLoss/W_ESPR_raw
+
+CalLoss
+rCalLoss
+
+
+# calibrate_iso <- cal_estimate_isotonic(validation_expanded, 
+#                                    truth=market_desc, 
+#                                    estimate=.pred_Jumbo:.pred_Small,
+#                                    smooth=FALSE)
+
+
+
+
+
+validation_exp_data_isocalib_applied <-
+  validation_expanded %>%
+  cal_apply(calibrate_iso)
+
+validation_exp_data_isocalib_applied %>%
+  cal_plot_breaks(truth = market_desc, step_size = 0.025)
+
+
+```
 
 
 
