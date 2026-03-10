@@ -518,8 +518,23 @@ ggsave(
 
 ```
 ```{r save_the_predictions}
+soft_testing_predictions<-test_data_isocalib_applied %>%
+  ungroup()%>%
+  group_by(market_desc, year, stockarea) %>%
+  summarise(Prediction_Jumbo=sum(.pred_Jumbo),
+         Prediction_Large=sum(.pred_Large),
+         Prediction_Medium=sum(.pred_Medium),
+         Prediction_Small=sum(.pred_Small),
+         Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
+         Predlbs_Large=sum(.pred_Large*lndlb),
+         Predlbs_Medium=sum(.pred_Medium*lndlb),
+         Predlbs_Small=sum(.pred_Small*lndlb),
+         True_lbs=sum(lndlb),
+         True_transactions=n()
+         )%>%
+  ungroup()
 
-soft_predictions
+write_rds(soft_testing_predictions, file=here("results","ranger",glue("soft_testing_predictions_nocluster{pred_vintage}.Rds")))
 
 ```
 
