@@ -285,6 +285,7 @@ final_fit <-
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
 
+write_rds(final_fit, file=here("results","ranger",glue("final_fit_{final_pattern}{tuning_vintage}.Rds")))
 }
 gc()
 ```
