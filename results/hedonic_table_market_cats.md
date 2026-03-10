@@ -17,9 +17,6 @@ Unweighted and Weighted Hedonic Price Regression (2013-2024)
 | Unclassified           | 4.257***   | 4.366***   |
 |                        | (0.001)    | (0.013)    |
 |                        |            |            |
-| Live                   | 0.275***   | 0.229***   |
-|                        | (0.002)    | (0.012)    |
-|                        |            |            |
 | R-squared              | 0.928      | 0.943      |
 |                        |            |            |
 | Number of observations | 42,240,859 | 525,859    |
