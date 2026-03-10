@@ -107,6 +107,8 @@ imagefolder<-here("images")
 pred_vintage<-"2026-02-11"
 data_vintage_string<-"2026-03-03"
 
+
+
 # Need to read in "raw" validation, "calibrated" validations.
 # At Transaction level
 # At mt level
@@ -192,8 +194,8 @@ possession limits while Massachusetts and Rhode Island use seasonally varying
 limits that have been as strict as 50 lbs/day or as loose as 1,500 lbs per week.
 
 
-```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Price Frequencies by market categories, 2013-2024."}
-knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.png"),here("images","exploratory","wprice_histograms_vertical_NR.png")))
+```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Real (2023Q1 USD) Price Frequencies by market categories, 2013-2024."}
+knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 
 
@@ -379,7 +381,7 @@ This can cause poor out of sample predictions.]
 The model selection metric I use should be related to that.  For example, "True" landings in each market category compared to "actual" landings in each market category, computed at the stockarea-year, stockarea-semester, or stockarea-year-semester level.  
 --->    
 
-We use CAMS data from 2015 to 2024 to train our data. The CAMS data complied by GARFO consists of dealer transactions matched to vessel trip reports. We briefly describe this datasource.  Dealer data are transaction-level reports of fish purchases by federally permitted fish dealers from each vessel.  They are disaggregated to the trip and market category level and include landed weight (pounds) and value (nominal US Dollars).  Vessel trip report data arereports of fishing activity by federally permitted vessels that are disaggregated to the statistical area-gear-trip level and include information about area fished, gear used, trip length, and estimates of quantity kept (hail weights) and discarded at the species level.   Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.  When vessels fish in multiple statistical areas or using multiple gears, they file more than one report per trip.  One of the functions of the CAMS data system is to allocate trip-level dealer records to the appropriate statistical area.  CAMS allocates in proportion to the hail weights on those trip reports, splitting a single trip record into multiple observations.
+We use CAMS data from 2015 to 2024 to train our data. The CAMS data complied by GARFO consists of dealer transactions matched to vessel trip reports. We briefly describe this datasource.  Dealer data are transaction-level reports of fish purchases by federally permitted fish dealers from each vessel.  They are disaggregated to the trip and market category level and include landed weight (pounds) and value (nominal US Dollars).  Prices are converted to Real 2023Q1 values using the CPI for all urban consumers (CPIAUCSL). Vessel trip report data arereports of fishing activity by federally permitted vessels that are disaggregated to the statistical area-gear-trip level and include information about area fished, gear used, trip length, and estimates of quantity kept (hail weights) and discarded at the species level.   Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.  When vessels fish in multiple statistical areas or using multiple gears, they file more than one report per trip.  One of the functions of the CAMS data system is to allocate trip-level dealer records to the appropriate statistical area.  CAMS allocates in proportion to the hail weights on those trip reports, splitting a single trip record into multiple observations.
 
 Black Sea Bass may be caught by firms without a federal fishing permit and sold to dealers without a federal dealer permit.  In some states, firms without a federal permit can fish for black sea bass in state waters (within 3 miles of land) and sell it to fish dealers who do not have a federal permit.  These sales are also in our data and the CAMS system imputes both statistical area (area adjacent to landing port) and gear used when missing. 
 
@@ -465,7 +467,7 @@ kable(
   caption  = "Summary Statistics",
   col.names = c("Variable", "Jumbo", "Large", "Medium", "Small"),
   escape    = TRUE,         # allows LaTeX in cell content
-  label     = "summary_numerics-table"
+  label     = "summarynumerics-table"
 ) %>%
   kable_styling(
     latex_options = c("hold_position"),
