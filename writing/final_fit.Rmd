@@ -18,11 +18,10 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: TS_nocluster
+    value: nocluster
     choices:
     - nocluster
     - TS_nocluster
-
 ---
 
 # Summary and Housekeeping
@@ -33,8 +32,8 @@ params:
 1. Read in the tune result and eyeball them.
 2. Pick the best set of tuning parameters.
 3. Fit a final model. 
-4. Calibrate probabilities using a 'testing sample'
-5. Validate on a validation sample. 
+4. make some figures.
+
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
@@ -128,7 +127,7 @@ if (runClass %in% c('Local', 'Windows')){
 }
 my.ranger.threads<-7
 
-here::i_am("writing/final_fit_and_validate.Rmd")
+here::i_am("writing/final_fit.Rmd")
 
 
 # You've estimated a few difference models, this sets the 
