@@ -310,7 +310,9 @@ cm_norm <- cm_table %>%
 p_cm <- ggplot(cm_norm, aes(x = Prediction, y = Truth, fill = Prop)) +
   geom_tile(colour = "white", linewidth = 0.8) +
   geom_text(
-    aes(label = sprintf("%.2f\n(n=%d)", Prop, Freq)),
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(Freq, format = "f", digits = 0, big.mark = ","),
+                       ")")),
     size   = 2.8,
     colour = "grey10"
   ) +
@@ -355,280 +357,171 @@ ggsave(
 ```
 
 
-# Extra code
+```{r soft_prediction_conf_matrix}
+soft_predictions<-test_data_isocalib_applied %>%
+  group_by(market_desc) %>%
+  summarise(Prediction_Jumbo=sum(.pred_Jumbo),
+         Prediction_Large=sum(.pred_Large),
+         Prediction_Medium=sum(.pred_Medium),
+         Prediction_Small=sum(.pred_Small),
+         Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
+         Predlbs_Large=sum(.pred_Large*lndlb),
+         Predlbs_Medium=sum(.pred_Medium*lndlb),
+         Predlbs_Small=sum(.pred_Small*lndlb)
+         )
+soft_predictionUW <- soft_predictions %>%
+  select(c(market_desc, starts_with("Prediction"))) %>%
+  pivot_longer(
+    cols = c(Prediction_Jumbo, Prediction_Large, Prediction_Medium, Prediction_Small),
+    names_to = "Prediction",
+    names_prefix = "Prediction_",
+    values_to = "Freq"
+  )
+soft_predictionUW <-soft_predictionUW %>%
+  rename(Truth=market_desc )
 
-I'm leaving this extra code around to make my life easier when I want to make something different.
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
 
-```{r extract_predictions}
-### pull a few categories, compute a prob*lndlb variable, sum 
+sofc_cm <- soft_predictionUW %>%
+  group_by(Truth) %>%
+  mutate(Prop = Freq / sum(Freq)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
+  )
 
+p_softcm <- ggplot(sofc_cm, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(Freq, format = "f", digits = 0, big.mark = ","),
+                       ")")),
+    size   = 2.8,
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low    = "white",
+    high   = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name   = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  )
 
-# keep just a few columns
-test_data_calibration_applied<-test_data_calibration_applied %>%
-  select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
-
-# predicted pounds per transaction in the validation dataset.
-# multiply the prediction by the landed pounds to get predicted pounds in each class. 
-for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
-  tryCatch({
-    test_data_calibration_applied[[paste0("pred_", l)]] <- test_data_calibration_applied[[paste0(".pred_", l)]] * test_data_calibration_applied$lndlb
-  }, error = function(e) {
-    # R will just silently continue to the next iteration
-  })
-}
-# Sum up the predictions by year, market category, and stockarea. 
-test_predictions<-test_data_calibration_applied %>%
-   group_by(stockarea, year,market_desc) %>%
-  select(-.pred_class) %>%
-  mutate(transactions=1) %>%
-  summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
-   ungroup()
-test_predictions$modeltype<-modeltype
-
-test_predictions<-test_predictions %>%
-  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
-
-write_rds(test_predictions, file=here("results","ranger",glue("aggregate_test_predictions_{modeltype}{finalfit_vintage}.Rds")))
-
-#test_predictions<-test_predictions %>%
-#  dplyr::filter(year %in% c(2021,2022,2023,2024))
-
-```
-
-## Probabalistic Predictions of the class of each transaction
-
-Here are the predictions (transactions and mt) for the hold-out sample, using the probability calibrations.
-
-```{r topline_validation}
-
-aggregate_transactions<-test_predictions %>%
-    summarise(across(c(starts_with(".pred_")), sum)) %>%
-  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
-
-
-aggregate_test_predictions<-test_predictions %>%
-    summarise(across(c(starts_with("pred_")), sum)) %>%
-  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
-
-
-true<-test_predictions %>%
-    group_by(market_desc) %>%
-    summarise(lndlb=sum(lndlb),
-              transactions=sum(transactions))
-
-Testmkt_preds<-aggregate_transactions %>%
-  left_join(true, by=join_by(market_desc==market_desc))
-
-Testmkt_preds<-Testmkt_preds %>%
-  left_join(aggregate_test_predictions, by=join_by(market_desc==market_desc))
-
-Testmkt_preds<-Testmkt_preds %>%
-  mutate(predicted=predicted/lbs_per_mt,
-         lndlb=lndlb/lbs_per_mt) %>%
-  rename(true_mt=lndlb,
-         predicted_mt=predicted,
-         predicted_transactions=ObsPredicted)%>%
-  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
-         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
-
-
-transaction_predictions<-Testmkt_preds %>%
-  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
-
-
-knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 15% Validation Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-
-```
-
-```{r weighted_predictions}
-weighted_predictions<-Testmkt_preds %>%
-  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
-
-knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-
+ggsave(
+  here("results", "ranger", "final",
+       glue("softconfmat_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_softcm,
+  width  = 84,
+  height = 84,
+  units  = "mm",
+  device = cairo_pdf
+)
 ```
 
 
-Here are the predictions (transactions and mt) for the hold-out sample, without the probability calibrations.
+```{r weighted_soft_conf_mat}
 
-```{r aggregate_test2_predictions}
-# Subset data, construct predicted pounds, and aggregate
+soft_predictionW <- soft_predictions %>%
+  select(c(market_desc, starts_with("Predlbs_"))) %>%
+  pivot_longer(
+    cols = c(Predlbs_Jumbo, Predlbs_Large, Predlbs_Medium, Predlbs_Small),
+    names_to = "Prediction",
+    names_prefix = "Predlbs_",
+    values_to = "pounds"
+  )
 
 
-### pull a few categories, compute a prob*lndlb variable, sum 
 
+soft_predictionW <-soft_predictionW %>%
+  rename(Truth=market_desc ) %>%
+  mutate(metric_tons=pounds/lbs_per_mt)
 
-# keep just a few columns
-test_data_nocalibration_applied<-test_data%>%
-  select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
 
-# predicted pounds per transaction in the validation dataset.
-# multiply the prediction by the landed pounds to get predicted pounds in each class. 
-for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
-  tryCatch({
-    test_data_nocalibration_applied[[paste0("pred_", l)]] <- test_data_nocalibration_applied[[paste0(".pred_", l)]] * test_data_nocalibration_applied$lndlb
-  }, error = function(e) {
-    # R will just silently continue to the next iteration
-  })
-}
-# Sum up the predictions by year, market category, and stockarea. 
-nocal_predictions<-test_data_nocalibration_applied%>%
-   group_by(stockarea, year,market_desc) %>%
-  select(-.pred_class) %>%
-  mutate(transactions=1) %>%
-  summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
-   ungroup()
-nocal_predictions$modeltype<-modeltype
+soft_weighted <- soft_predictionW %>%
+  group_by(Truth) %>%
+  mutate(Prop = metric_tons / sum(metric_tons)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
+  )
 
-nocal_predictions<-nocal_predictions%>%
-  mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
+p_softcm <- ggplot(soft_weighted, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(metric_tons, format = "f", digits = 0, big.mark = ","),
+                       ")")),
+    size   = 2.8,
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low    = "white",
+    high   = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name   = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  )
 
-write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_predictions_{modeltype}{finalfit_vintage}.Rds")))
+ggsave(
+  here("results", "ranger", "final",
+       glue("soft_weighted_confmat_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_softcm,
+  width  = 84,
+  height = 84,
+  units  = "mm",
+  device = cairo_pdf
+)
+
 
 ```
+```{r save_the_predictions}
 
-
-
-
-
-
-
-```{r no_cal_validations}
-
-aggregate_nocal_transactions<-nocal_predictions%>%
-    summarise(across(c(starts_with(".pred_")), sum)) %>%
-  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
-
-
-aggregate_nocal_weight_predictions<-nocal_predictions %>%
-    summarise(across(c(starts_with("pred_")), sum)) %>%
-  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
-
-
-true<-test_data%>%
-    mutate(transactions=1) %>%
-    group_by(market_desc) %>%
-    summarise(lndlb=sum(lndlb),
-              transactions=sum(transactions))
-
-nocalibrate_results<-aggregate_nocal_weight_predictions%>%
-  left_join(true, by=join_by(market_desc==market_desc))
-
-nocalibrate_results<-nocalibrate_results%>%
-  left_join(aggregate_nocal_transactions, by=join_by(market_desc==market_desc))
-
-nocalibrate_results<-nocalibrate_results%>%
-  mutate(predicted=predicted/lbs_per_mt,
-         lndlb=lndlb/lbs_per_mt) %>%
-  rename(true_mt=lndlb,
-         predicted_mt=predicted,
-         predicted_transactions=ObsPredicted)%>%
-  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
-         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
-  
-
-transactions_nocalibrate_predictions<-nocalibrate_results %>%
-  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
-
-
-knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+soft_predictions
 
 ```
-
-
-```{r weighted_no_calibrate_predictions}
-weights_nocalibrate_predictions<-nocalibrate_results %>%
-  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
-knitr::kable(weights_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-
-```
-
-
-
-
-
-
-
-
-
-## Lets take a look at the validation predictions by stockarea
-
-
-
-```{r Validation_Weight_Predictions_by_stockarea}
-
-# Aggregate to the stockarea- market category
-
-aggregate_test_predictions2<-test_predictions %>%
-    group_by(stockarea,market_desc) %>%
-    summarise(across(c(starts_with(".pred_"),lndlb), sum)) %>%
-  arrange(stockarea,market_desc)
-
-# true landings by stockarea and market_category
-trueTest<-test_predictions %>%
-    group_by(stockarea,market_desc) %>%
-    summarise(lndlb=sum(lndlb))
-
-
-# aggregate predictions, in pounds, by stockarea and market_category
-Tp1<-test_predictions %>%
-  group_by(stockarea) %>%
-    summarise(across(c(starts_with("pred_")), sum))
-
-Tp2<-Tp1  %>%
-  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix="pred_",values_to="predicted")
-
-
-Testmkt_preds<-Tp2 %>%
-  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
-
-Testmkt_preds<-Testmkt_preds %>%
-  mutate(predicted=predicted/lbs_per_mt,
-         lndlb=lndlb/lbs_per_mt) %>%
-  rename(true_mt=lndlb,
-         predicted_mt=predicted)%>%
-  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01) )
-
-
-knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (mt). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-
-```
-
-
-
-
-```{r Validation_Transaction_Predictions_by_stockarea}
-
-
-# true landings by stockarea and market_category
-trueTest<-test_predictions %>%
-    group_by(stockarea,market_desc) %>%
-    summarise(transactions=sum(transactions))
-
-
-# aggregate predictions, in transactions, by stockarea and market_category
-Tp1<-test_predictions %>%
-  group_by(stockarea) %>%
-    summarise(across(c(starts_with(".pred_")), sum))
-
-Tp2<-Tp1  %>%
-  pivot_longer(cols=!stockarea, names_to="market_desc", names_prefix=".pred_",values_to="predicted")
-
-
-Testmkt_preds<-Tp2 %>%
-  left_join(trueTest, by=join_by(stockarea==stockarea, market_desc==market_desc))
-
-Testmkt_preds<-Testmkt_preds %>%
-  rename(predicted_transactions=predicted) %>%
-  mutate(`Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
-
-
-knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (mt). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
-```
-
-
-
-
 
 
 <!---
