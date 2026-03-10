@@ -234,7 +234,6 @@ bayesian_results<-autoplot(tune_res, type = "performance") +
 
  ggsave(here("results","ranger","tune",glue("bayesian_tune_{modeltype}{tuning_vintage}.png")), plot=bayesian_results)
 
- write_rds(bayesian_results, file=here("results","ranger","final",glue("bayesian_tune_{modeltype}{finalfit_vintage}.Rds")))
 rm(bayesian_results)
 
  #It didn't find anything better.
@@ -286,7 +285,6 @@ final_fit <-
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
 
-write_rds(final_fit, file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 }
 gc()
 ```
@@ -343,7 +341,6 @@ log_loss<- mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
 
  ggsave(here("results","ranger","tune",glue("mn_log_loss_mtry_{modeltype}{tuning_vintage}.png")), plot=log_loss)
 
- write_rds(log_loss, file=here("results","ranger","final",glue("mn_log_loss_mtry_{modeltype}{finalfit_vintage}.Rds")))
 rm(log_loss)
  
 min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
@@ -351,7 +348,6 @@ min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
     geom_text_repel(aes(label = round(mn_log_loss,4)), size=3) 
 
   ggsave(here("results","ranger","tune",glue("mn_log_loss_min_n_{modeltype}{tuning_vintage}.png")), plot=min_n)
- write_rds(min_n, file=here("results","ranger","final",glue("mn_log_loss_min_n_{modeltype}{finalfit_vintage}.Rds")))
 rm(min_n)
  p<- plot_ly(mn_log_loss, 
         x = ~mtry, 
@@ -387,7 +383,6 @@ not_good
 # Some in-sample results from Tuning
 
 ```{r roc}
-# A ROC curve from tuning . I'm not sure if this is quite right, but I think it is.
 predictions<-tune_res %>%
   collect_predictions()
 rm(tune_res)
@@ -398,22 +393,137 @@ prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
-roc_plot<-predictions %>%
+roc_data<-predictions %>%
   dplyr::filter(.config==best_config) %>%
   group_by(id) %>%
   #dplyr::filter(!id %in% not_good) %>%
   roc_curve(truth=market_desc, 
             any_of(prob_names),
-            case_weights=.case_weights)  %>%
-  ggplot(aes(x=1-specificity,y=sensitivity, colour=id)) +
-   facet_wrap(~.level) + 
-  geom_line(show.legend = TRUE) 
+            case_weights=.case_weights) 
 
-roc_plot
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
 
-ggsave(here("results","ranger","tune",glue("roc_tune_{modeltype}{tuning_vintage}.png")), plot=roc_plot)
+roc_mean <- roc_data %>%
+  group_by(.level, specificity) %>%
+  summarise(sensitivity = mean(sensitivity), .groups = "drop")
 
-rm(roc_plot)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level, group = interaction(.level, id)),
+            linewidth = 0.3, alpha = 0.35, show.legend = FALSE) +
+    geom_path(data = roc_mean,
+            aes(colour = .level),
+            linewidth = 1.0, alpha = 1.0, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","tune",glue("roc_tune_{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+roc_dataUW<-predictions %>%
+  dplyr::filter(.config==best_config) %>%
+  group_by(id) %>%
+  #dplyr::filter(!id %in% not_good) %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names)) 
+roc_dataUW <- roc_data %>%
+  group_by(.level, specificity) %>%
+  summarise(sensitivity = mean(sensitivity), .groups = "drop")
+
+
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","tune",glue("roc_tuneUW_{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+
+
+
 
 pr_plot<-predictions %>%
   group_by(id) %>%
