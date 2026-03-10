@@ -1037,7 +1037,7 @@ ggsave(
 
 
 
-```{r pub_ready_ROC_calibrated}
+```{r pub_ready_test_ROC_calibrated}
 # --- 1. Compute per-class ROC curve data ---
 roc_data <- test_data_calibration_applied %>%
   roc_curve(
