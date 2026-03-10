@@ -52,17 +52,49 @@ combined_dataset<-combined_dataset %>%
 combined_dataset<-combined_dataset %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL.COMB", "MEDIUM", "LARGE", "JUMBO")))
 
+price.mktcomb <- ggplot(
+  combined_dataset %>% filter(priceR_CPI >= 0 & priceR_CPI <= 10),
+  aes(x = priceR_CPI, weight = lndlb, y = after_stat(density))
+) +
+  geom_histogram(
+    binwidth  = 0.25,
+    fill      = "grey80",
+    colour    = "grey20",
+    linewidth = 0.3
+  ) +
+  facet_grid(rows = vars(market_desc), cols = NULL) +
+  scale_x_continuous(
+    name   = "Real price (USD/lb, CPI-deflated)",
+    limits = c(0, 10),
+    breaks = seq(0, 10, 2),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Density",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background   = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text         = element_text(size = 8, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
+    axis.title         = element_text(size = 8),
+    axis.text          = element_text(size = 7, colour = "grey20"),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
 
-windows(record = TRUE)
-
-
-# Plot. 
-price.mktcomb<-ggplot(combined_dataset %>% filter(priceR_CPI>=0 & priceR_CPI<=12), aes(x=priceR_CPI, weight=lndlb,y=after_stat(density) ))+ 
-  geom_histogram(binwidth=0.25, fill='white', colour='black') + 
-  facet_grid(rows=vars(market_desc),cols=NULL) + 
-  labs(x = "Real Price") 
-price.mktcomb
-savePlot(here("images","exploratory","wprice_histograms_vertical_NR.png"), type = "png")
+ggsave(
+  here("images", "exploratory",
+       glue("wprice_histograms_vertical_NR.pdf")),
+  plot   = price.mktcomb,
+  width  = 84,
+  height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = cairo_pdf
+)
 
 #write_rds(p, file=here("images","exploratory","wprice_histograms_vertical_NR.Rds"))
 ####################################################################################################
@@ -327,7 +359,6 @@ regions <- len.all %>% distinct(REGION) %>% filter(!REGION=='Unknown') %>% pull(
 n.mkts <- length(mkts)
 n.mktcombs <- length(mktcombs)
 
-windows(record = TRUE)
 
 ### A)
 # Plot length frequencies by combined market categories
@@ -340,10 +371,53 @@ plot.data <- len.all %>%
 nbins <- length(min(plot.data$LENGTH):max(plot.data$LENGTH))
 lfplot.mktcomb <- plot.data %>% 
   ggplot() +
-  geom_histogram(aes(x=LENGTH,y=after_stat(density)), bins=nbins, fill='white', colour='black') +
+  aes(x=LENGTH,y=after_stat(density)) + 
+  geom_histogram(
+    bins=nbins, 
+    fill      = "grey80",
+    colour    = "grey20",
+    linewidth = 0.3
+  ) +
   facet_grid(rows=vars(MKTCOMB), cols=NULL) + 
-  labs(x="Length (cm)")
-lfplot.mktcomb
+  scale_x_continuous(
+    name   = "Length (cm))",
+  ) +
+  scale_y_continuous(
+    name   = "Density",
+    expand = expansion(mult = c(0, 0.05))
+  )+ 
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background   = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text         = element_text(size = 8, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
+    axis.title         = element_text(size = 8),
+    axis.text          = element_text(size = 7, colour = "grey20"),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
 fname <- 'LenFq.Mktcomb'
-if(save.fig=='y') { savePlot(file=here("images","background",paste(fname,fig.type,sep='.')), type = fig.type) }  
+if(save.fig=='y'){
+  ggsave(
+    here("images", "background",
+         glue("{fname}.pdf")),
+    plot   = lfplot.mktcomb,
+    width  = 84,
+    height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+    units  = "mm",
+    device = cairo_pdf
+  )
+}
+
+
+
+
+
+
+
+
+
+
 
