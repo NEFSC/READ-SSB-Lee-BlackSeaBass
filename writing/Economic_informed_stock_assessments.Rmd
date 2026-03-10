@@ -110,8 +110,8 @@ data_vintage_string<-"2026-03-03"
 # Need to read in "raw" validation, "calibrated" validations.
 # At Transaction level
 # At mt level
-nocluster_testing_predictions<-readRDS(here("results","ranger",glue("aggregate_test_predictions_TS_nocluster{pred_vintage}.Rds")))
-nocal_predictions<-readRDS(here("results","ranger",glue("aggregate_nocal_predictions_TS_nocluster{pred_vintage}.Rds")))
+nocluster_testing_predictions<-readRDS(here("results","ranger",glue("aggregate_test_predictions_nocluster{pred_vintage}.Rds")))
+nocal_predictions<-readRDS(here("results","ranger",glue("aggregate_nocal_predictions_nocluster{pred_vintage}.Rds")))
 
 
 # this was created with data_prep_ml.Rmd
@@ -386,8 +386,8 @@ Black Sea Bass may be caught by firms without a federal fishing permit and sold 
 Our observational units are sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In our exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and our Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is to obtain an aggregate weight prediction of the underlying unobserved market category of Unclassified fish; we are not interested in predictions of aggregate transactions.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their freqency weight. This results in bootstrap datasets which more closely resemble the frequency weighted data (instead of the unweighted data).  We attempted to calibrate using weighted data without success and we discuss reasons and paths forward in the discussion section.
 
 
-```{r summary_statistics, eval=T, echo=F}
-source(here("writing","BSB.Classification.Recipe.R"))
+```{r summary_statistics, eval=F, echo=F}
+source(here("R_code","analysis", "fit_random_forest","BSB.Classification.Recipe.R"))
 
 ```
 
@@ -487,15 +487,15 @@ Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibra
 ## Tuning and Calibration results
 
 
-```{r rocTune,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
-knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocluster", pred_vintage, ".png")))
+```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
+knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster", pred_vintage, ".pdf")))
 ```
 
 In-sample ROC curves from tuning are quite similar across folds
 and the initial steepness indicates the tuned random forest is good (Figure  \@ref(fig:rocTune)).
 
 ```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
-knitr::include_graphics(here("results","ranger","final", paste0("vip_nocluster", pred_vintage, ".pdf")))
+knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster", pred_vintage, ".pdf")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
@@ -694,7 +694,7 @@ Our loss function is very simple for tuning is very simple. But our data is not,
 
 ### Pre-calibration ROC curve
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
-knitr::include_graphics(here("results","ranger","final", glue("roc_TS_nocluster{pred_vintage}.png")))
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
