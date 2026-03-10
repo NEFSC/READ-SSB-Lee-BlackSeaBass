@@ -236,9 +236,9 @@ collect export $my_results/hedonic_tableA.md, replace
 
 
 /* Just print the market category results */
-collect layout (market_desc#result grade_desc#result result[r2 N]) (model)
+collect layout (market_desc#result result[r2 N]) (model)
 
-collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024) \label{HedonicTableA}"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024).  The model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, month, daily landings and daily landings\textsuperscript{2}.  All but the final two terms are factor variables that are one-hot encoded. \label{HedonicMarketCats}"
 collect export $my_results/hedonic_table_market_cats.tex, replace tableonly
 
 collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024)"
