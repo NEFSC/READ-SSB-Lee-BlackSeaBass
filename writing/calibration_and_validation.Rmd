@@ -534,7 +534,6 @@ ggsave(
   units  = "mm",
   device = cairo_pdf
 )
-write_rds(iso_applied_window, file=here("results","ranger","final",glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.Rds")))
 ```
 
 ```{r other_calibs}
@@ -544,14 +543,12 @@ multi_applied_window<-cal_plot_windowed(validation_data_multicalib_applied,
 multi_applied_window
 ggsave(here("results","ranger","final",glue("cal_multicalibrate_window{modeltype}{finalfit_vintage}.png")), plot=multi_applied_window)
 
-write_rds(multi_applied_window, file=here("results","ranger","final",glue("cal_multicalibrate_window{modeltype}{finalfit_vintage}.Rds")))
 
 
 beta_applied_window<-cal_plot_windowed(validation_data_betacalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
 ggsave(here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.png")), plot=beta_applied_window)
 
-write_rds(beta_applied_window, file=here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.Rds")))
 
 
 # Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
