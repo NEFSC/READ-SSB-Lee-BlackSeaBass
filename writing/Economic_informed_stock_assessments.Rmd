@@ -201,9 +201,13 @@ Fishing vessels catch fish and deliver it to buyers (fish dealer) who classify t
 
 The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
 
-Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicTableA}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  Interestingly, the Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
+Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicMarketCats}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  Interestingly, the Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
 
 
+\input{../results/hedonic_table_market_cats.tex}
+
+
+The model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, month, daily landings and daily landings$^2$.  All but the final two terms are factor variables that are "one-hot" encoded. 
 
 ## Black Sea Bass and the Stock Assessment Enterprise 
 
@@ -490,16 +494,16 @@ knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_TS_nocl
 In-sample ROC curves from tuning are quite similar across folds
 and the initial steepness indicates the tuned random forest is good (Figure  \@ref(fig:rocTune)).
 
-```{r vip,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Variable Importance Plot"}
-knitr::include_graphics(here("results","ranger","final", paste0("vipTS_nocluster", pred_vintage, ".png")))
+```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+knitr::include_graphics(here("results","ranger","final", paste0("vip_nocluster", pred_vintage, ".pdf")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
 
 The calibration step \@ref(fig:calibrationplots) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).  
 
-```{r calibrationplots,echo=FALSE,out.width="48%",fig.show='hold', fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
-knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.png"),glue("cal_isovalidate_windownocluster{pred_vintage}.png") ) ) )
+```{r calibrationplots,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
+knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
 ROC curves, on the 'test data' belong here.  So does a confusion matrix or heatmap belongs here. 
