@@ -230,5 +230,20 @@ This captures the "true data" $y_i, \bf{x_i}$, and the model trained on some gen
 
 For certain other cases, a correction factor is needed which requires computing the covariance matrix between various predictions. 
 
-
  --->
+
+
+## Auxiliary tables
+
+A confusion matrix for the calibrated model. 
+```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
+knitr::include_graphics(here("results","ranger","final","confmat_nocluster{pred_vintage}.pdf))
+```
+
+A confusion matrix for the calibrated model, done on "soft" predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
+knitr::include_graphics(here("results","ranger","final","softconfmat_nocluster{pred_vintage}.pdf))
+```
+
+ 
+ 
