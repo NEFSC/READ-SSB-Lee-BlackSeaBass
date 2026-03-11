@@ -4,7 +4,7 @@
 We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004, @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in a hierarchical linear model; finding that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than average.  Other attributes can impact prices: @Gobillon2017 examine buyer- and seller- effects. 
 
 
-```{r hedonicsummary,  eval=TRUE}
+```{r hedonicsummary,  eval=TRUE, echo=FALSE}
 # this comes out of data_prep_ml.Rmd. It's 
 bsb_original<-readr::read_rds(file=here("data_folder","main","commercial", glue("BSB_original_combined_dataset{data_vintage_string}.Rds")))
 
