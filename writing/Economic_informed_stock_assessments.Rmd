@@ -45,7 +45,9 @@ And a final round of data processing with data_prep_ml.R
 
 The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
 The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
-    I think this is the file that saves "aggregate_test_predictions" in a too aggregate format
+    I think this is the file that saves "aggregate_test_predictions" in a too aggregate format. Either that, or I accidentally overwrote and I need to do a unix find in my code.
+
+It could also be in modelfit_figures.Rmd
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statsistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
 
