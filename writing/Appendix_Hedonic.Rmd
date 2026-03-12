@@ -248,20 +248,5 @@ For certain other cases, a correction factor is needed which requires computing 
  --->
 
 
-## Auxiliary tables
-<!--- 
-These figures are created with
-here(("writing","predictions_heatmaps.Rmd")
---->
-A confusion matrix for the calibrated model. 
-```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
-knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{pred_vintage}.pdf")))
-```
-
-A confusion matrix for the calibrated model, done on "soft" predictions. 
-```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
-knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
-```
-
  
  
