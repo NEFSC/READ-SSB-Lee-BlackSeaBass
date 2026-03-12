@@ -589,7 +589,7 @@ rCalLoss
 
 
 
-```{r ROC_Curve}
+```{r ROC_Curve, eval=FALSE}
 
 # Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
 final_roc<-validation_data_isocalib_applied %>%
