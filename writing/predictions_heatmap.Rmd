@@ -180,6 +180,7 @@ raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vin
 raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
 raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 
+pred_vintage<-"2026-02-11"
 
 
 ```
@@ -255,9 +256,14 @@ final_fit_metrics
 Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
 
 
-# Testing and Validation predictions  
+# Confusion matrices and heatmaps
 
-Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if I have systematic under or over prediction.
+General strategy. Load in the final workflow and the holdout (test) data. load in the calibration model.
+Predict and calibrate.
+
+Make the heat maps (confusion matrices).
+
+
 
 
 ```{r Validation_predictions}
@@ -288,7 +294,11 @@ test_data_isocalib_applied <-
 
 ```
 
-#  Heatmap
+#  Heatmaps
+
+Make confusion matrix using the "conf_mat" function. 
+
+Extract the data from that object and do some things to make it pub-ready.
 
 ```{r heatmap}
 # Make a pub ready heatmap
@@ -343,7 +353,7 @@ p_cm <- ggplot(cm_norm, aes(x = Prediction, y = Truth, fill = Prop)) +
     panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
     plot.margin      = margin(4, 4, 4, 4, "pt")
   )
-
+p_cm
 ggsave(
   here("results", "ranger", "final",
        glue("confmat_{modeltype}{finalfit_vintage}.pdf")),
@@ -355,6 +365,8 @@ ggsave(
 )
   
 ```
+
+Same as previous, but make my own predictions based on the probability weights instead of using the default .class_pred.  
 
 
 ```{r soft_prediction_conf_matrix}
@@ -427,7 +439,7 @@ p_softcm <- ggplot(sofc_cm, aes(x = Prediction, y = Truth, fill = Prop)) +
     panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
     plot.margin      = margin(4, 4, 4, 4, "pt")
   )
-
+p_softcm
 ggsave(
   here("results", "ranger", "final",
        glue("softconfmat_{modeltype}{finalfit_vintage}.pdf")),
@@ -504,7 +516,7 @@ p_softcm <- ggplot(soft_weighted, aes(x = Prediction, y = Truth, fill = Prop)) +
     panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
     plot.margin      = margin(4, 4, 4, 4, "pt")
   )
-
+p_softcm
 ggsave(
   here("results", "ranger", "final",
        glue("soft_weighted_confmat_{modeltype}{finalfit_vintage}.pdf")),
@@ -517,8 +529,26 @@ ggsave(
 
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```{r save_the_predictions}
-soft_testing_predictions<-test_data_isocalib_applied %>%
+regional_predictions<-test_data_isocalib_applied %>%
   ungroup()%>%
   group_by(market_desc, year, stockarea) %>%
   summarise(Prediction_Jumbo=sum(.pred_Jumbo),
@@ -534,7 +564,8 @@ soft_testing_predictions<-test_data_isocalib_applied %>%
          )%>%
   ungroup()
 
-write_rds(soft_testing_predictions, file=here("results","ranger",glue("soft_testing_predictions_nocluster{pred_vintage}.Rds")))
+
+write_rds(regional_predictions, file=here("results","ranger",glue("soft_testing_predictions_{modeltype}{pred_vintage}.Rds")))
 
 ```
 
