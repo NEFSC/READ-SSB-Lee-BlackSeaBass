@@ -41,7 +41,6 @@ output:
 Summary and Housekeeping
 
 I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
-And a final round of data processing with data_prep_ml.R
 
 The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
 The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
@@ -121,8 +120,8 @@ lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
 
-pred_vintage<-"2026-02-11"
-data_vintage_string<-"2026-03-03"
+pred_vintage<-"2026-03-13"
+data_vintage_string<-"2026-03-13"
 
 
 
