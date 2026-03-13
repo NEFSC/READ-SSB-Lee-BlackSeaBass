@@ -273,7 +273,7 @@ p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y =
     axis.title.x       = element_text(size = 8),
     plot.margin        = margin(4, 6, 4, 4, "pt")
   )
-
+p_vip
 # --- 3. Save at ICES JMS single-column specification ---
 ggsave(
   here("results", "ranger", "final",
@@ -399,7 +399,7 @@ p_cal <- ggplot(cal_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
@@ -523,7 +523,7 @@ iso_applied_window <- ggplot(cal_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+iso_applied_window
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
@@ -589,7 +589,7 @@ rCalLoss
 
 
 
-```{r ROC_Curve}
+```{r ROC_Curve, eval=FALSE}
 
 # Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
 final_roc<-validation_data_isocalib_applied %>%
@@ -689,6 +689,7 @@ p_facet <- ggplot(roc_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
+p_facet
 # --- 5. Save at ICES JMS specifications ---
 ggsave(here("results","ranger","final",glue("validation_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
@@ -701,7 +702,7 @@ ggsave(here("results","ranger","final",glue("validation_nocal_roc_curve{modeltyp
 
 
 # --- 6. Build the unweighted figure ---
-p_facet <- ggplot(roc_dataUW,
+p_facetUW <- ggplot(roc_dataUW,
                   aes(x = 1 - specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0,
               linetype = "dashed", colour = "grey50", linewidth = 0.4) +
@@ -731,9 +732,9 @@ p_facet <- ggplot(roc_dataUW,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_facetUW
 ggsave(here("results","ranger","final",glue("validation_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
+       plot   = p_facetUW,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
        units  = "mm",
@@ -815,6 +816,8 @@ p_facet <- ggplot(roc_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
+
+p_facet
 # --- 5. Save at ICES JMS specifications ---
 ggsave(here("results","ranger","final",glue("validation_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
@@ -827,7 +830,7 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_roc_curve{mod
 
 
 # --- 6. Build the unweighted figure ---
-p_facet <- ggplot(roc_dataUW,
+p_facetUW <- ggplot(roc_dataUW,
                   aes(x = 1 - specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0,
               linetype = "dashed", colour = "grey50", linewidth = 0.4) +
@@ -857,9 +860,9 @@ p_facet <- ggplot(roc_dataUW,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_facetUW
 ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
+       plot   = p_facetUW,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
        units  = "mm",
@@ -961,7 +964,7 @@ p_cal <- ggplot(cal_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
@@ -1018,12 +1021,12 @@ p_uncal <- ggplot(uncal_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_uncal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
        glue("uncal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_cal,
+  plot   = p_uncal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
   units  = "mm",
@@ -1103,6 +1106,8 @@ p_facet <- ggplot(roc_data,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
+
+p_facet
 # --- 5. Save at ICES JMS specifications ---
 ggsave(here("results","ranger","final",glue("testing_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
        plot   = p_facet,
@@ -1115,7 +1120,7 @@ ggsave(here("results","ranger","final",glue("testing_calibrated_roc_curve{modelt
 
 
 # --- 6. Build the unweighted figure ---
-p_facet <- ggplot(roc_dataUW,
+p_facetUW <- ggplot(roc_dataUW,
                   aes(x = 1 - specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0,
               linetype = "dashed", colour = "grey50", linewidth = 0.4) +
@@ -1145,9 +1150,9 @@ p_facet <- ggplot(roc_dataUW,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-
+p_facetUW
 ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
+       plot   = p_facetUW,
        width  = 174,   # mm — double-column, suits 4 facets in a row
        height = 65,
        units  = "mm",

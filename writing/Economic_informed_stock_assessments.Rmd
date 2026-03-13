@@ -38,14 +38,31 @@ output:
 
 
  <!---- 
- The hardcoded bibilography is ghastly. 
 Summary and Housekeeping
 
 I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+And a final round of data processing with data_prep_ml.R
+
+The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
+The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
+
+
+Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
+
+* figures are made with
+* figure1 
+* figure2 (windows only)
+* predictions_heatmap
+
+
+renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
 I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
 
-Warnings: There is something funky going on with VA "status=PZERO" starting in 2021.  There is also something funky going on with Delaware landings, but there are no hullids/permit numbers so I don't think this will throw anything off at the vessel level.
+
+
+
+
 
 --->
 
@@ -115,6 +132,7 @@ data_vintage_string<-"2026-03-03"
 nocluster_testing_predictions<-readRDS(here("results","ranger",glue("aggregate_test_predictions_nocluster{pred_vintage}.Rds")))
 nocal_predictions<-readRDS(here("results","ranger",glue("aggregate_nocal_predictions_nocluster{pred_vintage}.Rds")))
 
+soft_testing_predictions<-readRDS(here("results","ranger",glue("soft_testing_predictions_nocluster{pred_vintage}.Rds")))
 
 # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("nocluster_data_split{pred_vintage}.Rds")))
@@ -204,6 +222,13 @@ Fishing vessels catch fish and deliver it to buyers (fish dealer) who classify t
 The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity attributes supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
 
 Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicMarketCats}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  Interestingly, the Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
+
+<!--- 
+The hedonic model is estimated by 
+global in_string 2026-03-03
+do "$analysis_code/bsb_size_classifications.do"
+It creates a the hedonic_table_market_cats.tex file
+--->
 
 
 \input{../results/hedonic_table_market_cats.tex}
@@ -330,9 +355,6 @@ Outside the DGP, we should remove them from the training dataset and refrain fro
 
 First, there is less quality assurance and quality control for the species value field which we use to construct prices. While there are checks to ensure that the values are within a reasonable range, firms that do not report accurately may not be required to improve their reporting accuracy. We handle this by excluding transactions with prices that are too high (over \$15 per pound) or too low (under \$0.15 per pound).  Second, buyers and sellers may be owned by the same entity, making definition of the  *ex-vessel* prices insensitive to market forces.  Fully disentangling ownership is difficult, but inspection of the data suggested that some dealers-vessel pairs were exclusively trading with each other, suggesting some vertical integration.  Third, firms may also participate in forward contracting in which the price of fish is determined well in advance of landing.  To account  for the final two, we excluded transactions from dealer-year-market category combinations where the standard deviation of prices was less than 0.10.  Table Summary statistics describes characteristics of the full dataset and the cleaned dataset.
 
-<!--- Include the next 2 child documents.   --->
-```{r, child=here("writing", c("investigate_fit.Rmd")),  eval=FALSE}
-```
 
 ## Data
 
@@ -490,14 +512,14 @@ Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibra
 
 
 ```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
-knitr::include_graphics(here("results","ranger","tune", paste0("roc_tune_nocluster", pred_vintage, ".pdf")))
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 In-sample ROC curves from tuning are quite similar across folds
 and the initial steepness indicates the tuned random forest is good (Figure  \@ref(fig:rocTune)).
 
 ```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
-knitr::include_graphics(here("results","ranger","final", paste0("vipnocluster", pred_vintage, ".pdf")))
+knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
 The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
@@ -508,18 +530,23 @@ The calibration step \@ref(fig:calibrationplots) illustrates an issue that commo
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
-Validation ROC curve (Figure  \@ref(fig:roc_Valid)). 
 
-```{r roc_Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Validation Sampletuning"}
-knitr::include_graphics(here("results","ranger","tune", paste0("final_roc_curve", pred_vintage, ".pdf")))
+## Testing Results
+
+These figures illustate out-of-sample model performance. The ROC curve (Figure  \@ref(fig:roc-Valid)). 
+
+```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
 
-Soft confusion matrix or heatmap belongs here. 
+A confusion matrix for the calibrated model, done on "soft" predictions. 
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
+```
 
 
-
-```{r validation_predictions, echo=FALSE, warning=FALSE}
+```{r validation-predictions, echo=FALSE, warning=FALSE}
 
 aggregate_transactions<-nocluster_testing_predictions %>%
     summarise(across(c(starts_with(".pred_")), sum)) %>%
@@ -583,7 +610,7 @@ kable(
 Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions), illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
 
 
-```{r weighted_predictions, echo=FALSE}
+```{r weighted-predictions, echo=FALSE}
 
 # Just keep a few columns and polish them up to look nice in the manuscript.
 weighted_predictions<-Testmkt_preds %>%
@@ -813,7 +840,19 @@ kable(
 ```
 ### Hard prediction confusion matrix
 
+<!--- 
+These figures are created with
+here(("writing","predictions_heatmaps.Rmd")
+--->
+A confusion matrix for the calibrated model. 
+```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
+knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{pred_vintage}.pdf")))
+```
 
+A confusion matrix for the calibrated model, done on "soft" predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
+knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
+```
 more text here!
 
 <!---

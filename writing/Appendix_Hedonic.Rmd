@@ -1,10 +1,19 @@
 
 ## Do prices vary by size? 
-
+<!--- 
+The hedonic model is estimated by 
+global in_string 2026-03-03
+do "$analysis_code/bsb_size_classifications.do"
+It creates a table and 3 figures that appear in this appendix
+--->
 We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004, @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in a hierarchical linear model; finding that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than average.  Other attributes can impact prices: @Gobillon2017 examine buyer- and seller- effects. 
 
+<!--- 
+BSB_original_combined_dataset is created by data_prep_ml.R 
+--->
 
-```{r hedonicsummary,  eval=TRUE}
+
+```{r hedonicsummary,  eval=TRUE, echo=FALSE}
 # this comes out of data_prep_ml.Rmd. It's 
 bsb_original<-readr::read_rds(file=here("data_folder","main","commercial", glue("BSB_original_combined_dataset{data_vintage_string}.Rds")))
 
@@ -173,6 +182,12 @@ Figure \@ref(fig:HedonicMarginals) shows the results for the month, year, and st
 This exploratory analysis serves two purposes. First, it confirms that prices vary by market category; this effect persists even after conditioning out effects of gear, landing state, year, month, and aggregate supply effects.  Second, it suggest additional explanatory factors that belong in the Random Forest model. Without including these covariates, we risk confounding the effects of these explanatory variables on price.   
 
 <!---This will read a .tex file.  
+
+The hedonic model is estimated by 
+global in_string 2026-03-03
+do "$analysis_code/bsb_size_classifications.do"
+It creates a table and 3 figures that appear in this appendix
+
  --->
 \input{../results/hedonic_tableA.tex}
 
@@ -230,5 +245,8 @@ This captures the "true data" $y_i, \bf{x_i}$, and the model trained on some gen
 
 For certain other cases, a correction factor is needed which requires computing the covariance matrix between various predictions. 
 
-
  --->
+
+
+ 
+ 
