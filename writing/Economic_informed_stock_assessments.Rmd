@@ -50,12 +50,12 @@ The model is finalized with final_fit and calibrated with "calibration and valid
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
 
 * figures are made with
-* figure1
-* figure2
+* figure1 
+* figure2 (windows only)
 * predictions_heatmap
 
 
-
+renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
 I also ran many of the  files in ``\stata_code\data_extraction_processing\analysis`` to do some exploratory analysis. 
 
@@ -533,20 +533,20 @@ knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_no
 
 ## Testing Results
 
-These figures illustate out-of-sample model performance. The ROC curve (Figure  \@ref(fig:roc_Valid)). 
+These figures illustate out-of-sample model performance. The ROC curve (Figure  \@ref(fig:roc-Valid)). 
 
-```{r roc_Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
 knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
 
 A confusion matrix for the calibrated model, done on "soft" predictions. 
-```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
 
 
-```{r validation_predictions, echo=FALSE, warning=FALSE}
+```{r validation-predictions, echo=FALSE, warning=FALSE}
 
 aggregate_transactions<-nocluster_testing_predictions %>%
     summarise(across(c(starts_with(".pred_")), sum)) %>%
@@ -610,7 +610,7 @@ kable(
 Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions), illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
 
 
-```{r weighted_predictions, echo=FALSE}
+```{r weighted-predictions, echo=FALSE}
 
 # Just keep a few columns and polish them up to look nice in the manuscript.
 weighted_predictions<-Testmkt_preds %>%
