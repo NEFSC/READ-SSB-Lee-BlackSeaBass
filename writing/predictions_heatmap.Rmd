@@ -1,0 +1,605 @@
+---
+title: "Construct Hard and Soft predictions for heatmaps"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    keep_md: yes
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+params:
+  modeltype:
+    value: nocluster
+    choices:
+    - nocluster
+    - TS_nocluster
+---
+
+# Summary and Housekeeping
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ **********************************************************************
+* Purpose: 	
+Construct hard and soft predictive heatmaps.  Hard will go into the Appendix, soft goes into the manuscript.
+
+* Outputs:
+*   - Graphs of hard and soft predictive heatmaps.
+*   - Aggregate predictions for the testing (validation) dataset and the entire dataset (train+test)
+
+
+**********************************************************************
+
+ 
+ --->
+```{r global_options, include=FALSE}
+
+modeltype<-params$modeltype
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+library("ggrepel")
+# load tidyverse and related
+library("tidymodels")
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+library("probably")
+library("discrim")
+library("betacal")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("glue")
+
+#3d plots
+library("htmlwidgets")
+library("plotly")
+
+library("conflicted")
+
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+ 
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+					  
+												
+  my.parallel.threads<-2
+  
+}
+my.ranger.threads<-7
+
+here::i_am("writing/predictions_heatmap.Rmd")
+
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+} else if (modeltype=="TS_nocluster"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
+}else {
+  stop("Unknown modeltype")
+}
+
+
+
+
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, dev="png",
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# My "final fit" bombed out because I didn't have drive space.  
+# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
+# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
+# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
+# finalfit_vintage<-max(finalfit_vintage)
+
+finalfit_vintage<-tuning_vintage
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
+pred_vintage<-"2026-02-11"
+
+
+```
+
+The modeltype is `r params$modeltype`, which is hopefully the same as `r modeltype`.
+
+Data vintage is `r data_vintage_string`.
+
+Tuning vintage is `r tuning_vintage`.
+
+Final fit vintage is `r finalfit_vintage`.
+
+```{r load_in_data and tuning_results, include=FALSE}
+# this was created with data_prep_ml.Rmd
+data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+#tune_res<-readr::read_rds(file=here("results","ranger",glue("{tuning_pattern}{tuning_vintage}.Rds")))
+
+#train_data <- training(data_split)
+test_data <- testing(data_split)
+train_data <- training(data_split)
+
+validation_data <- validation(data_split)
+
+source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+search_type<-"Initial"
+
+
+source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+
+
+```
+
+
+# Load in the final model
+
+read in the final model, extract the recipe and the predictors, extract the predictions
+
+```{r load_final_model}
+
+final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+
+
+# What is the workflow
+final_workflow<-extract_workflow(final_fit)
+
+# And the recipe
+extract_recipe(final_fit)
+
+preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
+ dplyr::filter(role=="predictor")
+
+num_preds<-nrow(preds)
+
+final_predictions<-final_fit %>%
+  collect_predictions()
+
+# pull the probability names
+prob_names<-colnames(predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+# look at the fit metrics
+final_fit_metrics<-final_fit %>%
+  collect_metrics()
+final_fit_metrics
+
+# all.metrics %>%
+#   dplyr::filter(.config==best_config) 
+
+```
+
+Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
+
+
+# Confusion matrices and heatmaps
+
+General strategy. Load in the final workflow and the holdout (test) data. load in the calibration model.
+Predict and calibrate.
+
+Make the heat maps (confusion matrices).
+
+
+
+
+```{r Validation_predictions}
+# Load in the validation data
+
+test_data <- augment(final_workflow,test_data)
+
+```
+
+
+```{r calibration_models}
+# load in the calibration model
+
+calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+
+
+
+```
+
+
+
+```{r apply_calibration}
+# apply to the test dataset
+
+test_data_isocalib_applied <-
+  test_data %>%
+  cal_apply(calibrate_iso)
+
+```
+
+#  Heatmaps
+
+Make confusion matrix using the "conf_mat" function. 
+
+Extract the data from that object and do some things to make it pub-ready.
+
+```{r heatmap}
+# Make a pub ready heatmap
+cm <- conf_mat(test_data_isocalib_applied, truth = market_desc, estimate = .pred_class)
+
+cm_table <- as.data.frame(cm$table)
+# Define desired order
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+
+cm_norm <- cm_table %>%
+  group_by(Truth) %>%
+  mutate(Prop = Freq / sum(Freq)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
+  )
+
+p_cm <- ggplot(cm_norm, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(Freq, format = "f", digits = 0, big.mark = ","),
+                       ")")),
+    size   = 2.8,
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low    = "white",
+    high   = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name   = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  )
+p_cm
+ggsave(
+  here("results", "ranger", "final",
+       glue("confmat_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cm,
+  width  = 84,
+  height = 84,
+  units  = "mm",
+  device = cairo_pdf
+)
+  
+```
+
+Same as previous, but make my own predictions based on the probability weights instead of using the default .class_pred.  
+
+
+```{r soft_prediction_conf_matrix}
+soft_predictions<-test_data_isocalib_applied %>%
+  group_by(market_desc) %>%
+  summarise(Prediction_Jumbo=sum(.pred_Jumbo),
+         Prediction_Large=sum(.pred_Large),
+         Prediction_Medium=sum(.pred_Medium),
+         Prediction_Small=sum(.pred_Small),
+         Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
+         Predlbs_Large=sum(.pred_Large*lndlb),
+         Predlbs_Medium=sum(.pred_Medium*lndlb),
+         Predlbs_Small=sum(.pred_Small*lndlb)
+         )
+soft_predictionUW <- soft_predictions %>%
+  select(c(market_desc, starts_with("Prediction"))) %>%
+  pivot_longer(
+    cols = c(Prediction_Jumbo, Prediction_Large, Prediction_Medium, Prediction_Small),
+    names_to = "Prediction",
+    names_prefix = "Prediction_",
+    values_to = "Freq"
+  )
+soft_predictionUW <-soft_predictionUW %>%
+  rename(Truth=market_desc )
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+
+sofc_cm <- soft_predictionUW %>%
+  group_by(Truth) %>%
+  mutate(Prop = Freq / sum(Freq)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
+  )
+
+p_softcm <- ggplot(sofc_cm, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(Freq, format = "f", digits = 0, big.mark = ","),
+                       ")")),
+    size   = 2.8,
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low    = "white",
+    high   = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name   = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  )
+p_softcm
+ggsave(
+  here("results", "ranger", "final",
+       glue("softconfmat_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_softcm,
+  width  = 84,
+  height = 84,
+  units  = "mm",
+  device = cairo_pdf
+)
+```
+
+
+```{r weighted_soft_conf_mat}
+
+soft_predictionW <- soft_predictions %>%
+  select(c(market_desc, starts_with("Predlbs_"))) %>%
+  pivot_longer(
+    cols = c(Predlbs_Jumbo, Predlbs_Large, Predlbs_Medium, Predlbs_Small),
+    names_to = "Prediction",
+    names_prefix = "Predlbs_",
+    values_to = "pounds"
+  )
+
+
+
+soft_predictionW <-soft_predictionW %>%
+  rename(Truth=market_desc ) %>%
+  mutate(metric_tons=pounds/lbs_per_mt)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+
+soft_weighted <- soft_predictionW %>%
+  group_by(Truth) %>%
+  mutate(Prop = metric_tons / sum(metric_tons)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
+  )
+
+p_softcm <- ggplot(soft_weighted, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(sprintf("%.2f", Prop), "\n(",
+                       formatC(metric_tons, format = "f", digits = 0, big.mark = ","),
+                       ")")),
+    size   = 2.8,
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low    = "white",
+    high   = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name   = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  )
+p_softcm
+ggsave(
+  here("results", "ranger", "final",
+       glue("soft_weighted_confmat_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_softcm,
+  width  = 84,
+  height = 84,
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r save_the_predictions}
+regional_predictions<-test_data_isocalib_applied %>%
+  ungroup()%>%
+  group_by(market_desc, year, stockarea,semester) %>%
+  summarise(Prediction_Jumbo=sum(.pred_Jumbo),
+         Prediction_Large=sum(.pred_Large),
+         Prediction_Medium=sum(.pred_Medium),
+         Prediction_Small=sum(.pred_Small),
+         Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
+         Predlbs_Large=sum(.pred_Large*lndlb),
+         Predlbs_Medium=sum(.pred_Medium*lndlb),
+         Predlbs_Small=sum(.pred_Small*lndlb),
+         True_lbs=sum(lndlb),
+         True_transactions=n()
+         )%>%
+  ungroup()
+
+
+write_rds(regional_predictions, file=here("results","ranger",glue("soft_testing_predictions_{modeltype}{pred_vintage}.Rds")))
+
+```
+
+```{r save_the_predictions}
+# create a fake dataset with the structure of the out of sample predictions for Emily.
+mockup <-regional_predictions %>%
+  select(year,semester, stockarea, starts_with("Predlbs"))
+
+  
+  
+mock2<-  mockup %>%
+      pivot_longer(
+        cols = c(starts_with("Predlbs")),
+        names_to = "Market.Comb",
+        values_to = "lbs",
+        names_prefix="Predlbs_"
+      ) %>%
+  mutate(lbs=lbs/lbs_per_mt)%>%
+  rename(metric_tons=lbs)
+
+write_rds(mock2, file=here("results","ranger",glue("mockup_predictions_{modeltype}{pred_vintage}.Rds")))
+
+
+  
+  
+```
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
