@@ -32,7 +32,8 @@ params:
 1. Read in the tune result and eyeball them.
 2. Pick the best set of tuning parameters.
 3. Fit a final model. 
-4. make some figures.
+4. make some figures that characterize the hyperparamter tuning process.
+
 
 
 <!---- 
