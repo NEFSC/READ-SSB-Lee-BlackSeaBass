@@ -1,6 +1,6 @@
 # Code to make figure2 
 # Note, the year bins are hard-coded, which could cause problems later.
-
+# This does not run on unix/conatiner (windows)
 library("here")
 
 # load tidyverse and related
