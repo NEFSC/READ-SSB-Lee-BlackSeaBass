@@ -550,7 +550,7 @@ ggsave(
 ```{r save_the_predictions}
 regional_predictions<-test_data_isocalib_applied %>%
   ungroup()%>%
-  group_by(market_desc, year, stockarea) %>%
+  group_by(market_desc, year, stockarea,semester) %>%
   summarise(Prediction_Jumbo=sum(.pred_Jumbo),
          Prediction_Large=sum(.pred_Large),
          Prediction_Medium=sum(.pred_Medium),
@@ -569,7 +569,29 @@ write_rds(regional_predictions, file=here("results","ranger",glue("soft_testing_
 
 ```
 
+```{r save_the_predictions}
+# create a fake dataset with the structure of the out of sample predictions for Emily.
+mockup <-regional_predictions %>%
+  select(year,semester, stockarea, starts_with("Predlbs"))
 
+  
+  
+mock2<-  mockup %>%
+      pivot_longer(
+        cols = c(starts_with("Predlbs")),
+        names_to = "Market.Comb",
+        values_to = "lbs",
+        names_prefix="Predlbs_"
+      ) %>%
+  mutate(lbs=lbs/lbs_per_mt)%>%
+  rename(metric_tons=lbs)
+
+write_rds(mock2, file=here("results","ranger",glue("mockup_predictions_{modeltype}{pred_vintage}.Rds")))
+
+
+  
+  
+```
 <!---
 \newpage
 --->
