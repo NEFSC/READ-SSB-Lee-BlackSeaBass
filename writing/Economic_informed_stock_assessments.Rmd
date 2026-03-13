@@ -49,7 +49,7 @@ The model is finalized with final_fit and calibrated with "calibration and valid
 
 It could also be in modelfit_figures.Rmd
 
-Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statsistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
+Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
 
 figures are made with
 figure1
@@ -223,6 +223,13 @@ The market categories exist because downstream buyers care about the sizes of fi
 
 Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicMarketCats}) .  The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  Interestingly, the Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
 
+<!--- 
+The hedonic model is estimated by 
+global in_string 2026-03-03
+do "$analysis_code/bsb_size_classifications.do"
+It creates a the hedonic_table_market_cats.tex file
+--->
+
 
 \input{../results/hedonic_table_market_cats.tex}
 
@@ -348,9 +355,6 @@ Outside the DGP, we should remove them from the training dataset and refrain fro
 
 First, there is less quality assurance and quality control for the species value field which we use to construct prices. While there are checks to ensure that the values are within a reasonable range, firms that do not report accurately may not be required to improve their reporting accuracy. We handle this by excluding transactions with prices that are too high (over \$15 per pound) or too low (under \$0.15 per pound).  Second, buyers and sellers may be owned by the same entity, making definition of the  *ex-vessel* prices insensitive to market forces.  Fully disentangling ownership is difficult, but inspection of the data suggested that some dealers-vessel pairs were exclusively trading with each other, suggesting some vertical integration.  Third, firms may also participate in forward contracting in which the price of fish is determined well in advance of landing.  To account  for the final two, we excluded transactions from dealer-year-market category combinations where the standard deviation of prices was less than 0.10.  Table Summary statistics describes characteristics of the full dataset and the cleaned dataset.
 
-<!--- Include the next 2 child documents.   --->
-```{r, child=here("writing", c("investigate_fit.Rmd")),  eval=FALSE}
-```
 
 ## Data
 
