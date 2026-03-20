@@ -180,7 +180,7 @@ raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vin
 raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
 raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 
-pred_vintage<-"2026-02-11"
+pred_vintage<-finalfit_vintage
 
 
 ```
