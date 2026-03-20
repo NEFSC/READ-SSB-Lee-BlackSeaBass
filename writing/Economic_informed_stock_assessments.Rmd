@@ -41,6 +41,7 @@ output:
 Summary and Housekeeping
 
 I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
+And a final round of data processing with data_prep_ml.R (run 3/13)
 
 The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
 The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
@@ -120,8 +121,9 @@ lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
 
-pred_vintage<-"2026-03-13"
-data_vintage_string<-"2026-03-13"
+data_vintage_string<-"2026-03-16"
+
+pred_vintage<-finalfit_vintage
 
 
 
@@ -525,7 +527,7 @@ The VIP confirms that prices are very important in predicting market category (F
 
 The calibration step \@ref(fig:calibrationplots) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).  
 
-```{r calibrationplots,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
