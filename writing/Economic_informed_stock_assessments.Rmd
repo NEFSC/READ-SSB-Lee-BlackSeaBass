@@ -120,9 +120,9 @@ options(scipen=0)
 lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
+finalfit_vintage<-"2026-03-16"
 
-data_vintage_string<-"2026-03-16"
-
+data_vintage_string<-finalfit_vintage
 pred_vintage<-finalfit_vintage
 
 
