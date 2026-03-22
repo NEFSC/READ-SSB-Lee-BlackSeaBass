@@ -22,3 +22,5 @@ library.bib
 */*/Thumbs.db
 */*/*/Thumbs.db
 *.stswp
+R_code/LAA_calculation/convert_Canadian_cal_to_caa.xlsx
+R_code/LAA_calculation/CAA_calculation.R
