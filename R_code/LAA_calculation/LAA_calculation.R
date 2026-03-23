@@ -76,16 +76,27 @@ comland.length.orig <- fetch(dbSendQuery(connection, land.length.qry))
 ################################################################################
 
 apportion <- readRDS("R_code/LAA_calculation/mockup_predictions_nocluster2026-02-11.Rds")
+apportion <- apportion %>% mutate(YEAR = as.numeric(as.character(year)),
+                                  STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
+                                                            stockarea == 'South' ~ 'SOUTH'),
+                                  MARKET_DESC = case_when (market_desc == 'Small' ~ "SMALL",
+                                                           market_desc == 'Medium' ~ "MEDIUM OR SELECT",
+                                                           market_desc == 'Large' ~ "LARGE",
+                                                           market_desc == 'Jumbo' ~ "JUMBO"),
+                                  LANDINGS_KG_NEW = metric_tons*1000) %>% select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW)
 ## Insert code here to take the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
+comland.length.orig.totals <- comland.length.orig  %>% left_join(comm.land.block.res) %>% left_join(mkt.res) %>% left_join(apportion)
 
-comland.length.orig.totals <- comland.length.orig %>% left_join(comm.land.block.res)
+# Where there isn't any new landings (for some years) use the old landings:
+comland.length.orig.totals <- comland.length.orig.totals %>% mutate(LANDINGS_KG_NEW = case_when (!is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG_NEW,
+                                                                                                 is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG))
 
 ################################################################################
 # Calculate weight at age length
 ################################################################################
 
 ##### !! Change the LANDINGS_KG to whatever new one came out of the apportionment process!
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG/AVG_FISH_WT)
+comland.length.orig.totals <- comland.length.orig.totals %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_NEW/AVG_FISH_WT)
 comland.length.orig.totals <- comland.length.orig.totals %>% mutate(SCALING_FACTOR_DIFF = SCALING_FACTOR_NEW-SCALING_FACTOR)
 
 comland.length.orig.totals <- comland.length.orig.totals %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
