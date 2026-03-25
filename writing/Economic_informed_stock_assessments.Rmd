@@ -144,8 +144,11 @@ test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
 
-#nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
-#aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
+aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("out_of_sample_predictions_YRS_",pred_vintage, ".Rds")))
+
+# note, you want to filter on mark_in==1 here.
+#disaggregated_oos_predictions<-readRDS(here("results","ranger",paste0("out_of_sample_predictions_disaggregated_",pred_vintage, ".Rds")))
+
 ```
 
 # Introduction
@@ -648,43 +651,15 @@ Another things goes ehre.
 
 
 #  Out of Sample Predictions
-out of sample predictions not done yet
 
-```{r nocluster_oos_predictions, eval=FALSE, echo=FALSE,warning=FALSE}
-full_oos_predictions<-aggregate_oos_predictions %>%
-  group_by(stockarea,year, market_desc) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small,lndlb), sum))%>%
-   mutate(across(where(is.numeric), round, 0))%>%
-  rename(true_pounds=lndlb) %>%
-  ungroup()
+We predict out of sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref{fig:out-of-sample-preds} illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations.  
 
-  
-p1<-full_oos_predictions %>%
-  group_by(stockarea, year) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum)) %>%
-  ungroup()
+```{r out-of-sample-preds}
+knitr::include_graphics(here("results", "ranger", "final",
+       glue("YRS_predictions_{modeltype}{pred_vintage}.pdf")))
+```
 
-mkt_preds<-p1 %>%
-  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted") 
-  
-mkt_preds<-mkt_preds %>%
-  mutate(year=as.numeric(as.character(year)),
-         stockarea=as.character(stockarea)) %>%
-  mutate(predicted_mt=predicted/lbs_per_mt)
-
-mkt_preds<-mkt_preds %>%
-  group_by(stockarea, market_desc) %>%
-  arrange(stockarea, market_desc, year) %>%
-  ungroup() %>%
-    rename(subregion=stockarea)
-
- 
-ggplot(mkt_preds, aes(x=year, y=predicted_mt, group=market_desc))+
-    geom_line() +
-  scale_x_continuous(name="year", limits=c(2016,2024))  + 
-  facet_grid(vars(subregion), vars(market_desc)) 
-
-``` 
+We convert the landings of these observations into a length structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
 
 
 # Discussion
