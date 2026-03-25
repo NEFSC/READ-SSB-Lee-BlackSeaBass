@@ -41,7 +41,7 @@ output:
 Summary and Housekeeping
 
 I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
-And a final round of data processing with data_prep_ml.R
+And a final round of data processing with data_prep_ml.R (run 3/13)
 
 The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
 The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
@@ -53,7 +53,7 @@ Hedonic model was fit with "bsb_size_classifications.do". This file also generat
 * figure1 
 * figure2 (windows only)
 * predictions_heatmap
-
+* out_of_sample_predictions.Rmd makes out of sample predictions.
 
 renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
@@ -120,9 +120,10 @@ options(scipen=0)
 lbs_per_mt<-2204.62
 
 imagefolder<-here("images")
+finalfit_vintage<-"2026-03-16"
 
-pred_vintage<-"2026-02-11"
-data_vintage_string<-"2026-03-03"
+data_vintage_string<-finalfit_vintage
+pred_vintage<-finalfit_vintage
 
 
 
@@ -143,8 +144,11 @@ test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
 
-#nocluster_full_predictions<-readRDS(here("results","ranger",paste0("aggregate_full_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
-#aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("aggregate_oos_predictions_nocluster_Tsubset",pred_vintage, ".Rds")))
+aggregate_oos_predictions<-readRDS(here("results","ranger",paste0("out_of_sample_predictions_YRS_",pred_vintage, ".Rds")))
+
+# note, you want to filter on mark_in==1 here.
+#disaggregated_oos_predictions<-readRDS(here("results","ranger",paste0("out_of_sample_predictions_disaggregated_",pred_vintage, ".Rds")))
+
 ```
 
 # Introduction
@@ -526,7 +530,7 @@ The VIP confirms that prices are very important in predicting market category (F
 
 The calibration step \@ref(fig:calibrationplots) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).  
 
-```{r calibrationplots,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
@@ -647,43 +651,15 @@ Another things goes ehre.
 
 
 #  Out of Sample Predictions
-out of sample predictions not done yet
 
-```{r nocluster_oos_predictions, eval=FALSE, echo=FALSE,warning=FALSE}
-full_oos_predictions<-aggregate_oos_predictions %>%
-  group_by(stockarea,year, market_desc) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small,lndlb), sum))%>%
-   mutate(across(where(is.numeric), round, 0))%>%
-  rename(true_pounds=lndlb) %>%
-  ungroup()
+We predict out of sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref{fig:out-of-sample-preds} illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations.  
 
-  
-p1<-full_oos_predictions %>%
-  group_by(stockarea, year) %>%
-    summarise(across(c(pred_Jumbo,pred_Large,pred_Medium,pred_Small), sum)) %>%
-  ungroup()
+```{r out-of-sample-preds}
+knitr::include_graphics(here("results", "ranger", "final",
+       glue("YRS_predictions_{modeltype}{pred_vintage}.pdf")))
+```
 
-mkt_preds<-p1 %>%
-  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted") 
-  
-mkt_preds<-mkt_preds %>%
-  mutate(year=as.numeric(as.character(year)),
-         stockarea=as.character(stockarea)) %>%
-  mutate(predicted_mt=predicted/lbs_per_mt)
-
-mkt_preds<-mkt_preds %>%
-  group_by(stockarea, market_desc) %>%
-  arrange(stockarea, market_desc, year) %>%
-  ungroup() %>%
-    rename(subregion=stockarea)
-
- 
-ggplot(mkt_preds, aes(x=year, y=predicted_mt, group=market_desc))+
-    geom_line() +
-  scale_x_continuous(name="year", limits=c(2016,2024))  + 
-  facet_grid(vars(subregion), vars(market_desc)) 
-
-``` 
+We convert the landings of these observations into a length structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
 
 
 # Discussion

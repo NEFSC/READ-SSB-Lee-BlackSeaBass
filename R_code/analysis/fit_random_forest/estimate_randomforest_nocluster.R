@@ -29,12 +29,12 @@
 
 
 
-search_type<-"Initial"
-# search_type in "Initial", "Prototype")
-#search_type<-"Prototype"
+search_type<-"Advanced"
+# search_type in "Initial", "Prototype","Advanced")
 
-testing_fraction<-1					  
-# how much of the data to hold out for final validation
+# Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
+#testing_fraction<-1					  
+#  
 start_time<-Sys.time()
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
