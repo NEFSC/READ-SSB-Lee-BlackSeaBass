@@ -1,0 +1,582 @@
+---
+title: "Black Sea Bass: Out of Sample Predictions after model fit"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    keep_md: yes
+    fig_caption: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+params:
+  modeltype:
+    value: nocluster
+    choices:
+    - nocluster
+    - TS_nocluster
+---
+
+# Summary and Housekeeping
+
+
+Calibration and Validation
+
+1. Read in the finalized model 
+2. Calibrate probabilities using a 'testing sample'
+3. Validate on a validation sample. 
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ **********************************************************************
+* Purpose: 	Read in outputs of machine learning models 
+* Inputs: These three can be adjusted by changing the "modeltype"
+*   - Data file
+*   - tuning results file
+*   - final results file
+
+
+* Outputs:
+*   - Graphs of tuning quality and final model fit
+*   - Aggregate predictions for the testing (validation) dataset and the entire dataset (train+test)
+
+
+The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
+The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
+
+
+
+**********************************************************************
+
+ 
+ --->
+```{r global_options, include=FALSE}
+
+modeltype<-params$modeltype
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+library("ggrepel")
+# load tidyverse and related
+library("tidymodels")
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+library("probably")
+library("discrim")
+library("betacal")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("glue")
+
+#3d plots
+library("htmlwidgets")
+library("plotly")
+
+library("conflicted")
+
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+conflicts_prefer(vip::vi)
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+ 
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+					  
+												
+  my.parallel.threads<-2
+  
+}
+my.ranger.threads<-7
+
+here::i_am("writing/out_of_sample_predictions.Rmd")
+
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+} else if (modeltype=="TS_nocluster"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
+}else {
+  stop("Unknown modeltype")
+}
+
+
+
+
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, dev="png",
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# My "final fit" bombed out because I didn't have drive space.  
+# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
+# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
+# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
+# finalfit_vintage<-max(finalfit_vintage)
+
+finalfit_vintage<-tuning_vintage
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
+vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
+vintage_string<-max(vintage_string)
+
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
+
+
+```
+
+
+# Get Ready
+
+read in the final model, extract the recipe and the predictors. Read in the probabilty calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) wer excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
+
+```{r load_final_model}
+
+
+final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+
+
+# What is the workflow
+final_workflow<-extract_workflow(final_fit)
+
+# And the recipe
+extract_recipe(final_fit)
+
+preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
+ dplyr::filter(role=="predictor")
+
+num_preds<-nrow(preds)
+
+
+# Read in the out-of-sample data
+# from data_prep.ml.R
+# this contains ALL unclassifieds, however, only unclassifieds with mark_in==1 should get a prediction
+oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+
+oos_predictable<-oos_data %>%
+  filter(mark_in==1) 
+
+oos_unpredictable<-oos_data %>%
+  filter(mark_in!=1) 
+
+
+
+# Read in calibrationmodel 
+calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+
+```
+
+## Predict and calibrate
+
+Apply the final RF model to the data. Calibrate the probabilities
+
+```{r Validation_predictions}
+# Apply the Final fit to the out of sample dataset that I feel confident about 
+oos_predictable <- augment(final_workflow,oos_predictable)
+
+
+# Apply calibration apply to the out-of-sample dataset
+
+oos_data_calibration_applied <-
+  oos_predictable %>%
+  cal_apply(calibrate_iso)
+
+```
+
+
+
+## Construct predicted landings
+
+Weight each observation by live pounds (NOT lndlb).  I've subsequently figured out better looking code to do this (predictions_heatmap), but this will work.
+
+```{r extract_predictions}
+### pull a few categories, compute a prob*lndlb variable, sum 
+
+
+# pull the probability names
+prob_names<-colnames(oos_data_calibration_applied) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+
+
+# keep just a few columns
+oos_data_calibration_applied<-oos_data_calibration_applied %>%
+  select(c(year, stockarea, market_desc, semester, weighting, livlb, any_of(prob_names), .pred_class))
+
+# predicted pounds per transaction in the validation dataset.
+# multiply the prediction by the live pounds to get predicted live pounds in each class. 
+# This loop is a ugly.  There's only 5 categories, so it's probably better to just write it out
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    oos_data_calibration_applied[[paste0("pred_", l)]] <- oos_data_calibration_applied[[paste0(".pred_", l)]] * oos_data_calibration_applied$livlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+# Sum up the predictions by year, market category, and stockarea. 
+YRS_predictions<-oos_data_calibration_applied %>%
+   group_by(year, stockarea,semester) %>%
+   mutate(transactions=1) %>%
+   summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
+  ungroup() %>%
+    select(year,semester, stockarea, starts_with("pred_"))
+
+#reshape to a tidy long format
+YRS_predictions<-  YRS_predictions %>%
+      pivot_longer(
+        cols = c(starts_with("pred_")),
+        names_to = "Market.Comb",
+        values_to = "live_lbs",
+        names_prefix="pred_"
+      ) %>%
+  mutate(live_lbs=live_lbs/lbs_per_mt)%>%
+  rename(live_metric_tons=live_lbs)
+
+
+# get the unpredictables to the same format
+oos_Uncs<-oos_unpredictable %>%
+   group_by(year, stockarea,semester) %>%
+   summarise(live_metric_tons=sum(livlb)/lbs_per_mt) %>%
+   mutate(Market.Comb="Unclassified")
+
+#bind together
+YRS_predictions<-YRS_predictions %>%
+  bind_rows(oos_Uncs)
+  
+  
+# data quality check
+# ensure I have 1 observation per year-region-semester
+check1<-YRS_predictions %>%
+  group_by(year,semester,stockarea, Market.Comb)%>%
+  summarise(count=n()) %>%
+  ungroup()%>%
+  summarise(max=max(count))
+stopifnot(check1==1)
+
+YRS_predictions<-YRS_predictions %>%
+  mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small","Unclassified")) %>%
+  group_by(year,semester,stockarea, Market.Comb)%>%
+  arrange(year,semester,stockarea,Market.Comb)
+
+#YRS -- year, region, semester
+
+write_rds(YRS_predictions, file=here("results","ranger",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+
+```
+
+## Ambitious predictions
+
+I refrained from making some predictions about the unclassifieds, because they are similar to the data that I excluded from fitting the initial model. What happens if I try to predict class for those observations?  This repeats most of the previous, except it reads in ALL the oos_data, instead of just the mark_in==1
+
+```{r ambitious_predictions}
+
+# Apply the Final fit to the out of sample dataset 
+ambitious_predictions <- augment(final_workflow,oos_data)
+
+# apply Calibration
+
+ambitious_predictions_cal_applied <-
+  ambitious_predictions %>%
+  cal_apply(calibrate_iso)
+
+
+write_rds(ambitious_predictions_cal_applied, file=here("results","ranger",glue("out_of_sample_predictions_disaggregated_{modeltype}{finalfit_vintage}.Rds")))
+
+# keep just a few columns
+ambitious_predictions_cal_applied<-ambitious_predictions_cal_applied %>%
+  select(c(year, stockarea, market_desc, semester, weighting, livlb, any_of(prob_names), .pred_class))
+
+# predicted pounds per transaction in the validation dataset.
+# multiply the prediction by the landed pounds to get predicted pounds in each class. 
+for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
+  tryCatch({
+    ambitious_predictions_cal_applied[[paste0("pred_", l)]] <- ambitious_predictions_cal_applied[[paste0(".pred_", l)]] * ambitious_predictions_cal_applied$livlb
+  }, error = function(e) {
+    # R will just silently continue to the next iteration
+  })
+}
+
+# Sum up the predictions by year, market category, and stockarea. 
+ambitious_YRS_predictions<-ambitious_predictions_cal_applied %>%
+   group_by(year, stockarea,semester) %>%
+   mutate(transactions=1) %>%
+   summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
+  ungroup() %>%
+    select(year,semester, stockarea, starts_with("pred_"))
+
+ambitious_YRS_predictions<-  ambitious_YRS_predictions %>%
+      pivot_longer(
+        cols = c(starts_with("pred_")),
+        names_to = "Market.Comb",
+        values_to = "live_lbs",
+        names_prefix="pred_"
+      ) %>%
+  mutate(live_lbs=live_lbs/lbs_per_mt)%>%
+  rename(live_metric_tons=live_lbs)
+
+
+
+# ensure I have 1 observation per year-region-semester
+check1<-ambitious_YRS_predictions %>%
+  group_by(year,semester,stockarea, Market.Comb)%>%
+  summarise(count=n()) %>%
+  ungroup()%>%
+  summarise(max=max(count))
+stopifnot(check1==1)
+
+ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
+  mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small","Unclassified")) %>%
+  group_by(year,semester,stockarea, Market.Comb)%>%
+  arrange(year,semester,stockarea,Market.Comb)
+
+#YRS -- year, region, semester
+
+write_rds(ambitious_YRS_predictions, file=here("results","ranger",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+
+
+# make a simple plot
+ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
+  mutate(year_cont = as.numeric(as.character(year))) %>%
+    mutate(stockarea = fct_rev(stockarea))
+
+
+ ggplot(ambitious_YRS_predictions, aes(x=year_cont, y=live_metric_tons, color=Market.Comb))+
+    geom_line() +
+  scale_x_continuous(name="year")  + 
+  scale_y_continuous(name="Predicted live metric tons")  + 
+  facet_grid(vars(stockarea), vars(semester)) 
+
+
+```
+
+
+
+```{r nicer_conservative_plot}
+
+YRS_predictions<-YRS_predictions %>%
+  mutate(year_cont = as.numeric(as.character(year))) %>%
+    mutate(stockarea = fct_rev(stockarea))
+
+
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+
+p_conserv_predictions <- ggplot(
+    YRS_predictions,
+    aes(x = year_cont, y = live_metric_tons, colour = Market.Comb)
+  ) +
+  geom_line(linewidth = 0.7) +
+  facet_grid(
+    rows = vars(stockarea),
+    cols = vars(semester)
+  ) +
+  scale_colour_manual(
+    name   = "Market grade",
+    values = class_colours,
+    labels = c("Jumbo", "Large", "Medium", "Small")
+  ) +
+  scale_x_continuous(
+    name   = "Year",
+    breaks = scales::breaks_pretty(n = 5),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Predicted live weight (mt)",
+    labels = scales::label_comma(accuracy = 1),
+    expand = expansion(mult = c(0.01, 0.05))
+  ) +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background   = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text         = element_text(size = 8, face = "bold"),
+    panel.grid.major   = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor   = element_blank(),
+    axis.title         = element_text(size = 8),
+    axis.text          = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    legend.position    = "bottom",
+    legend.title       = element_text(size = 7, face = "bold"),
+    legend.text        = element_text(size = 7),
+    legend.key.width   = unit(0.6, "cm"),
+    legend.key.height  = unit(0.3, "cm"),
+    legend.margin      = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(4, "pt"),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(
+  here("results", "ranger", "final",
+       glue("YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_conserv_predictions,
+  width  = 174,
+  height = 120,    # adjust in 5mm increments if strip labels or legend crowd
+  units  = "mm",
+  device = cairo_pdf
+)
+
+p_conserv_predictions
+```
+
+
+```{r nicer_ambitious_plot}
+
+
+
+p_predictions <- ggplot(
+    ambitious_YRS_predictions,
+    aes(x = year_cont, y = live_metric_tons, colour = Market.Comb)
+  ) +
+  geom_line(linewidth = 0.7) +
+  facet_grid(
+    rows = vars(stockarea),
+    cols = vars(semester)
+  ) +
+  scale_colour_manual(
+    name   = "Market grade",
+    values = class_colours,
+    labels = c("Jumbo", "Large", "Medium", "Small")
+  ) +
+  scale_x_continuous(
+    name   = "Year",
+    breaks = scales::breaks_pretty(n = 5),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Predicted live weight (mt)",
+    labels = scales::label_comma(accuracy = 1),
+    expand = expansion(mult = c(0.01, 0.05))
+  ) +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background   = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text         = element_text(size = 8, face = "bold"),
+    panel.grid.major   = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor   = element_blank(),
+    axis.title         = element_text(size = 8),
+    axis.text          = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(angle = 45, hjust = 1),
+    legend.position    = "bottom",
+    legend.title       = element_text(size = 7, face = "bold"),
+    legend.text        = element_text(size = 7),
+    legend.key.width   = unit(0.6, "cm"),
+    legend.key.height  = unit(0.3, "cm"),
+    legend.margin      = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(4, "pt"),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+ggsave(
+  here("results", "ranger", "final",
+       glue("ambitious_YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_predictions,
+  width  = 174,
+  height = 120,    # adjust in 5mm increments if strip labels or legend crowd
+  units  = "mm",
+  device = cairo_pdf
+)
+
+p_predictions
+```
+
+
+
+
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+
+
+
+# Appendix{-}
