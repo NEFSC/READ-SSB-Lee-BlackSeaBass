@@ -225,7 +225,7 @@ final_predictions<-final_fit %>%
   collect_predictions()
 
 # pull the probability names
-prob_names<-colnames(predictions) 
+prob_names<-colnames(final_predictions) 
 prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
