@@ -341,7 +341,7 @@ YRS_predictions<-YRS_predictions %>%
 
 #YRS -- year, region, semester
 
-write_rds(YRS_predictions, file=here("results","ranger",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(YRS_predictions, file=here("date_folder","predictions",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
@@ -412,7 +412,7 @@ ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
 
 #YRS -- year, region, semester
 
-write_rds(ambitious_YRS_predictions, file=here("results","ranger",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(ambitious_YRS_predictions, file=here("data_folder","predictions",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 
 # make a simple plot
