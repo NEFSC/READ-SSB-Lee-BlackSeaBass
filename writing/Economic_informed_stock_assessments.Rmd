@@ -53,7 +53,7 @@ Hedonic model was fit with "bsb_size_classifications.do". This file also generat
 * figure1 
 * figure2 (windows only)
 * predictions_heatmap
-
+* out_of_sample_predictions.Rmd makes out of sample predictions.
 
 renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
