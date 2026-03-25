@@ -73,8 +73,21 @@ if  (search_type=="Initial"){
     min_n(range = c(5L, 100L)),         # Minimum observations per node
     size = 24                          # Grid size for initial exploration
   )
+}
+
+# The initial grid search found an optimal min_n parameter on the boundary of my grid (min_n=100). 
+# Very small mtry and min_n did poorly, so did mtry approaching the number of factors, so I've tightened up the boundaries of the grid a bit.
+# And I've added 
+if  (search_type=="Advanced"){
+  rf_grid<-  param_grid <- grid_space_filling(
+    mtry(range = c(10L, 35)),           # Number of variables per split
+    min_n(range = c(10L, 300)),         # Minimum observations per node
+    size = 120                          # Grid size for initial exploration
+  )
   
 }
+
+
 
 # Overwite mtry rf_grid for testing=true to speed prototyping
 if  (search_type=="Prototype"){
