@@ -36,6 +36,10 @@ rm(list=ls())
 # Library and Source Code/Functions
 library(ROracle)
 library(tidyverse)
+library(here)
+library(glue)
+
+here::i_am("R_code/LAA_calculation/LAA_calculation.R")
 
 fyr <- 1989
 lyr <- 2024
@@ -75,15 +79,45 @@ comland.length.orig <- fetch(dbSendQuery(connection, land.length.qry))
 # Reapportion the aggregate landings and combine with length and age info
 ################################################################################
 
-apportion <- readRDS("R_code/LAA_calculation/mockup_predictions_nocluster2026-02-11.Rds")
-apportion <- apportion %>% mutate(YEAR = as.numeric(as.character(year)),
+# pick up the most recent predictions
+
+predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
+predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
+predictions_vintage<-gsub(".Rds","",predictions_vintage)
+predictions_vintage<-max(predictions_vintage)
+
+# Read in the set of predictions that has some  Unclassifieds
+apportion <- readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
+apportion <- apportion %>% 
+   ungroup() %>%
+   mutate(YEAR = as.numeric(as.character(year)),
                                   STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
                                                             stockarea == 'South' ~ 'SOUTH'),
-                                  MARKET_DESC = case_when (market_desc == 'Small' ~ "SMALL",
-                                                           market_desc == 'Medium' ~ "MEDIUM OR SELECT",
-                                                           market_desc == 'Large' ~ "LARGE",
-                                                           market_desc == 'Jumbo' ~ "JUMBO"),
-                                  LANDINGS_KG_NEW = metric_tons*1000) %>% select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW)
+                                  MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
+                                                           Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
+                                                           Market.Comb == 'Large' ~ "LARGE",
+                                                           Market.Comb == 'Jumbo' ~ "JUMBO",
+                                                           Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
+                                  LANDINGS_KG_NEW = live_metric_tons*1000) %>% 
+  select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW)
+
+# Read in the 2nd set of predictions that has NO Unclassifieds
+ambitious <- readRDS(here("data_folder","predictions", glue("ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
+ambitious <- ambitious %>% 
+  ungroup() %>%
+  mutate(YEAR = as.numeric(as.character(year)),
+         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
+                                   stockarea == 'South' ~ 'SOUTH'),
+         MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
+                                  Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
+                                  Market.Comb == 'Large' ~ "LARGE",
+                                  Market.Comb == 'Jumbo' ~ "JUMBO",
+                                  Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
+         LANDINGS_KG_AMBITIOUS = live_metric_tons*1000) %>% 
+  select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_AMBITIOUS)
+
+
+
 ## Insert code here to take the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
 comland.length.orig.totals <- comland.length.orig  %>% left_join(comm.land.block.res) %>% left_join(mkt.res) %>% left_join(apportion)
 
