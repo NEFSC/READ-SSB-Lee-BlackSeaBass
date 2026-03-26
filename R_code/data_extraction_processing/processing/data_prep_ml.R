@@ -81,7 +81,7 @@ out_data_string<-Sys.Date()
 #1. Daily landings at the market category level
 #2. Daily landings at the state and market category level
 #3. Daily landings at the stockarea and market category level 
-#4. Historical "target encoding" based on 2010-2014 purchases for the dealers
+#4.  Historical "target encoding" based on 2010-2014 purchases for the dealers AND 1 year lags of dealer purchases.
 
 cleaned_landings<-read_dta(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.dta")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))

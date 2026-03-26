@@ -1,0 +1,548 @@
+---
+title: "Black Sea Bass: A Random Forest, read in tune results and perform the final fit"
+author: "Min-Yang Lee"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    keep_md: yes
+    fig_caption: yes
+  pdf_document:
+    keep_tex: yes
+    fig_caption: yes
+    number_sections: yes
+header-includes: \usepackage{setspace}\doublespacing
+urlcolor: blue
+editor_options:
+  chunk_output_type: console
+fontsize: 12pt
+params:
+  modeltype:
+    value: nocluster
+    choices:
+    - nocluster
+    - TS_nocluster
+---
+
+# Summary and Housekeeping
+
+
+ My "final fit" bombed out because I didn't have drive space.  This is code to
+ 
+1. Read in the tune result and eyeball them.
+2. Pick the best set of tuning parameters.
+3. Fit a final model. 
+4. make some figures that characterize the hyperparamter tuning process.
+
+
+
+<!---- 
+ The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
+ **********************************************************************
+* Purpose: 	Read in outputs of machine learning models 
+* Inputs: These three can be adjusted by changing the "modeltype"
+*   - Data file
+*   - tuning results file
+*   - final results file
+
+
+* Outputs:
+*   - Graphs of tuning quality and final model fit
+*   - Aggregate predictions for the testing (validation) dataset and the entire dataset (train+test)
+
+
+**********************************************************************
+
+ 
+ --->
+```{r global_options, include=FALSE}
+
+modeltype<-params$modeltype
+
+
+library("here")
+
+# load tidyverse and related
+library("tidyverse")
+library("scales")
+library("ggrepel")
+# load tidyverse and related
+library("tidymodels")
+
+# load machine learning and estimation tools
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+library("probably")
+library("discrim")
+library("betacal")
+
+# load utilities
+library("knitr")
+library("kableExtra")
+library("viridis")
+library("glue")
+
+#3d plots
+library("htmlwidgets")
+library("plotly")
+
+library("conflicted")
+
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::lag())
+conflicts_prefer(purrr::discard())
+conflicts_prefer(dplyr::group_rows())
+conflicts_prefer(yardstick::spec())
+conflicts_prefer(recipes::fixed())
+conflicts_prefer(recipes::step())
+conflicts_prefer(viridis::viridis_pal())
+
+# Determine what platform the code is running on and set the number of threads for ranger
+platform <- Sys.info()['sysname']
+# check the name of the effective_user
+if(platform == 'Linux'){
+  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
+      runClass<-'DynamicContainer'
+    } else{ 
+      runClass <- 'Container'
+    }
+  }
+ 
+
+if(platform == 'Windows'){
+  runClass<-'Windows'
+}
+
+if (runClass %in% c('Local', 'Windows')){
+  my.parallel.threads<-parallel::detectCores() -2 
+} else if (runClass %in% c('Container','DynamicContainer')){ 
+					  
+												
+  my.parallel.threads<-2
+  
+}
+my.ranger.threads<-7
+
+here::i_am("writing/final_fit.Rmd")
+
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+} else if (modeltype=="TS_nocluster"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
+}else {
+  stop("Unknown modeltype")
+}
+
+
+
+
+
+#############################################################################
+#knitr options
+
+knitr::opts_chunk$set(echo=TRUE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, dev="png",
+											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+lbs_per_mt<-2204.62
+#############################################################################
+my_images<-here("images")
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# My "final fit" bombed out because I didn't have drive space.  
+# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
+# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
+# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
+# finalfit_vintage<-max(finalfit_vintage)
+
+finalfit_vintage<-tuning_vintage
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
+
+
+```
+
+The modeltype is `r params$modeltype`, which is hopefully the same as `r modeltype`.
+
+Data vintage is `r data_vintage_string`.
+
+Tuning vintage is `r tuning_vintage`.
+
+Final fit vintage is `r finalfit_vintage`.
+
+```{r load_in_tuning_results, include=FALSE}
+tune_res<-readr::read_rds(file=here("results","ranger",glue("{tuning_pattern}{tuning_vintage}.Rds")))
+#oos_data<-read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+
+#source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+#search_type<-"Initial"
+
+
+#source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+
+
+```
+
+
+# Tuning
+
+How well did the tuning work?
+
+
+
+
+```{r check_convergence}
+# Did the bayesian model converge or is one of the grid-searchs best?
+
+bayesian_results<-autoplot(tune_res, type = "performance") +
+  labs(title = "Did Bayesian optimization converge?")
+
+bayesian_results
+
+ ggsave(here("results","ranger","tune",glue("bayesian_tune_{modeltype}{tuning_vintage}.png")), plot=bayesian_results)
+
+rm(bayesian_results)
+
+ #It didn't find anything better.
+
+# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
+
+best_tree <- tune_res %>%
+  select_best(metric = "mn_log_loss")
+
+best_config<-best_tree %>%
+  pull(.config)
+
+best_config
+```
+
+# do the metrics look okay?
+
+```{r }
+
+# eyeball the metrics 
+all.metrics<-tune_res %>%
+  collect_metrics() 
+
+all.metrics %>% filter(.metric=="mn_log_loss") %>% arrange(mean) %>% slice_head(n=15)
+```
+The ``.iter`` value is the iteration log from the bayesian search. ``iter==0`` means that that particular hyperparamter configuration was part of the initial grid search. The 1st Bayesian search is really keyed on small min_n, while the grid search really likes a higher one.  
+
+For noclusterTS, the grid search was pretty good, with mtry=18, min_n=17 producing a mn_log_loss of 0.391.  The bayesian search found 26,15, 0.388 on iteration 8 and then failed to improve on that for 10 iterations, so  it stopped.
+
+For the "nocluster," the grid search produced the optimal params, with mtry=19 and min_n=66.  The criterion function (loss function) is very "flat" the difference between the best 5th best of hyperparameters (28, 95) is 1%.  The difference between the best and 15th best set (18,17)  is about 3.5%.  When I added 2013 data, the optimal min_n =100, which is on the edge of my grid. This is no good, so we need to re-tune the model.
+
+```{r finalize_model, eval=FALSE}
+# finalize model by picking the best model hyperparameters
+# I have an 'if' exists statement going on here, because it takes a little while to fit the model. If I've already fit the model, I'll just read it in.
+# the first time, my code bombed out because I didn't have storage space. Now, the full fit worked, so it's safer to eval=FALSE this chunk
+
+
+source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+search_type<-"Initial"
+source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+
+final_wf <- 
+  BSB.Ranger.Workflow %>% 
+  finalize_workflow(best_tree)
+
+if (file.exists(here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))==FALSE){
+# Final model fitting on the full training dataset 
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split, metrics=class_and_probs_metrics) 
+
+
+write_rds(final_fit, file=here("results","ranger",glue("final_fit_{final_pattern}{tuning_vintage}.Rds")))
+}
+gc()
+```
+
+```{r brier_class, eval=FALSE}
+
+# Brier class is broken for me, but being fixed by the yardstick devs
+# Now that I'm tuning over a grid, this makes less sense.
+best_tree <- tune_res %>%
+  select_best(metric = "brier_class")
+
+opt_mtry<-best_tree$mtry
+
+brier<-all.metrics %>%
+  filter(.metric == "brier_class") %>%
+  select(mean, mtry) %>%
+  rename(brier_class=mean) 
+
+ brier %>% ggplot(aes(mtry, brier_class)) +
+  geom_point(show.legend = TRUE) +
+   geom_text_repel(aes(label = round(brier_class,4)), size=3) 
+
+
+# ggsave(here("results","ranger","tune",glue("brier_class{modeltype}{tuning_vintage}.png")), plot=last_plot())
+
+
+ 
+  
+brier<-tune_res %>%
+  collect_metrics(summarize=FALSE) %>%
+  filter(.metric == "brier_class") 
+
+brier %>% ggplot(aes(x=as.factor(mtry), y=.estimate)) +
+  geom_boxplot(show.legend = TRUE) 
+
+#  ggsave(here("results","ranger","tune",glue("brier_class_indivd_{modeltype}{tuning_vintage}.png")), plot=last_plot())
+
+ 
+```
+
+Multinomial log-loss. Since I'm tuning over mtry and min_n, the 1d plot doesn't make as much sense. It's better to look at the table. 
+
+```{r log_loss}
+mn_log_loss<-all.metrics %>%
+  filter(.metric == "mn_log_loss") %>%
+#  filter(mtry <=10) %>%
+  select(mean, mtry, min_n) %>%
+  rename(mn_log_loss=mean)
+
+log_loss<- mn_log_loss %>% ggplot(aes(mtry, mn_log_loss)) +
+  geom_point(show.legend = TRUE) + 
+    geom_text_repel(aes(label = round(mn_log_loss,4)), size=3) 
+
+
+ ggsave(here("results","ranger","tune",glue("mn_log_loss_mtry_{modeltype}{tuning_vintage}.png")), plot=log_loss)
+
+rm(log_loss)
+ 
+min_n<-  mn_log_loss %>% ggplot(aes(min_n, mn_log_loss)) +
+  geom_point(show.legend = TRUE) + 
+    geom_text_repel(aes(label = round(mn_log_loss,4)), size=3) 
+
+  ggsave(here("results","ranger","tune",glue("mn_log_loss_min_n_{modeltype}{tuning_vintage}.png")), plot=min_n)
+rm(min_n)
+ p<- plot_ly(mn_log_loss, 
+        x = ~mtry, 
+        y = ~min_n, 
+        z = ~mn_log_loss,
+        type = "mesh3d", 
+        intensity=~mn_log_loss,
+        colorscale="Hot",
+        reversescale=TRUE
+)
+
+ saveWidget(p, here("results","ranger","tune",glue("mn_log_loss{modeltype}{tuning_vintage}.html")), selfcontained = TRUE)
+rm(p)
+  
+```
+
+The initial tune of TS nocluster showed it was pretty insensitive to min_n.
+Same thing for the nocluster. For both, i feel comfortable adjusting the mtry grid to 5-35.
+
+I need to expand the min.n search though.
+
+
+Are there any warnings from the tuning?
+
+```{r warnings}
+extracts<-tune_res %>%
+  collect_notes()
+extracts
+not_good<-unique(extracts$id)
+not_good
+```
+
+# Some in-sample results from Tuning
+
+```{r roc}
+predictions<-tune_res %>%
+  collect_predictions()
+rm(tune_res)
+
+# pull the probability names
+prob_names<-colnames(predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+roc_data<-predictions %>%
+  dplyr::filter(.config==best_config) %>%
+  group_by(id) %>%
+  #dplyr::filter(!id %in% not_good) %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names),
+            case_weights=.case_weights) 
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+roc_mean <- roc_data %>%
+  group_by(.level, specificity) %>%
+  summarise(sensitivity = mean(sensitivity), .groups = "drop")
+
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_data,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level, group = interaction(.level, id)),
+            linewidth = 0.3, alpha = 0.35, show.legend = FALSE) +
+    geom_path(data = roc_mean,
+            aes(colour = .level),
+            linewidth = 1.0, alpha = 1.0, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","tune",glue("roc_tune_{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+roc_dataUW<-predictions %>%
+  dplyr::filter(.config==best_config) %>%
+  group_by(id) %>%
+  #dplyr::filter(!id %in% not_good) %>%
+  roc_curve(truth=market_desc, 
+            any_of(prob_names)) 
+roc_dataUW <- roc_data %>%
+  group_by(.level, specificity) %>%
+  summarise(sensitivity = mean(sensitivity), .groups = "drop")
+
+
+
+# --- 3. Colour palette — four classes ---
+class_colours <- c(
+  "Jumbo"  = "#1B6CA8",   # deep blue
+  "Large"  = "#E05C2A",   # burnt orange
+  "Medium" = "#2E8B57",   # sea green
+  "Small"  = "#7B3F9E"    # purple
+)
+
+# --- 4. Build the figures ---
+p_facet <- ggplot(roc_dataUW,
+                  aes(x = 1 - specificity, y = sensitivity)) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
+  facet_wrap(~ .level, ncol = 4) +
+  scale_colour_manual(values = class_colours) +
+  scale_x_continuous(
+    name   = "1 \u2212 Specificity (False Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Sensitivity (True Positive Rate)",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+# --- 5. Save at ICES JMS specifications ---
+ggsave(here("results","ranger","tune",glue("roc_tuneUW_{modeltype}{finalfit_vintage}.pdf")),
+       plot   = p_facet,
+       width  = 174,   # mm — double-column, suits 4 facets in a row
+       height = 65,
+       units  = "mm",
+       device = cairo_pdf)
+
+
+
+
+
+
+
+
+pr_plot<-predictions %>%
+  group_by(id) %>%
+  dplyr::filter(.config==best_config) %>%
+#  dplyr::filter(!id %in% not_good) %>%
+  pr_curve(truth=market_desc, any_of(prob_names),
+                       case_weights=.case_weights)  %>%
+ ggplot(aes(x=recall,y=precision, colour=id)) +
+   facet_wrap(~.level) + 
+  geom_line(show.legend = TRUE) 
+
+ggsave(here("results","ranger","tune",glue("pr_curve_tune_{modeltype}{tuning_vintage}.png")), plot=pr_plot)
+
+rm(pr_plot)
+  rm(predictions)
+gc()
+```
