@@ -467,7 +467,7 @@ p_conserv_predictions <- ggplot(
   scale_fill_manual(
     name   = "Market grade",
     values = class_colours,
-    labels = c("Jumbo", "Large", "Medium", "Small")
+    labels = c("Jumbo", "Large", "Medium", "Small","Unclassified")
   ) +
   scale_x_continuous(
     name   = "Year",
@@ -517,7 +517,7 @@ p_conserv_predictions
 
 
 p_predictions <- ggplot(
-    ambitious_YRS_predictions %>%filter(Market.Comb!="Unclassified"),
+    ambitious_YRS_predictions,
     aes(x = year_cont, y = live_metric_tons, fill = Market.Comb)
   ) +
   geom_col(
