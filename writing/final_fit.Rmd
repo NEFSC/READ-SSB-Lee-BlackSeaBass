@@ -233,6 +233,8 @@ How well did the tuning work?
 bayesian_results<-autoplot(tune_res, type = "performance") +
   labs(title = "Did Bayesian optimization converge?")
 
+bayesian_results
+
  ggsave(here("results","ranger","tune",glue("bayesian_tune_{modeltype}{tuning_vintage}.png")), plot=bayesian_results)
 
 rm(bayesian_results)
@@ -264,7 +266,7 @@ The ``.iter`` value is the iteration log from the bayesian search. ``iter==0`` m
 
 For noclusterTS, the grid search was pretty good, with mtry=18, min_n=17 producing a mn_log_loss of 0.391.  The bayesian search found 26,15, 0.388 on iteration 8 and then failed to improve on that for 10 iterations, so  it stopped.
 
-For the "nocluster," the grid search produced the optimal params, with mtry=19 and min_n=66.  The criterion function (loss function) is very "flat" the difference between the best 5th best of hyperparameters (28, 95) is 1%.  The difference between the best and 15th best set (18,17)  is about 3.5%.
+For the "nocluster," the grid search produced the optimal params, with mtry=19 and min_n=66.  The criterion function (loss function) is very "flat" the difference between the best 5th best of hyperparameters (28, 95) is 1%.  The difference between the best and 15th best set (18,17)  is about 3.5%.  When I added 2013 data, the optimal min_n =100, which is on the edge of my grid. This is no good, so we need to re-tune the model.
 
 ```{r finalize_model, eval=FALSE}
 # finalize model by picking the best model hyperparameters
