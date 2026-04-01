@@ -341,7 +341,7 @@ YRS_predictions<-YRS_predictions %>%
 
 #YRS -- year, region, semester
 
-write_rds(YRS_predictions, file=here("date_folder","predictions",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(YRS_predictions, file=here("data_folder","predictions",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
@@ -443,20 +443,28 @@ class_colours <- c(
   "Jumbo"  = "#1B6CA8",   # deep blue
   "Large"  = "#E05C2A",   # burnt orange
   "Medium" = "#2E8B57",   # sea green
-  "Small"  = "#7B3F9E"    # purple
+  "Small"  = "#7B3F9E" ,   # purple
+  "Unclassified" = "#404040" # dark gray
 )
 
+# consider
+#YRS_predictions<-YRS_predictions %>%
+#  filter(Market.Comb!="Unclassified")
 
 p_conserv_predictions <- ggplot(
-    YRS_predictions,
-    aes(x = year_cont, y = live_metric_tons, colour = Market.Comb)
+    YRS_predictions ,
+    aes(x = year_cont, y = live_metric_tons, fill = Market.Comb)
   ) +
-  geom_line(linewidth = 0.7) +
+  geom_col(
+    position = position_stack(),
+    width    = 0.8,       # leaves a visible gap between years
+    colour   = NA         # suppress bar outlines
+  ) +
   facet_grid(
     rows = vars(stockarea),
     cols = vars(semester)
   ) +
-  scale_colour_manual(
+  scale_fill_manual(
     name   = "Market grade",
     values = class_colours,
     labels = c("Jumbo", "Large", "Medium", "Small")
@@ -469,21 +477,23 @@ p_conserv_predictions <- ggplot(
   scale_y_continuous(
     name   = "Predicted live weight (mt)",
     labels = scales::label_comma(accuracy = 1),
-    expand = expansion(mult = c(0.01, 0.05))
+    expand = expansion(mult = c(0, 0.05))
   ) +
   theme_bw(base_size = 9) +
   theme(
     strip.background   = element_rect(fill = "grey92", colour = "grey40"),
     strip.text         = element_text(size = 8, face = "bold"),
-    panel.grid.major   = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
     axis.title         = element_text(size = 8),
     axis.text          = element_text(size = 7, colour = "grey20"),
     axis.text.x        = element_text(angle = 45, hjust = 1),
     legend.position    = "bottom",
     legend.title       = element_text(size = 7, face = "bold"),
     legend.text        = element_text(size = 7),
-    legend.key.width   = unit(0.6, "cm"),
+    legend.key.width   = unit(0.4, "cm"),
     legend.key.height  = unit(0.3, "cm"),
     legend.margin      = margin(0, 0, 0, 0),
     legend.box.spacing = unit(4, "pt"),
@@ -495,11 +505,10 @@ ggsave(
        glue("YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_conserv_predictions,
   width  = 174,
-  height = 120,    # adjust in 5mm increments if strip labels or legend crowd
+  height = 120,
   units  = "mm",
   device = cairo_pdf
 )
-
 p_conserv_predictions
 ```
 
@@ -507,17 +516,20 @@ p_conserv_predictions
 ```{r nicer_ambitious_plot}
 
 
-
 p_predictions <- ggplot(
-    ambitious_YRS_predictions,
-    aes(x = year_cont, y = live_metric_tons, colour = Market.Comb)
+    ambitious_YRS_predictions %>%filter(Market.Comb!="Unclassified"),
+    aes(x = year_cont, y = live_metric_tons, fill = Market.Comb)
   ) +
-  geom_line(linewidth = 0.7) +
+  geom_col(
+    position = position_stack(),
+    width    = 0.8,       # leaves a visible gap between years
+    colour   = NA         # suppress bar outlines
+  ) +
   facet_grid(
     rows = vars(stockarea),
     cols = vars(semester)
   ) +
-  scale_colour_manual(
+  scale_fill_manual(
     name   = "Market grade",
     values = class_colours,
     labels = c("Jumbo", "Large", "Medium", "Small")
@@ -530,21 +542,23 @@ p_predictions <- ggplot(
   scale_y_continuous(
     name   = "Predicted live weight (mt)",
     labels = scales::label_comma(accuracy = 1),
-    expand = expansion(mult = c(0.01, 0.05))
+    expand = expansion(mult = c(0, 0.05))
   ) +
   theme_bw(base_size = 9) +
   theme(
     strip.background   = element_rect(fill = "grey92", colour = "grey40"),
     strip.text         = element_text(size = 8, face = "bold"),
-    panel.grid.major   = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
     axis.title         = element_text(size = 8),
     axis.text          = element_text(size = 7, colour = "grey20"),
     axis.text.x        = element_text(angle = 45, hjust = 1),
     legend.position    = "bottom",
     legend.title       = element_text(size = 7, face = "bold"),
     legend.text        = element_text(size = 7),
-    legend.key.width   = unit(0.6, "cm"),
+    legend.key.width   = unit(0.4, "cm"),
     legend.key.height  = unit(0.3, "cm"),
     legend.margin      = margin(0, 0, 0, 0),
     legend.box.spacing = unit(4, "pt"),
