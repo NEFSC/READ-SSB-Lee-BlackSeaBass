@@ -656,7 +656,7 @@ Another things goes ehre.
 
 We predict out of sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref{fig:out-of-sample-preds} illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations.  
 
-```{r out-of-sample-preds}
+```{r out-of-sample-preds, echo=FALSE}
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -839,7 +839,17 @@ A confusion matrix for the calibrated model, done on "soft" predictions.
 ```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
 knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
 ```
-more text here!
+
+
+## Out of Sample Predictions
+
+In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref{fig:ambitious-out-of-sample-preds} predicts for all observations, *including* from dealers that exhibit little variation in prices.
+
+```{r ambitious-out-of-sample-preds, echo=FALSE}
+knitr::include_graphics(here("results", "ranger", "final",
+       glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
+```
+
 
 <!---
 The boneyard:
