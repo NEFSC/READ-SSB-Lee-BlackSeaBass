@@ -48,7 +48,7 @@ The model is finalized with final_fit and calibrated with "calibration and valid
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
-
+* final_fit makes ROC curves for the best tuned model and final model
 * figures are made with
 * figure1 
 * figure2 (windows only)
@@ -714,6 +714,8 @@ Social science information can be another source of information about catch. Sem
 ## Additional Model fit and diagnostics
 
 ### Pre-calibration ROC curve
+
+This is actually the same as the main paper.  Take out, or maybe I meant to put in the post-calibration roc curves here?
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
