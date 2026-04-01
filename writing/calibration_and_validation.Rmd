@@ -225,7 +225,7 @@ final_predictions<-final_fit %>%
   collect_predictions()
 
 # pull the probability names
-prob_names<-colnames(predictions) 
+prob_names<-colnames(final_predictions) 
 prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
@@ -1376,7 +1376,7 @@ transactions_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
 
 
-knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(transactions_nocalibrate_predictions, caption='Uncalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 
 ```
 
@@ -1384,7 +1384,7 @@ knitr::kable(transactions_nocalibrate_predictions, caption='UnCalibrated Predict
 ```{r weighted_no_calibrate_predictions}
 weights_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`)
-knitr::kable(weights_nocalibrate_predictions, caption='UnCalibrated Predictions on the 15% Validation Sample (transactions).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(weights_nocalibrate_predictions, caption='Uncalibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 
 ```
 
@@ -1468,7 +1468,7 @@ Testmkt_preds<-Testmkt_preds %>%
   mutate(`Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
 
 
-knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (mt). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(Testmkt_preds, caption='Calibrated Predictions on the 15% Validation Sample (observations). Disaggregated to Stock area',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 ```
 
 
