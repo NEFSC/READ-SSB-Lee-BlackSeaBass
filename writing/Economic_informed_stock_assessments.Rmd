@@ -683,9 +683,11 @@ Our RF model does very well at predicting observations and comparatively worse a
 
 Our loss function is very simple for tuning is very simple. But our data is not, it's 'ordered'.  Predicting a true Jumbo to be a Large is better than predicting it to be a Medium.
 
-Socioeconomic information has been used in fish stock assessments in a handful of ways. A common entry point is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004].  These are particularly important for fisheries which do not have fishery independent data collections.  Recently, @vanpoorten2016 illustrate how entry and exit can shape selectivity and @kleiven2022 illustrate how accounting for changing technology impacted abundance estimates for European lobster.
+In the United States, socioeconomic information has been used in fish stock assessments in limited ways [@chan2022].
 
-Social science information can be another source of information about catch. Semi-structured interviews with fishing industry participants found that true catch of redfish (Sebastes mentella) was at least twice as high as the officially reported catch, which was used to select from competing stock assessment models [@duplisea2018a,@duplisea2018b]. @Gervasi2025 illustrate how similar methods can be used for Gulf Red Snapper in the Southeast United States.
+A common entry point is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004].  These are particularly important for fisheries which do not have fishery independent data collections.  Recently, @vanpoorten2016 illustrate how entry and exit can shape selectivity and @kleiven2022 illustrate how accounting for changing technology impacted abundance estimates for European lobster.
+
+Social science information can be another source of information about catch. Semi-structured interviews with fishing industry participants found that true catch of redfish (*Sebastes mentella*) was at least twice as high as the officially reported catch, which was used to select from competing stock assessment models [@duplisea2018a,@duplisea2018b]. @Gervasi2025 illustrate how similar methods can be used for Gulf Red Snapper in the Southeast United States.
  
 
 # Conclusions
