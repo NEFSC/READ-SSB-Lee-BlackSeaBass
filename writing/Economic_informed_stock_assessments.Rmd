@@ -281,7 +281,7 @@ sample information to convert the total landings in pounds to landings-at-age, w
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 
-Figure \@ref(fig:LenHist2) illustrates these data gaps and their attendant problems; there are no biosamples for Unclassified fish in the South region after 2013 and very few in the north, particularly after 2018^[All measured Unclassified fish in the 2019-2024 time period came from a 2 week time period in a single port in 2020.  There are also relatively few samples of Jumbo in the South from 2014-2018 and Small in the North from 2019-2024.].  In all three time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is therefore likely to produce catch-at-length estimates that are too large. Within a region, borrowing data from a bordering market category is also likely to produce poor estimates of catch-at-length.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves the stock assessment scientists in an uncomfortable place. 
+Figure \@ref(fig:LenHist2) illustrates these data gaps and their attendant problems; there are no biosamples for Unclassified fish in the South region after 2013 and very few in the north, particularly after 2018^[All measured Unclassified fish in the 2019-2024 time period came from a 2 week time period in a single port in 2020.  There are also relatively few samples of Jumbo in the South from 2014-2018 and Small in the North from 2019-2024.].  In all three time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is therefore likely to produce catch-at-length estimates that are too large. Within a region, borrowing data from an adjacent market category is also likely to produce poor estimates of catch-at-length.  For the Unclassified category, it is not clear which market category is adjacent.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves the stock assessment scientists in an uncomfortable place. 
 
 
 
@@ -666,22 +666,32 @@ We convert the landings of these observations into a length structure and compar
 
 # Discussion
 
-A reasonable method for filling in gaps in historical data.
+No manuscripts would be complete without a discussion of caveats. Here they are.
 
-Could be used for other species. 
+## Method critiques 
 
-Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
+Predicting out of sample is always difficult. We train the model on "Classified" observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish. We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.
 
-Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
-
-Could we use this to go directly to sizes? 
 
 The RF calibration didn't work so well with weighted observations.
   - isotonic has so many ties. And the weighting produces very 'lumpy' points.
 
 Our RF model does very well at predicting observations and comparatively worse at weights. Why?
 
-Our loss function is very simple for tuning is very simple. But our data is not, it's 'ordered'.  Predicting a true Jumbo to be a Large is better than predicting it to be a Medium.
+We use a Random Forest model as a probability machine.  This is a well-known and easy to implement approach. However, the Random Forest does not account for the ordinal relationship between the size classes. Although there is overlap in the length distributions (a particular Jumbo fish might be smaller than a Large), the size categories themselves are ordered, and "Learning to Rank" models may fit better. Alternatively, an alternative criterion function that penalizes near misses (A Jumbo classified as a Large) less severely than bad ones (A Jumbo classified as a Small) may also improve our aggregate predictions.
+
+
+## Extensions
+
+We view this as a reasonable method for generally filling in gaps in historical data.
+
+Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
+
+Could we use this to go directly to sizes? 
+
+Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
+
+
 
 In the United States, socioeconomic information has been used in fish stock assessments in limited ways. @chan2022 highlights three approaches for using socioeconomic information in stock assessments: data collection, data processing, and parameterizing stock asssessment models^[The authors also illustrate entrypoints for socioeconomic information after stock assessments have been performed: projections and control rules.].  This effort addresses the call for using socioeconomic information in the data processing step. 
 
