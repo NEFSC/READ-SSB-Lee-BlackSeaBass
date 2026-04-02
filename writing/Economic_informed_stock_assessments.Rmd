@@ -156,11 +156,12 @@ ambitious_aggregate_oos_predictions<-readRDS(here("data_folder","predictions",pa
 
 # Introduction
 
+
 <!--- Include the next 2 child documents.   --->
 ```{r, child=here("writing", c("summary.Rmd")),  eval=FALSE}
 ```
 
-The age-structure of commercial landings is a crucial input to the quantitative 
+From 2014-2024, no "Unclassified" Black Sea Bass (*Centropristis striata*) landed from the south subunit were measured by portside biosamplers in the Northeast United States, leaving an eleven year gap in data used in the stock assessment. From 2020-2024, there were no measurements of the Unclassified market category in the north region either. The age-structure of commercial landings is a crucial input to the quantitative 
 stock assessments in the Northeast United States. In the Northeast US, commercial
 fishing vessels catch fish and sell their landed fish to dealers who sort
 the catch into market categories.   The National Marine Fisheries Service
@@ -172,9 +173,8 @@ rules for handling gaps in the market category to age relationship that arise
 when certain market categories are either not sampled or under-sampled. This 
 typically involves borrowing from neighboring strata, seasons, or years.
 
-In this article, we propose an approach that uses the price of fish 
-to fill this data gap. We apply this approach to the stock assessment for black sea bass (*Centropristis striata*) in the Northeast United States. Dealers purchase black sea bass from fishing vessels and sort them into in market categories. From 2020 to 2023, 5 to 10% of
-commercial landings were in the “Unclassified” market category; however no fish in this category were measured. 
+In this article, we propose an approach that harnesses the information contained in the price of fish 
+to fill this data gap.  The intuition is straightforward.  The market price of fish depends on size; therefore, observing the market price of fish provides a signal about it's size.  
 
 The general approach is as follows.  As part of our exploratory data analysis, we estimate a simple hedonic model to confirm that prices vary by market category. We tune, train, and validate a random forest model to classify fish into one of the four primary market categories. Finally, we conduct out-of-sample prediction on Unclassified fish.
 
@@ -656,7 +656,7 @@ Another things goes ehre.
 
 We predict out of sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref{fig:out-of-sample-preds} illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations.  
 
-```{r out-of-sample-preds}
+```{r out-of-sample-preds, echo=FALSE}
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -839,7 +839,17 @@ A confusion matrix for the calibrated model, done on "soft" predictions.
 ```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap=""}
 knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
 ```
-more text here!
+
+
+## Out of Sample Predictions
+
+In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref{fig:ambitious-out-of-sample-preds} predicts for all observations, *including* from dealers that exhibit little variation in prices.
+
+```{r ambitious-out-of-sample-preds, echo=FALSE}
+knitr::include_graphics(here("results", "ranger", "final",
+       glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
+```
+
 
 <!---
 The boneyard:
