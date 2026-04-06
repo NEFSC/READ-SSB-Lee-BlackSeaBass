@@ -339,18 +339,6 @@ Because many attributes impact prices, transactions of different size classes ma
 p_i = f(c_i, Z_i),
 \end{equation}
 
-
-### More that two market categories
-
-When there are more than two market categories (say, Medium), equation \ref{unknown1} becomes:
-
-\begin{align}
-p&= \beta_1 p^J+ \beta_2 p^L + (1-\beta_1-\beta_2) \\\label{unknown2}
-\sum_{i=1}^3 \beta_i&=1\\
-\geq 0 & \beta_i \geq 1 \hspace{2mm} \forall i=1,2
-\end{align}
-Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
-
 ### The Competitive Market Equilibrium and the Law of One Price
 
 The assumption of a competitive market is critical to our ability to use prices to infer market category. Law of One Price. It ensures that the prices capture all relevant quality information and that there is a single price^[All identical goods will sell at the same price; observations of identical goods with different prices suggest that some conditions of a competitive market are absent [@Lamont2003].  Variations of the law of one price that account for heterogenous goods, informational assymmetries [@Salop1982], and different data availability have been proposed and tested statistically [@Asche1999; @Nielsen2009; @Pettersen2018].].  If a dealer offered a lower price for Jumbo than the prevailing price, a competitive market ensures that this dealer would not purchase any Jumbo fish.  Vessels with Jumbo fish would simply sell to another dealer.  Conversely, if a dealer offered a higher price for Jumbo than the prevailing price, then that dealer would purchase all the Jumbo fish and this new "too high" price would become the new prevailing price. Presumably, the dealer would want this situation.
@@ -426,7 +414,7 @@ Machine learning algorithms can often benefit from preprocessing data and factor
 
 For all states and the Jumbo, Large, and Medium categories, we compute the 14 day moving average price as (temporarily suppressing the notation for state and market category):
 \begin{equation}
-\bar{p}_{d}=p_\sum{t=d-14}^{d-1} \frac{p_{t}q_{t}}{q_{t}}
+\bar{p}_{d}=\frac{\sum{t=d-14}^{d-1}p_{t}q_{t}}{\sum{t=d-14}^{d-1} q_{t}}
 \end{equation}
 and construct three price variables that are
 \begin{align}
@@ -680,9 +668,31 @@ We convert the landings of these observations into a length structure and compar
 
 No manuscripts would be complete without a discussion of caveats. Here they are.
 
+## General approach
+
+In equation \@ref(unknown), we develop the intuition behind the model using two market categories and note that we can deduce the composition of the unclassfied transaction based on the price.  However, we have more than two market categories, so the theoretical model is fundamentally underindentfied without additional assumtions.  That is, with four distinct, constant prices ($p_S \leq p_M \leq p_L \leq p_J$), an arbitrary price between $p_S$ and $p_J$ could be constructed with many weighted combinations of prices.  This is slightly troubling in theory, but because there is substantial overlap in sizes even for disparate size categories, it may have minor consequences for aggregate accuracy.  That is, consider a transaction of Unclassifieds that trades at $p_L$, is assigned 100% probability of being Large, but is actually a mix of Medium and Jumbo.  Figure \@ref(length-histograms) suggests the practical implications of this error may not be minimal.
+
+
+<!---
+### More that two market categories
+
+When there are more than two market categories (say, Medium), equation \ref{unknown1} becomes:
+
+\begin{align}
+p&= \beta_1 p^J+ \beta_2 p^L + (1-\beta_1-\beta_2) \\\label{unknown2}
+\sum_{i=1}^3 \beta_i&=1\\
+\geq 0 & \beta_i \geq 1 \hspace{2mm} \forall i=1,2
+\end{align}
+Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
+--->
+
+
+
 ## Method critiques 
 
 Predicting out of sample is always difficult. We train the model on Classified observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish. We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.
+
+
 
 Our Random Forest model does very well at predicting observations and comparatively worse at weights (Table \@ref(tab:transaction-predictions and \@ref(tab:weighted-predictions)).  This is a bit surprising; by frequency weighting the bootstrap samples in the Random Forest we expected the opposite to occur.
 
