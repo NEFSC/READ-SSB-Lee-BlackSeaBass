@@ -137,7 +137,7 @@ stopifnot(max(check$count)==1)
 # Bring "ambitious" into "apportion"
 apportion <-apportion %>%
   left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) )%>%
-  mutate(is.na(LANDINGS_KG_AMBITIOUS)=0)
+  replace_na(list(LANDINGS_KG_AMBITIOUS=0))
 
 check<-apportion %>% 
   group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
@@ -145,7 +145,12 @@ check<-apportion %>%
   ungroup()
 stopifnot(max(check$count)==1)
 
-## Insert code here to take the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
+# # Check to see if the totals across year, semester, stock all match up
+# groupapportion <- apportion %>% group_by(YEAR, SEMESTER,STOCK_ABBREV) %>% summarize(totalcatchapportion= sum(LANDINGS_KG_NEW))
+# groupambitious <- apportion %>% group_by(YEAR, SEMESTER,STOCK_ABBREV) %>% summarize(totalcatchambitious = sum(LANDINGS_KG_NEW))
+# compare <- groupapportion %>% left_join(groupambitious) %>% mutate(diff = totalcatchapportion-totalcatchambitious)
+
+## Code here takes the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
 comland.length.orig.totals <- comland.length.orig  %>% 
   left_join(comm.land.block.res) %>% 
   left_join(mkt.res) %>% 
