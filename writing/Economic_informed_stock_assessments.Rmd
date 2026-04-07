@@ -152,6 +152,9 @@ ambitious_aggregate_oos_predictions<-readRDS(here("data_folder","predictions",pa
 # note, you want to filter on mark_in==1 here.
 #disaggregated_oos_predictions<-readRDS(here("results","ranger",paste0("out_of_sample_predictions_disaggregated_",pred_vintage, ".Rds")))
 
+#combined_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{vintage_string}.Rds")))
+
+
 ```
 
 # Introduction
@@ -343,7 +346,7 @@ p_i = f(c_i, Z_i),
 
 The assumption of a competitive market is critical to our ability to use prices to infer market category. Law of One Price. It ensures that the prices capture all relevant quality information and that there is a single price^[All identical goods will sell at the same price; observations of identical goods with different prices suggest that some conditions of a competitive market are absent [@Lamont2003].  Variations of the law of one price that account for heterogenous goods, informational assymmetries [@Salop1982], and different data availability have been proposed and tested statistically [@Asche1999; @Nielsen2009; @Pettersen2018].].  If a dealer offered a lower price for Jumbo than the prevailing price, a competitive market ensures that this dealer would not purchase any Jumbo fish.  Vessels with Jumbo fish would simply sell to another dealer.  Conversely, if a dealer offered a higher price for Jumbo than the prevailing price, then that dealer would purchase all the Jumbo fish and this new "too high" price would become the new prevailing price. Presumably, the dealer would want this situation.
 
-A perfectly competatve market is unlikely, but the law of one price suggests a few things. We should not expect the law of one price to hold perfectly and unconditionally, but in imperfectly and conditionally. That is, all black sea bass does not trade at the same price; however, black sea bass with similar attributes will trade at similar prices.  Therefore the classification model should include variables explain prices in the classification model. These include attributes like gear used, whether the fish is sold live, state of landing, daily quantity landed, and time period of landing.  We should expect the prices of similar goods to be more similar than prices of different goods, although a working definition of similar can be tricky.  In particular, instead of adding prices to the random forest model directly, we use prices to construct a distance metrics between the transaction and "typical" price of each market category.  This follows the suggestion from @Mullainathan2017 to use insights from  economic theory to guide a machine learning model's search for underlying structure. 
+A perfectly competitive market is convenient myth of economics and we should not expect the law of one price to hold perfectly and unconditionally.  That is, all black sea bass does not trade at the same price; however, black sea bass with similar attributes will trade at similar prices.  Therefore the classification model should include factors that explain variation in prices.  These include attributes like gear used, whether the fish is sold live, state of landing, daily quantity landed, and time period of landing.  We should expect the prices of similar goods to be more similar than prices of different goods, although a working definition of similar can be tricky.  In particular, instead of adding prices to the random forest model directly, we use prices to construct a distance metric between the transaction and "typical" price of each market category.  This follows the suggestion from @Mullainathan2017 to use insights from  economic theory to guide a machine learning model's search for underlying structure. 
 
 Outside the DGP, we should remove them from the training dataset and refrain from predicting class membership for those those types of observations.  Intuitively, if the price does not convey any information about sizes, then we should not try to infer anything from prices. We can think of three scenarios where this is likely to occur.  
 
@@ -404,10 +407,13 @@ Black Sea Bass may be caught by firms without a federal fishing permit and sold 
 Our observational units are sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In our exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and our Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is to obtain an aggregate weight prediction of the underlying unobserved market category of Unclassified fish; we are not interested in predictions of aggregate transactions.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their frequency weight. This results in bootstrap datasets which more closely resemble the frequency weighted data (instead of the unweighted data).  We attempted to calibrate using weighted data without success and we discuss reasons and paths forward in the discussion section.
 
 
-```{r summary_statistics, eval=F, echo=F}
+```{r summary-statistics, eval=F, echo=F}
 source(here("R_code","analysis", "fit_random_forest","BSB.Classification.Recipe.R"))
 
+combined_dataset
+
 ```
+
 
 
 Machine learning algorithms can often benefit from preprocessing data and factor engineering. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the greatest decrease in impurity.  We treat factors variables  variables as "unordered" and follow the implementation method described in @Hastie2009.  Except for prices, all explanatory factors enter the model in raw form.  We construct price based variables by computing the 14 day moving average of prices
@@ -740,15 +746,11 @@ Social science information can be another source of information about catch. Sem
 
 ### Pre-calibration ROC curve
 
-This is actually the same as the main paper.  Take out, or maybe I meant to put in the post-calibration roc curves here?
-```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="Final ROC curves"}
-knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
+```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
+knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
-The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not 
-overfit the model.
-
-
+The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not overfit the model.
 
 
 ### Pre-calibration confusion matrix and aggregate predictions
