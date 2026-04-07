@@ -99,7 +99,17 @@ apportion <- apportion %>%
                                                            Market.Comb == 'Jumbo' ~ "JUMBO",
                                                            Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
                                   LANDINGS_KG_NEW = live_metric_tons*1000) %>% 
-  select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW)
+  rename(SEMESTER=semester) %>%
+  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW) 
+  
+
+#ensure 1 row per year, semester, stock abbreviation
+check<-apportion %>% 
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  summarise(count=n())%>%
+  ungroup()
+stopifnot(max(check$count)==1)
+
 
 # Read in the 2nd set of predictions that has NO Unclassifieds
 ambitious <- readRDS(here("data_folder","predictions", glue("ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
@@ -113,17 +123,37 @@ ambitious <- ambitious %>%
                                   Market.Comb == 'Large' ~ "LARGE",
                                   Market.Comb == 'Jumbo' ~ "JUMBO",
                                   Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-         LANDINGS_KG_AMBITIOUS = live_metric_tons*1000) %>% 
-  select(YEAR,STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_AMBITIOUS)
+         LANDINGS_KG_AMBITIOUS = live_metric_tons*1000)  %>%
+  rename(SEMESTER=semester) %>%
+  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_AMBITIOUS) 
 
+#ensure 1 row per year, semester, stock abbreviation
+check<-ambitious %>% 
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  summarise(count=n())%>%
+  ungroup()
+stopifnot(max(check$count)==1)
 
+# Bring "ambitious" into "apportion"
+apportion <-apportion %>%
+  left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) )%>%
+  mutate(is.na(LANDINGS_KG_AMBITIOUS)=0)
+
+check<-apportion %>% 
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  summarise(count=n())%>%
+  ungroup()
+stopifnot(max(check$count)==1)
 
 ## Insert code here to take the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
-comland.length.orig.totals <- comland.length.orig  %>% left_join(comm.land.block.res) %>% left_join(mkt.res) %>% left_join(apportion)
+comland.length.orig.totals <- comland.length.orig  %>% 
+  left_join(comm.land.block.res) %>% 
+  left_join(mkt.res) %>% 
+  left_join(apportion)
 
 # Where there isn't any new landings (for some years) use the old landings:
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(LANDINGS_KG_NEW = case_when (!is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG_NEW,
-                                                                                                 is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG))
+comland.length.orig.totals <- comland.length.orig.totals %>% 
+  mutate(LANDINGS_KG_NEW = case_when (!is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG_NEW, is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG))
 
 ################################################################################
 # Calculate weight at age length
