@@ -456,7 +456,7 @@ p_conserv_predictions <- ggplot(
     aes(x = year_cont, y = live_metric_tons, fill = Market.Comb)
   ) +
   geom_col(
-    position = position_stack(),
+    position = position_stack(reverse = TRUE),
     width    = 0.8,       # leaves a visible gap between years
     colour   = NA         # suppress bar outlines
   ) +
@@ -521,7 +521,7 @@ p_predictions <- ggplot(
     aes(x = year_cont, y = live_metric_tons, fill = Market.Comb)
   ) +
   geom_col(
-    position = position_stack(),
+    position = position_stack(reverse = TRUE),
     width    = 0.8,       # leaves a visible gap between years
     colour   = NA         # suppress bar outlines
   ) +
