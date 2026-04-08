@@ -74,7 +74,7 @@ comm.land.block.res <- fetch(dbSendQuery(connection, comm.land.block.qry))
 
 land.length.qry <- paste("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS='",species_itis,"'",sep='')
 comland.length.orig <- fetch(dbSendQuery(connection, land.length.qry))
-
+dbDisconnect(connection)
 ################################################################################
 # Reapportion the aggregate landings and combine with length and age info
 ################################################################################
@@ -91,21 +91,21 @@ apportion <- readRDS(here("data_folder","predictions", glue("out_of_sample_predi
 apportion <- apportion %>% 
    ungroup() %>%
    mutate(YEAR = as.numeric(as.character(year)),
-                                  STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
-                                                            stockarea == 'South' ~ 'SOUTH'),
-                                  MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
-                                                           Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
-                                                           Market.Comb == 'Large' ~ "LARGE",
-                                                           Market.Comb == 'Jumbo' ~ "JUMBO",
-                                                           Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-                                  LANDINGS_KG_NEW = live_metric_tons*1000) %>% 
-  rename(SEMESTER=semester) %>%
-  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_NEW) 
+          SEMESTER=as.numeric(as.character(semester)),
+          STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
+                                    stockarea == 'South' ~ 'SOUTH'),
+          MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
+                                   Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
+                                   Market.Comb == 'Large' ~ "LARGE",
+                                   Market.Comb == 'Jumbo' ~ "JUMBO",
+                                   Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
+          LANDINGS_KG_CATEGORY_PREDICT = live_metric_tons*1000) %>% 
+  select(YEAR,SEMESTER, original_market_category, species_itis, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_CATEGORY_PREDICT) 
   
 
 #ensure 1 row per year, semester, stock abbreviation
 check<-apportion %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, market_category, species_itis, MARKET_DESC) %>%
   summarise(count=n())%>%
   ungroup()
 stopifnot(max(check$count)==1)
@@ -116,6 +116,7 @@ ambitious <- readRDS(here("data_folder","predictions", glue("ambitious_out_of_sa
 ambitious <- ambitious %>% 
   ungroup() %>%
   mutate(YEAR = as.numeric(as.character(year)),
+         SEMESTER=as.numeric(as.character(semester)),
          STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
                                    stockarea == 'South' ~ 'SOUTH'),
          MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
@@ -123,24 +124,25 @@ ambitious <- ambitious %>%
                                   Market.Comb == 'Large' ~ "LARGE",
                                   Market.Comb == 'Jumbo' ~ "JUMBO",
                                   Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-         LANDINGS_KG_AMBITIOUS = live_metric_tons*1000)  %>%
-  rename(SEMESTER=semester) %>%
-  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_AMBITIOUS) 
+         LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS = live_metric_tons*1000)  %>%
+  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS, species_itis, original_market_category) 
 
 #ensure 1 row per year, semester, stock abbreviation
 check<-ambitious %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC, species_itis, original_market_category) %>%
   summarise(count=n())%>%
   ungroup()
 stopifnot(max(check$count)==1)
 
 # Bring "ambitious" into "apportion"
 apportion <-apportion %>%
-  left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) )%>%
-  replace_na(list(LANDINGS_KG_AMBITIOUS=0))
+  left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis, original_market_category) )%>%
+  replace_na(list(LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS=0))%>%
+  replace_na(list(LANDINGS_KG_CATEGORY_PREDICT=0))
+  
 
 check<-apportion %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC) %>%
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC, species_itis, original_market_category) %>%
   summarise(count=n())%>%
   ungroup()
 stopifnot(max(check$count)==1)
@@ -154,11 +156,22 @@ stopifnot(max(check$count)==1)
 comland.length.orig.totals <- comland.length.orig  %>% 
   left_join(comm.land.block.res) %>% 
   left_join(mkt.res) %>% 
-  left_join(apportion)
+  left_join(apportion, by=join_by(STOCK_ABBREV==STOCK_ABBREV, YEAR==YEAR, MARKET_DESC==MARKET_DESC, BLOCK_ID==SEMESTER))
+
+
+#comland.orig.total<-comland.length.orig.totals %>%
+#  group_by(STOCK_ABBREV, YEAR, MARKET_DESC, BLOCK_ID)
 
 # Where there isn't any new landings (for some years) use the old landings:
 comland.length.orig.totals <- comland.length.orig.totals %>% 
-  mutate(LANDINGS_KG_NEW = case_when (!is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG_NEW, is.na(LANDINGS_KG_NEW) ~ LANDINGS_KG))
+  mutate(LANDINGS_KG_ADJUSTED = case_when(
+        MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT,
+        MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT)
+        ) %>%
+  mutate(LANDINGS_KG_ADJUSTED_AMB = case_when(
+        MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS,
+        MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS) 
+  )
 
 ################################################################################
 # Calculate weight at age length
