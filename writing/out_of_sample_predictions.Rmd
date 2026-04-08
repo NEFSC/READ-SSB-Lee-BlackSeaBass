@@ -230,6 +230,12 @@ num_preds<-nrow(preds)
 # from data_prep.ml.R
 # this contains ALL unclassifieds, however, only unclassifieds with mark_in==1 should get a prediction
 oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+#tack on original market_category and species_itis
+oos_data<-oos_data %>%
+  mutate(original_market_category=market_desc,
+         species_itis="168687")
+
+
 
 oos_predictable<-oos_data %>%
   filter(mark_in==1) 
@@ -281,7 +287,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 # keep just a few columns
 oos_data_calibration_applied<-oos_data_calibration_applied %>%
-  select(c(year, stockarea, market_desc, semester, weighting, livlb, any_of(prob_names), .pred_class))
+  select(c(year, stockarea, market_desc, original_market_category, species_itis, semester, weighting, livlb, any_of(prob_names), .pred_class))
 
 # predicted pounds per transaction in the validation dataset.
 # multiply the prediction by the live pounds to get predicted live pounds in each class. 
@@ -296,11 +302,11 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 
 # Sum up the predictions by year, market category, and stockarea. 
 YRS_predictions<-oos_data_calibration_applied %>%
-   group_by(year, stockarea,semester) %>%
+   group_by(year, stockarea,semester, original_market_category, species_itis) %>%
    mutate(transactions=1) %>%
    summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
   ungroup() %>%
-    select(year,semester, stockarea, starts_with("pred_"))
+    select(year,semester, stockarea, original_market_category, species_itis, starts_with("pred_"))
 
 #reshape to a tidy long format
 YRS_predictions<-  YRS_predictions %>%
@@ -316,7 +322,7 @@ YRS_predictions<-  YRS_predictions %>%
 
 # get the unpredictables to the same format
 oos_Uncs<-oos_unpredictable %>%
-   group_by(year, stockarea,semester) %>%
+   group_by(year, stockarea,semester,original_market_category, species_itis ) %>%
    summarise(live_metric_tons=sum(livlb)/lbs_per_mt) %>%
    mutate(Market.Comb="Unclassified")
 
@@ -328,7 +334,7 @@ YRS_predictions<-YRS_predictions %>%
 # data quality check
 # ensure I have 1 observation per year-region-semester
 check1<-YRS_predictions %>%
-  group_by(year,semester,stockarea, Market.Comb)%>%
+  group_by(year,semester,stockarea, Market.Comb, original_market_category, species_itis)%>%
   summarise(count=n()) %>%
   ungroup()%>%
   summarise(max=max(count))
@@ -336,8 +342,8 @@ stopifnot(check1==1)
 
 YRS_predictions<-YRS_predictions %>%
   mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small","Unclassified")) %>%
-  group_by(year,semester,stockarea, Market.Comb)%>%
-  arrange(year,semester,stockarea,Market.Comb)
+  group_by(year,semester,stockarea, Market.Comb, original_market_category, species_itis)%>%
+  arrange(species_itis, year,semester,stockarea,original_market_category, Market.Comb)
 
 #YRS -- year, region, semester
 
@@ -365,7 +371,7 @@ write_rds(ambitious_predictions_cal_applied, file=here("results","ranger",glue("
 
 # keep just a few columns
 ambitious_predictions_cal_applied<-ambitious_predictions_cal_applied %>%
-  select(c(year, stockarea, market_desc, semester, weighting, livlb, any_of(prob_names), .pred_class))
+  select(c(year, stockarea, market_desc, semester, original_market_category, species_itis, weighting, livlb, any_of(prob_names), .pred_class))
 
 # predicted pounds per transaction in the validation dataset.
 # multiply the prediction by the landed pounds to get predicted pounds in each class. 
@@ -379,11 +385,11 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 
 # Sum up the predictions by year, market category, and stockarea. 
 ambitious_YRS_predictions<-ambitious_predictions_cal_applied %>%
-   group_by(year, stockarea,semester) %>%
+   group_by(year, stockarea,semester,original_market_category, species_itis) %>%
    mutate(transactions=1) %>%
    summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
   ungroup() %>%
-    select(year,semester, stockarea, starts_with("pred_"))
+    select(year,semester, stockarea, original_market_category, species_itis,starts_with("pred_"))
 
 ambitious_YRS_predictions<-  ambitious_YRS_predictions %>%
       pivot_longer(
@@ -399,16 +405,16 @@ ambitious_YRS_predictions<-  ambitious_YRS_predictions %>%
 
 # ensure I have 1 observation per year-region-semester
 check1<-ambitious_YRS_predictions %>%
-  group_by(year,semester,stockarea, Market.Comb)%>%
+  group_by(year,semester,stockarea, original_market_category, species_itis, Market.Comb)%>%
   summarise(count=n()) %>%
   ungroup()%>%
   summarise(max=max(count))
 stopifnot(check1==1)
 
 ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
-  mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small","Unclassified")) %>%
-  group_by(year,semester,stockarea, Market.Comb)%>%
-  arrange(year,semester,stockarea,Market.Comb)
+  mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small")) %>%
+  group_by(year,semester,stockarea, Market.Comb,original_market_category, species_itis)%>%
+  arrange(species_itis, year,semester,stockarea,original_market_category, Market.Comb)
 
 #YRS -- year, region, semester
 
