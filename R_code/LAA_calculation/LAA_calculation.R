@@ -38,6 +38,11 @@ library(ROracle)
 library(tidyverse)
 library(here)
 library(glue)
+library("conflicted")
+
+
+#deal with conflicts
+conflicts_prefer(dplyr::filter())
 
 here::i_am("R_code/LAA_calculation/LAA_calculation.R")
 
@@ -45,7 +50,7 @@ fyr <- 1989
 lyr <- 2024
 
 species_itis <- c("167687")
-
+lbs_per_kg<-2.20462
 # Enter in SQL access information to query stockeff databases
 connection <- dbConnect(drv = dbDriver("Oracle"),
                         username = rstudioapi::askForPassword("Oracle user name"),
@@ -89,19 +94,52 @@ predictions_vintage<-max(predictions_vintage)
 # Read in the set of predictions that has some  Unclassifieds
 apportion <- readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
 apportion <- apportion %>% 
-   ungroup() %>%
-   mutate(YEAR = as.numeric(as.character(year)),
-          SEMESTER=as.numeric(as.character(semester)),
-          STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
-                                    stockarea == 'South' ~ 'SOUTH'),
-          MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
-                                   Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
-                                   Market.Comb == 'Large' ~ "LARGE",
-                                   Market.Comb == 'Jumbo' ~ "JUMBO",
-                                   Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-          LANDINGS_KG_CATEGORY_PREDICT = live_metric_tons*1000) %>% 
+  ungroup() %>%
+  mutate(YEAR = as.numeric(as.character(year)),
+         SEMESTER=as.numeric(as.character(semester)),
+         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
+                                   stockarea == 'South' ~ 'SOUTH'),
+         MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
+                                  Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
+                                  Market.Comb == 'Large' ~ "LARGE",
+                                  Market.Comb == 'Jumbo' ~ "JUMBO",
+                                  Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
+         LANDINGS_KG_CATEGORY_PREDICT = live_metric_tons*1000) %>% 
   select(YEAR,SEMESTER, original_market_category, species_itis, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_CATEGORY_PREDICT) 
-  
+
+# Read in original combined dataset, drop Unclassified
+original_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{predictions_vintage}.Rds")))
+
+original_dataset <-original_dataset %>%
+  filter(market_desc!="Unclassified") %>%
+  mutate(species_itis="167687") %>%
+  group_by(year, semester, stockarea, market_desc,species_itis) %>%
+  summarise(LANDINGS_MY_PROCESSED_CAMS_KG=sum(livlb/lbs_per_kg)) %>%
+  ungroup()
+
+
+original_dataset <-original_dataset %>%
+  mutate(YEAR = as.numeric(as.character(year)),
+         SEMESTER=as.numeric(as.character(semester)),
+         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
+                                   stockarea == 'South' ~ 'SOUTH'),
+         MARKET_DESC = case_when (market_desc == 'Small' ~ "SMALL",
+                                  market_desc == 'Medium' ~ "MEDIUM OR SELECT",
+                                  market_desc == 'Large' ~ "LARGE",
+                                  market_desc == 'Jumbo' ~ "JUMBO",
+                                  market_desc=='Unclassified' ~"UNCLASSIFIED")) %>%
+  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_MY_PROCESSED_CAMS_KG, species_itis) 
+
+
+
+#ensure 1 row per year, semester, stock abbreviation
+check<-original_dataset %>% 
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, species_itis, MARKET_DESC) %>%
+  summarise(count=n())%>%
+  ungroup()
+stopifnot(max(check$count)==1)
+
+
 
 #ensure 1 row per year, semester, stock abbreviation
 check<-apportion %>% 
@@ -139,7 +177,12 @@ apportion <-apportion %>%
   left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis, original_market_category) )%>%
   replace_na(list(LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS=0))%>%
   replace_na(list(LANDINGS_KG_CATEGORY_PREDICT=0))
-  
+
+apportion <-apportion %>%
+  left_join(original_dataset, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis) ) %>%
+  replace_na(list(LANDINGS_MY_PROCESSED_CAMS_KG=0))
+
+
 
 check<-apportion %>% 
   group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC, species_itis, original_market_category) %>%
@@ -165,12 +208,12 @@ comland.length.orig.totals <- comland.length.orig  %>%
 # Where there isn't any new landings (for some years) use the old landings:
 comland.length.orig.totals <- comland.length.orig.totals %>% 
   mutate(LANDINGS_KG_ADJUSTED = case_when(
-        MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT,
-        MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT)
-        ) %>%
+    MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT,
+    MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT)
+  ) %>%
   mutate(LANDINGS_KG_ADJUSTED_AMB = case_when(
-        MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS,
-        MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS) 
+    MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS,
+    MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS) 
   )
 
 ################################################################################
