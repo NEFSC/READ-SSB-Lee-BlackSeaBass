@@ -180,7 +180,13 @@ apportion <-apportion %>%
 
 apportion <-apportion %>%
   left_join(original_dataset, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis) ) %>%
-  replace_na(list(LANDINGS_MY_PROCESSED_CAMS_KG=0))
+  replace_na(list(LANDINGS_MY_PROCESSED_CAMS_KG=0)) %>%
+  select(-original_market_category)
+
+# If you are okay with using LANDINGS_MY_PROCESSED_CAMS_KG as the "landings from classified" then uncomment tihs. 
+# apportion <-apportion %>%
+#  mutate(LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS=LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS+LANDINGS_MY_PROCESSED_CAMS_KG
+#         LANDINGS_KG_CATEGORY_PREDICT=LANDINGS_KG_CATEGORY_PREDICT+LANDINGS_MY_PROCESSED_CAMS_KG )
 
 
 
