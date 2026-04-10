@@ -233,7 +233,7 @@ oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_
 #tack on original market_category and species_itis
 oos_data<-oos_data %>%
   mutate(original_market_category=market_desc,
-         species_itis="168687")
+         species_itis="167687")
 
 
 
