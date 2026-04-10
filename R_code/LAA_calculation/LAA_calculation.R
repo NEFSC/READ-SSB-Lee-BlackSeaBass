@@ -143,7 +143,7 @@ stopifnot(max(check$count)==1)
 
 #ensure 1 row per year, semester, stock abbreviation
 check<-apportion %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, market_category, species_itis, MARKET_DESC) %>%
+  group_by(YEAR, SEMESTER,STOCK_ABBREV, original_market_category, species_itis, MARKET_DESC) %>%
   summarise(count=n())%>%
   ungroup()
 stopifnot(max(check$count)==1)
