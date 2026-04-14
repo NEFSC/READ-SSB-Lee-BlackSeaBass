@@ -498,7 +498,7 @@ kable(
 
 # Results
 
-Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibrate on 15\%, and validate on the final 15\% holdout sample. We present results of the initial tuning, calibration, and validation.  To summarize, the initial tuning found optimal hyperparameter values of $mtry=19$ and $min_n=66$ respectively.  The calibration steps find moderate gain from isotonic calibration, and the validation shows the model fits well. 
+Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibrate on 15\%, and validate on the final 15\% holdout sample. We present results of the initial tuning, calibration, and validation.  To summarize, the initial tuning found optimal hyperparameter values of $mtry=25$ and $min_n=161$ respectively.  The calibration steps find moderate gain from isotonic calibration, and the validation shows the model fits well. 
 
 ## Tuning and Calibration results
 
