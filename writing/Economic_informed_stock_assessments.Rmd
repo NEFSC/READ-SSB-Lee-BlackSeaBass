@@ -262,7 +262,7 @@ The assessment model is fit to catch data from the commercial and recreational f
 
 A port sampling program has existed in the northeast United States for more than three decades,
 collecting vital biological data like lengths, weights, ages, and stomach samples that directly support
-the fisheries stock assessment process.
+the fisheries stock assessment process. Sampling is done by professionally trained samplers using electronic measuring boards, scales, and otolith extraction to measure and store the information, often bringing samples back to central locations for further analysis like aging.
 
 Throughout its history, the program has been staffed by federal port agents or contracted companies, and funded by the National Marine Fisheries Service (NMFS).
 Because staffing and financial resources are limited, sampling priorities been rigidly set through a two-stage  prioritization system.  In the first stage, stocks 
@@ -272,7 +272,7 @@ commercial landings, spatio-temporal abundance of the stock, and stock assessmen
 Though the number of collected lengths across the entire
 program exceeded 200,000 annually between 2015-2019 with 7 full-time port samplers, in 2024 less than 50,000 lengths were collected by 3 full-time and 3 part-time samplers.
 Efforts have been supplemented by the MAFMC and Massachusetts DMF but with falling funding sources and rising costs per sample, the amount of these critical biological data 
-is well below what it was ten years ago. A recent merger of the portside sampling program with the NEFSC observer program is anticipated to increase efficiency and sampling. 
+is well below what it was ten years ago. A recent merger of the portside sampling program with the NEFSC observer program is anticipated to increase efficiency and sampling, lowering the travel, training, and sampling costs. This merger is also expected to increase the efficiency and better logistics coordination, to reduce the number of trips samplers need to take from their homes to ports, though this process is still laborous and costly.
 
 Biosamplers try to meet the sample requests by efficiently targeting ports at times where a variety of species and sized fish are likely to be landed. Often they
 may specifically target a port known to land a specific or obscure market category to fulfill the scientific requests. These requests may go unfulfilled, causing data gaps. When data gaps exist, stock assessment modelers will relax the specificity of the information, i.e., borrow across regions or semesters, and in
