@@ -508,15 +508,15 @@ knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster
 ```
 
 In-sample ROC curves from tuning are quite similar across folds
-and the initial steepness indicates the tuned random forest fits well (Figure  \@ref(fig:rocTune)).
+and the initial steepness indicates the tuned random forest fits well (Figure  \@ref(fig:rocTune)).  The random forest model performs exceedingly well for the small market category, despite the small market category being relatively rare in the data. The model performs worst at classifying the Large market category; referring back to  (Figure \@ref(fig:length-histograms)) illustrates the relatively high degree of overlap between the prices of Large with its neighboring Medium and Jumbo market categories.  
 
 ```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
 knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
-The VIP confirms that prices are very important in predicting market category (Figure  \@ref(fig:vip)).
+The VIP confirms that the three price variables are the most important in predicting market category (Figure \@ref(fig:vip)) and the four measures designed to capture the Dealer propensities to purchase particular categories are the next most important factors.
 
-The calibration step \@ref(fig:calibrationplots) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).  
+The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).^[We experimented beta and multinomial logistic calibration, but isotonic regression performed the best]
 
 ```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw (left panel) and calibrated predictions (right panel).  We use an Isotonic regression to calibrate."}
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
