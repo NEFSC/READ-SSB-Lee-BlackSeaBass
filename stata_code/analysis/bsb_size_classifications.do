@@ -72,7 +72,7 @@ replace total=total/1000
 label var total "Total landings (000s)"
 
 gen totalmt=total/`lbs_per_kg'
-label var totalmt "Total landings (metric tons)"
+label var totalmt "Landings (mt)"
 
 /* these egens are daily sums. I'm not sure how to put them into the data prep step and then collapse (first might work) , so I will put them after */
 /*  market level quantity supplied */
@@ -243,14 +243,15 @@ collect export $my_results/hedonic_tableA.md, replace
 
 
 /* Just print the market category results */
-collect layout (market_desc#result colname[totalmt totalmt#totalmt]#result  result[r2 N]) (model)
+collect layout (market_desc#result grade_desc#result colname[totalmt totalmt#totalmt]#result  result[r2 N]) (model)
 
-collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024).  The model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, month, daily landings and daily landings\textsuperscript{2}.  All but the final two terms are factor variables that are one-hot encoded. \label{HedonicMarketCats}"
+collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024).  The model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, and month. \label{HedonicMarketCats}"
 collect export $my_results/hedonic_table_market_cats.tex, replace tableonly
 
 collect title "Unweighted and Weighted Hedonic Price Regression (2013-2024)"
 collect export $my_results/hedonic_table_market_cats.md, replace
 
+pause
 
 
 collect layout (state#result year#result month#result) (model)
@@ -265,17 +266,17 @@ collect export $my_results/hedonic_tableB.md, replace
 
 
 margins, dydx(month) 
-marginsplot,  xla(1 "Feb" 2 "Mar" 3 "Apr" 4 "May" 5 "Jun" 6 "Jul" 7 "Aug" 8 "Sep" 9 "Oct" 10 "Nov" 11 "Dec") ytitle("Marginal effect of Month on Real Price") xtitle("Effects with respect to Jan")
+marginsplot,  xla(1 "Feb" 2 "Mar" 3 "Apr" 4 "May" 5 "Jun" 6 "Jul" 7 "Aug" 8 "Sep" 9 "Oct" 10 "Nov" 11 "Dec") ytitle("Marginal effect of Month on Real Price per kg") xtitle("Effects with respect to Jan")
 graph export $my_results/HedonicMonth.png, replace as(png) width(2000)
 
 
 margins, dydx(year) 
 
-marginsplot, xla(1 "2014" 2 "2015" 3 "2016" 4 "2017" 5 "2018" 6 "2019" 7 "2020" 8 "2021" 9 "2022" 10 "2023" 11 "2024")  ytitle("Marginal effect of Year on Real Price") xtitle("Effects Relative to 2013")
+marginsplot, xla(1 "2014" 2 "2015" 3 "2016" 4 "2017" 5 "2018" 6 "2019" 7 "2020" 8 "2021" 9 "2022" 10 "2023" 11 "2024")  ytitle("Marginal effect of Year on Real Price per kg") xtitle("Effects Relative to 2013")
 graph export $my_results/HedonicYear.png, replace as(png) width(2000)
 
 margins, dydx(state) 
-marginsplot, recast(scatter) recastci(rspike) xla(1 "MA" 2 "CT" 3 "NY" 4 "NJ" 5 "DE" 6 "MD" 7 "VA" 8 "NC") ytitle("Marginal effect of State on Real Price") xtitle("Effects with respect to RI")
+marginsplot, recast(scatter) recastci(rspike) xla(1 "MA" 2 "CT" 3 "NY" 4 "NJ" 5 "DE" 6 "MD" 7 "VA" 8 "NC") ytitle("Marginal effect of State on Real Price per kg") xtitle("Effects with respect to RI")
 graph export $my_results/HedonicState.png, replace as(png) width(2000)
 
 

@@ -214,7 +214,9 @@ Fishing vessels catch fish and deliver it to buyers (fish dealer) who classify t
 The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
 
 Prices can be used to predict market category only if prices actually vary by market category. Figure  \@ref(fig:length-histograms) suggests that is the case and a simple hedonic model verifies that prices do indeed vary by market category (Table \ref{HedonicMarketCats}).  The hedonic model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, month, daily landings, and daily landings$^2$.  All but the final two terms are factor variables that are "one-hot" encoded. 
- The price of Jumbo black sea bass is approximately \$6 per pound, while the price of medium black sea bass is closer to \$3.70.  The Unclassified market category has an average price of \$4.26 per pound, in between that of Large and Medium fish, suggesting that, at first approximation, Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
+ The price of Jumbo black sea bass is approximately \$13.08 per kg, while the price of small black sea bass is approximately to \$7.46 per kg.  The Unclassified market category has an average price of \$7.46 per kg, in between that of Large and Medium fish, suggesting that, at first approximation, Unclassified fish may be a mix of these other two categories^[A hedonic price model is not the main focus of this research, nevertheless, we report more details about the simple model in the Appendix.].
+
+
 
 <!--- 
 The hedonic model is estimated by 
@@ -299,7 +301,7 @@ In this simple setting we can perfectly deduce the underlying composition of the
 
 The assumptions of a perfectly elastic demand curve for each market category and that transactions are identical are unrealistic for many reasons. In this application, sales transactions are of similar, but not identical goods.  The goods vary along many dimensions, including size, method of production, and time and location of landing. Meat quality can vary within a season, resulting in different prices within a year.  Regional differences in transportation costs, processing costs,  or final consumer preferences and incomes can produce in regional variation in prices [@samuelson1954transfer; @Krugman1991a].  The demand curve for nearly all fish is downward sloping: increases in quantity supplied will reduce prices [@Kristofersson2004; @Kristofersson2007; @Lee2014; @Ardini2018].
 
-The hedonic model (Table \ref{HedonicTableA}) suggests these attributes impact prices.  Because many attributes impact prices, transactions of different size classes may have similar prices.  This suggests that attributes that are important in determining the price of fish should enter as factors in the machine learning model. Intuition for this can be seen in the following example based on the Table \ref{HedonicTableA}. Most fish are delivered "Round," dead with the gut in.  Some fish are delivered live, these receive a premium of approximately \$0.16 per pound. The mean price of a Small Live black sea bass is \$3.69 (=\$3.526 +\$0.164), which is very close to the mean price of Medium Round \$3.75.  Without including an indicator for Live, a machine learning model would be likely to classify "Small Live" black sea bass as "Medium."  We collect all factors that impact prices, except market category, into $Z_i$.  
+The hedonic model (Table \ref{HedonicTableA}) suggests these attributes impact prices.  Because many attributes impact prices, transactions of different size classes may have similar prices.  This suggests that attributes that are important in determining the price of fish should enter as factors in the machine learning model. Intuition for this can be seen in the following example based on the Table \ref{HedonicTableA}. Most fish are delivered "Round," dead with the gut in.  Some fish are delivered live, these receive a premium of approximately \$0.16 per kg. The mean price of a Small Live black sea bass is \$8.07 (=\$7.46 +\$0.61), which is very close to the mean price of Medium Round \$8.14.  Without including an indicator for Live, a machine learning model would be likely to classify "Small Live" black sea bass as "Medium."  We collect all factors that impact prices, except market category, into $Z_i$.  
 
 \begin{equation}
 \label{demand}
@@ -377,6 +379,7 @@ that did not buy or sell black sea bass in the previous year time have missing v
 
 
 (just write out)
+
 This is pretty rough notation
 \begin{equation}
 \label{dealer_specific}
