@@ -1,37 +1,31 @@
-###############################################################################
-# Purpose: 	Code to apportion the unclassified market category into other MK and calculate landings at age
-
-
-# Inputs:
-#  - out of sample predictions from random forest
-# Outputs:
-#  - landings at age 
-
-###############################################################################  
-
-# How are the aggregate catches being divided out in stock eff right now?
-# Agg to catch at length
-# Catch at length to catch at age?
-
-################################################################################
-# I think I figured it out. I just need to take the comland.length.orig file,
-# Replace the WT_AT_LENGTH with my "actual" values of WT_AT_LENGTH from re-apportionment
-# by market category, and calculate WT_AT_AGE_LENGTH re-organize by age and do the sums to get catch-at-age
-
-# I'm assuming the sampling data are the same, just the portions of the landings
-# that should go in each market category are different
-
-# Actually, I can just change the SCALING_FACTOR because it is the total landings for that market/region/semester
-# divided by the average fish weight (AVG_FISH_WT)
-
-# SCALING_FACTOR = TOTAL_LANDINGS / AVG_FISH_WT
-# WT_AT_LENGTH = PROP_WT_LENGTH * SCALING_FACTOR
-# WT_AT_AGE_LENGTH = WT_AT_LENGTH * PROP_AT_AGE
-# NO_AT_AGE_LENGTH = WT_AT_AGE_LENGTH/IND_AVG_WT_KG
-################################################################################
-
-# Remove any values from the Environment
-rm(list=ls())
+#' @title LAA_calculation
+#' @description Use reapportionment information to recalculate Landings-at-age
+#' @param species_itis A string specifying the itis code to query stockeff 
+#' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
+#' \itemize{
+#'   \item{year}
+#'   \item{semester}
+#'   \item{stockarea}
+#'   \item{original_market_category}
+#'   \item{species_itis}
+#'   \item{Market.Comb}
+#'   \item{live_metric_tons}
+#' }
+#' @param fyr first year for which you want LAA data
+#' @param lyr last year for which you want LAA data
+#' @param connection the connection information to access stockeff using sql 
+#'
+#' @return A data frame of the landings at age 
+#' \itemize{
+#'   \item{indices - A matrix containing stratified mean indices by weight (WT) and numbers (NO), by year, season, and survey}
+#'   \item{strata_means_summary - A matrix of strata means used in index calculations by weight (CATCH_WT) and numbers (CATCH_NO) for each year, season, and survey. Strata included in summary are specified using summary_strata argument}
+#' }
+#' @examples
+#' CAA<- LAA_calculation(species_itis = 167687,
+#'                             out_of_sample_predictions = readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))),
+#'                             fyr = 1989,
+#'                             lyr = 2024
+#'                             connection = connection)
 
 # Library and Source Code/Functions
 library(ROracle)
@@ -39,218 +33,88 @@ library(tidyverse)
 library(here)
 library(glue)
 library("conflicted")
-
-
-#deal with conflicts
 conflicts_prefer(dplyr::filter())
 
-here::i_am("R_code/LAA_calculation/LAA_calculation.R")
 
-fyr <- 1989
-lyr <- 2024
+LAA_calculation <- function(species_itis = NULL,
+                            out_of_sample_predictions = NULL,
+                            fyr = NULL,
+                            lyr = NULL,
+                            connection = NULL){
 
-species_itis <- c("167687")
-lbs_per_kg<-2.20462
-# Enter in SQL access information to query stockeff databases
-connection <- dbConnect(drv = dbDriver("Oracle"),
-                        username = rstudioapi::askForPassword("Oracle user name"),
-                        password = rstudioapi::askForPassword("Oracle password"),
-                        dbname = rstudioapi::askForPassword("Oracle database name"))
-
-################################################################################
-# Query StockEff Aggregate Landings in MV_CF_STOCK_CAA_LAND_BLOCK_O and names of Market Categories for simplicity
-################################################################################
-
-mkt.qry <- paste0("select NESPP4, market_desc ",
-                        "from stockeff.e_cf_market_c ",
-                        "where species_itis in ", species_itis, sep="")
-mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
-
-# THIS OBJECT HAS THE CORRECT LANDINGS BY MARKET CATEGORY
-comm.land.block.qry <- paste0("select * ",
-                        "from stockeff.mv_cf_stock_caa_land_block_o ",
-                        "where species_itis in ", species_itis, " and year <= ", lyr, sep="")
-comm.land.block.res <- fetch(dbSendQuery(connection, comm.land.block.qry))
-
-
-################################################################################
-# Query StockEff Landings at Length in V_CF_STOCK_CAA_NUM_LEN_AGE_O
-################################################################################
-
-land.length.qry <- paste("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS='",species_itis,"'",sep='')
-comland.length.orig <- fetch(dbSendQuery(connection, land.length.qry))
-dbDisconnect(connection)
-################################################################################
-# Reapportion the aggregate landings and combine with length and age info
-################################################################################
-
-# pick up the most recent predictions
-
-predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
-predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
-predictions_vintage<-gsub(".Rds","",predictions_vintage)
-predictions_vintage<-max(predictions_vintage)
-
-# Read in the set of predictions that has some  Unclassifieds
-apportion <- readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
-apportion <- apportion %>% 
-  ungroup() %>%
-  mutate(YEAR = as.numeric(as.character(year)),
-         SEMESTER=as.numeric(as.character(semester)),
-         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
-                                   stockarea == 'South' ~ 'SOUTH'),
-         MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
-                                  Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
-                                  Market.Comb == 'Large' ~ "LARGE",
-                                  Market.Comb == 'Jumbo' ~ "JUMBO",
-                                  Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-         LANDINGS_KG_CATEGORY_PREDICT = live_metric_tons*1000) %>% 
-  select(YEAR,SEMESTER, original_market_category, species_itis, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_CATEGORY_PREDICT) 
-
-# Read in original combined dataset, drop Unclassified
-original_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{predictions_vintage}.Rds")))
-
-original_dataset <-original_dataset %>%
-  filter(market_desc!="Unclassified") %>%
-  mutate(species_itis="167687") %>%
-  group_by(year, semester, stockarea, market_desc,species_itis) %>%
-  summarise(LANDINGS_MY_PROCESSED_CAMS_KG=sum(livlb/lbs_per_kg)) %>%
-  ungroup()
-
-
-original_dataset <-original_dataset %>%
-  mutate(YEAR = as.numeric(as.character(year)),
-         SEMESTER=as.numeric(as.character(semester)),
-         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
-                                   stockarea == 'South' ~ 'SOUTH'),
-         MARKET_DESC = case_when (market_desc == 'Small' ~ "SMALL",
-                                  market_desc == 'Medium' ~ "MEDIUM OR SELECT",
-                                  market_desc == 'Large' ~ "LARGE",
-                                  market_desc == 'Jumbo' ~ "JUMBO",
-                                  market_desc=='Unclassified' ~"UNCLASSIFIED")) %>%
-  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_MY_PROCESSED_CAMS_KG, species_itis) 
-
-
-
-#ensure 1 row per year, semester, stock abbreviation
-check<-original_dataset %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, species_itis, MARKET_DESC) %>%
-  summarise(count=n())%>%
-  ungroup()
-stopifnot(max(check$count)==1)
-
-
-
-#ensure 1 row per year, semester, stock abbreviation
-check<-apportion %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, original_market_category, species_itis, MARKET_DESC) %>%
-  summarise(count=n())%>%
-  ungroup()
-stopifnot(max(check$count)==1)
-
-
-# Read in the 2nd set of predictions that has NO Unclassifieds
-ambitious <- readRDS(here("data_folder","predictions", glue("ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds")))
-ambitious <- ambitious %>% 
-  ungroup() %>%
-  mutate(YEAR = as.numeric(as.character(year)),
-         SEMESTER=as.numeric(as.character(semester)),
-         STOCK_ABBREV = case_when (stockarea == 'North' ~ 'NORTH',
-                                   stockarea == 'South' ~ 'SOUTH'),
-         MARKET_DESC = case_when (Market.Comb == 'Small' ~ "SMALL",
-                                  Market.Comb == 'Medium' ~ "MEDIUM OR SELECT",
-                                  Market.Comb == 'Large' ~ "LARGE",
-                                  Market.Comb == 'Jumbo' ~ "JUMBO",
-                                  Market.Comb=='Unclassified' ~"UNCLASSIFIED"),
-         LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS = live_metric_tons*1000)  %>%
-  select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC,LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS, species_itis, original_market_category) 
-
-#ensure 1 row per year, semester, stock abbreviation
-check<-ambitious %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC, species_itis, original_market_category) %>%
-  summarise(count=n())%>%
-  ungroup()
-stopifnot(max(check$count)==1)
-
-# Bring "ambitious" into "apportion"
-apportion <-apportion %>%
-  left_join(ambitious, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis, original_market_category) )%>%
-  replace_na(list(LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS=0))%>%
-  replace_na(list(LANDINGS_KG_CATEGORY_PREDICT=0))
-
-apportion <-apportion %>%
-  left_join(original_dataset, by=join_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC,species_itis) ) %>%
-  replace_na(list(LANDINGS_MY_PROCESSED_CAMS_KG=0)) %>%
-  select(-original_market_category)
-
-# If you are okay with using LANDINGS_MY_PROCESSED_CAMS_KG as the "landings from classified" then uncomment tihs. 
-# apportion <-apportion %>%
-#  mutate(LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS=LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS+LANDINGS_MY_PROCESSED_CAMS_KG
-#         LANDINGS_KG_CATEGORY_PREDICT=LANDINGS_KG_CATEGORY_PREDICT+LANDINGS_MY_PROCESSED_CAMS_KG )
-
-
-
-check<-apportion %>% 
-  group_by(YEAR, SEMESTER,STOCK_ABBREV, MARKET_DESC, species_itis, original_market_category) %>%
-  summarise(count=n())%>%
-  ungroup()
-stopifnot(max(check$count)==1)
-
-# # Check to see if the totals across year, semester, stock all match up
-# groupapportion <- apportion %>% group_by(YEAR, SEMESTER,STOCK_ABBREV) %>% summarize(totalcatchapportion= sum(LANDINGS_KG_NEW))
-# groupambitious <- apportion %>% group_by(YEAR, SEMESTER,STOCK_ABBREV) %>% summarize(totalcatchambitious = sum(LANDINGS_KG_NEW))
-# compare <- groupapportion %>% left_join(groupambitious) %>% mutate(diff = totalcatchapportion-totalcatchambitious)
-
-## Code here takes the results from this apportionment and put those in comland.length.orig.totals with LANDINGS_KG_NOADJ_NEW
-comland.length.orig.totals <- comland.length.orig  %>% 
-  left_join(comm.land.block.res) %>% 
-  left_join(mkt.res) %>% 
-  left_join(apportion, by=join_by(STOCK_ABBREV==STOCK_ABBREV, YEAR==YEAR, MARKET_DESC==MARKET_DESC, BLOCK_ID==SEMESTER))
-
-
-#comland.orig.total<-comland.length.orig.totals %>%
-#  group_by(STOCK_ABBREV, YEAR, MARKET_DESC, BLOCK_ID)
-
-# Where there isn't any new landings (for some years) use the old landings:
-comland.length.orig.totals <- comland.length.orig.totals %>% 
-  mutate(LANDINGS_KG_ADJUSTED = case_when(
-    MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT,
-    MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT)
-  ) %>%
-  mutate(LANDINGS_KG_ADJUSTED_AMB = case_when(
-    MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS,
-    MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_PREDICT_AMBITIOUS) 
-  )
-
-################################################################################
-# Calculate weight at age length
-################################################################################
-
-##### !! Change the LANDINGS_KG to whatever new one came out of the apportionment process!
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_NEW/AVG_FISH_WT)
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(SCALING_FACTOR_DIFF = SCALING_FACTOR_NEW-SCALING_FACTOR)
-
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(WT_AT_LENGTH_DIFF = WT_AT_LENGTH_NEW-WT_AT_LENGTH)
-
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(WT_AT_AGE_LENGTH_NEW = WT_AT_LENGTH_NEW*PROP_AT_AGE)
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(WT_AT_AGE_LENGTH_DIFF = WT_AT_AGE_LENGTH_NEW-WT_AT_AGE_LENGTH)
-
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(NO_AT_AGE_LENGTH_NEW = WT_AT_AGE_LENGTH_NEW/IND_AVG_WT_KG)
-comland.length.orig.totals <- comland.length.orig.totals %>% mutate(NO_AT_AGE_LENGTH_DIFF = NO_AT_AGE_LENGTH_NEW-NO_AT_AGE_LENGTH)
-
-################################################################################
-# Assemble into Landings at age 
-################################################################################
-
-land.CAA.OLD <- comland.length.orig.totals %>%
-  group_by(STOCK_ABBREV, YEAR, AGE) %>%
-  summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH)) %>%
-  ungroup()
-
-land.CAA.NEW <- comland.length.orig.totals %>%
-  group_by(STOCK_ABBREV, YEAR, AGE) %>%
-  summarize(CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW)) %>%
-  ungroup()
-
-land.CAA <- land.CAA.OLD %>% full_join(land.CAA.NEW)
+  if(unique(out_of_sample_predictions$species_itis) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
+  else{
+  
+  # Query the market categories from StockEff:
+  mkt.qry <- paste0("select NESPP4, market_desc ",
+                          "from stockeff.e_cf_market_c ",
+                          "where species_itis in ", species_itis, sep="")
+  mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
+  # Query the aggregate landings from StockEff:
+  comm.land.qry <- paste0("select * ",
+                          "from stockeff.mv_cf_stock_caa_land_block_o ",
+                          "where species_itis in ", species_itis, " and year <= ", lyr, sep="")
+  comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
+  # Query the landings by age and length from StockEff:
+  comm.land.length.age.qry <- paste("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS='",species_itis,"'",sep='')
+  comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
+  dbDisconnect(connection)
+  
+  # Adjust the apportionment file to match what's expected in stockeff files
+  out_of_sample_predictions <- out_of_sample_predictions %>% 
+    ungroup() %>%
+    mutate(YEAR = as.numeric(as.character(year)),
+           BLOCK_ID=as.numeric(as.character(semester)),
+           STOCK_ABBREV = toupper(stockarea),
+           MARKET_DESC = toupper(Market.Comb),
+           MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
+                                    MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
+           MARKET_DESC_ORIG = toupper(original_market_category),
+           LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
+    select(YEAR,BLOCK_ID, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
+ 
+  ## Combine the stockeff files and apportionment file
+  comm.land.length.age <- comm.land.res  %>% 
+    left_join(comm.land.length.age.res) %>% 
+    left_join(mkt.res) %>% 
+    left_join(out_of_sample_predictions)
+  
+  # Where there isn't any new landings (for some years) use the old landings
+  # Where the old market category is unclassified, make that the new apportion value
+  # Where the old market category isn't unclassified, add apportion value to old landings
+  comm.land.length.age <- comm.land.length.age %>% 
+    mutate(LANDINGS_KG_ADJUSTED = case_when(
+      MARKET_DESC_ORIG == MARKET_DESC ~ LANDINGS_KG_CATEGORY_APPORTION,
+      MARKET_DESC_ORIG != MARKET_DESC ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION,
+      is.na(MARKET_DESC_ORIG) ~ LANDINGS_KG)
+    ) 
+  
+  ################################################################################
+  # Calculate weight at age and length
+  ################################################################################
+  
+  ##### !! Change the LANDINGS_KG to whatever new one came out of the apportionment process!
+  comm.land.length.age <- comm.land.length.age %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_ADJUSTED/AVG_FISH_WT)
+  comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
+  comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_AGE_LENGTH_NEW = WT_AT_LENGTH_NEW*PROP_AT_AGE)
+  comm.land.length.age <- comm.land.length.age %>% mutate(NO_AT_AGE_LENGTH_NEW = WT_AT_AGE_LENGTH_NEW/IND_AVG_WT_KG)
+  
+  ################################################################################
+  # RETURN
+  ################################################################################
+  
+  land.CAA.OLD <- comm.land.length.age %>%
+    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH)) %>%
+    ungroup()
+  
+  land.CAA.NEW <- comm.land.length.age %>%
+    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    summarize(CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW)) %>%
+    ungroup()
+  
+  land.CAA <- land.CAA.OLD %>% full_join(land.CAA.NEW)
+  
+  return(land.CAA)
+  }
+}
