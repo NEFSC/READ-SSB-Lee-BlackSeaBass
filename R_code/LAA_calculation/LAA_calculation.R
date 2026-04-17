@@ -3,14 +3,16 @@
 #' @param species_itis A string specifying the itis code to query stockeff 
 #' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
 #' \itemize{
-#'   \item{year}
-#'   \item{semester}
-#'   \item{stockarea}
-#'   \item{original_market_category}
-#'   \item{species_itis}
-#'   \item{Market.Comb}
-#'   \item{live_metric_tons}
+#'   \item{YEAR}
+#'   \item{SEMESTER}
+#'   \item{STOCK_ABBREV} 
+#'   \item{MARKET_DESC_ORIG}
+#'   \item{SPECIES_ITIS}
+#'   \item{MARKET_DESC}
+#'   \item{LANDINGS_KG_CATEGORY_APPORTION}
 #' }
+#' 
+#' 
 #' @param fyr first year for which you want LAA data
 #' @param lyr last year for which you want LAA data
 #' @param connection the connection information to access stockeff using sql 
@@ -42,7 +44,7 @@ LAA_calculation <- function(species_itis = NULL,
                             lyr = NULL,
                             connection = NULL){
 
-  if(unique(out_of_sample_predictions$species_itis) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
+  if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
   else{
   
   # Query the market categories from StockEff:
@@ -60,19 +62,19 @@ LAA_calculation <- function(species_itis = NULL,
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   dbDisconnect(connection)
   
-  # Adjust the apportionment file to match what's expected in stockeff files
-  out_of_sample_predictions <- out_of_sample_predictions %>% 
-    ungroup() %>%
-    mutate(YEAR = as.numeric(as.character(year)),
-           SEMESTER=as.numeric(as.character(semester)),
-           STOCK_ABBREV = toupper(stockarea),
-           MARKET_DESC = toupper(Market.Comb),
-           MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
-                                    MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
-           MARKET_DESC_ORIG = toupper(original_market_category),
-           LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
-    select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
- 
+  # # Adjust the apportionment file to match what's expected in stockeff files
+  # out_of_sample_predictions <- out_of_sample_predictions %>% 
+  #   ungroup() %>%
+  #   mutate(YEAR = as.numeric(as.character(year)),
+  #          BLOCK_ID=as.numeric(as.character(semester)),
+  #          STOCK_ABBREV = toupper(stockarea),
+  #          MARKET_DESC = toupper(Market.Comb),
+  #          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
+  #                                   MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
+  #          MARKET_DESC_ORIG = toupper(original_market_category),
+  #          LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
+  #   select(YEAR,BLOCK_ID, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
+
   
   comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
   comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
