@@ -24,7 +24,7 @@
 #' CAA<- LAA_calculation(species_itis = 167687,
 #'                             out_of_sample_predictions = readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))),
 #'                             fyr = 1989,
-#'                             lyr = 2024
+#'                             lyr = 2024,
 #'                             connection = connection)
 
 # Library and Source Code/Functions
