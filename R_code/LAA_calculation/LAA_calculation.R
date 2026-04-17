@@ -46,6 +46,10 @@ LAA_calculation <- function(species_itis = NULL,
 
   if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
   else{
+    
+  ################################################################################
+  # Query StockEff
+  ################################################################################
   
   # Query the market categories from StockEff:
   mkt.qry <- paste0("select NESPP4, market_desc ",
@@ -62,7 +66,9 @@ LAA_calculation <- function(species_itis = NULL,
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   dbDisconnect(connection)
   
-  # # Adjust the apportionment file to match what's expected in stockeff files
+  ################################################################################
+  # Restructure columns and names and merge stockeff with out_of_sample_predictions
+  ################################################################################
   # out_of_sample_predictions <- out_of_sample_predictions %>% 
   #   ungroup() %>%
   #   mutate(YEAR = as.numeric(as.character(year)),
@@ -74,7 +80,6 @@ LAA_calculation <- function(species_itis = NULL,
   #          MARKET_DESC_ORIG = toupper(original_market_category),
   #          LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
   #   select(YEAR,BLOCK_ID, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
-
   
   comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
   comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
