@@ -27,7 +27,7 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 here::i_am("writing/figure1.R")
 
-
+lbs_per_kg<-2.20462
 
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -43,6 +43,10 @@ combined_dataset<-read_rds(here("data_folder","main","commercial", dataset_name)
 combined_dataset<-combined_dataset %>%
   filter(mark_in==1 | market_desc=="Unclassified")
 
+combined_dataset<-combined_dataset %>%
+  mutate(lndkg=lndlb/lbs_per_kg)%>%
+  mutate(pricekgR_CPI=valueR_CPI/lndkg)
+
 # To upper case, rename as SMALL_COMB, and relevel to re-order
 combined_dataset<-combined_dataset %>%
   mutate(market_desc=str_to_upper(market_desc))%>%
@@ -53,8 +57,8 @@ combined_dataset<-combined_dataset %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL.COMB", "MEDIUM", "LARGE", "JUMBO")))
 
 price.mktcomb <- ggplot(
-  combined_dataset %>% filter(priceR_CPI >= 0 & priceR_CPI <= 10),
-  aes(x = priceR_CPI, weight = lndlb, y = after_stat(density))
+  combined_dataset %>% filter(pricekgR_CPI >= 0 & pricekgR_CPI <= 10*lbs_per_kg),
+  aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
     binwidth  = 0.25,
@@ -64,9 +68,9 @@ price.mktcomb <- ggplot(
   ) +
   facet_grid(rows = vars(market_desc), cols = NULL) +
   scale_x_continuous(
-    name   = "Real price (USD/lb, CPI-deflated)",
-    limits = c(0, 10),
-    breaks = seq(0, 10, 2),
+    name   = "Real price (USD/kg, CPI-deflated)",
+    limits = c(0, 24),
+    breaks = seq(0, 24, 4),
     expand = expansion(mult = 0.01)
   ) +
   scale_y_continuous(

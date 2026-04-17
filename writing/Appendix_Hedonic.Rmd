@@ -16,23 +16,27 @@ BSB_original_combined_dataset is created by data_prep_ml.R
 ```{r hedonicsummary,  eval=TRUE, echo=FALSE}
 # this comes out of data_prep_ml.Rmd. It's 
 bsb_original<-readr::read_rds(file=here("data_folder","main","commercial", glue("BSB_original_combined_dataset{data_vintage_string}.Rds")))
+lbs_per_kg<-2.20462
 
 bsb_original<-bsb_original %>%
-  filter(mark_in==1) 
+  filter(mark_in==1) %>%
+  mutate(lndkg=lndlb/lbs_per_kg)%>%
+  mutate(pricekgR_CPI=valueR_CPI/lndkg)
 
 bsb_original<-bsb_original %>%
   group_by(dlr_date) %>%
-  mutate(daily_landings=sum(lndlb, na.rm=TRUE)/1000)
+  mutate(daily_landings_mt=sum(lndkg, na.rm=TRUE)/1000)
 
 
 
-my_selection   <- c("priceR_CPI", "daily_landings")
+
+my_selection   <- c("pricekgR_CPI", "daily_landings_mt")
 more_variables <- c("market_desc", "mygear", "grade_desc", "state", "year", "month")
 
 # Readable labels for continuous variables
 continuous_labels <- c(
-  priceR_CPI     = "Price (Real)",
-  daily_landings = "Daily landings (000s of lbs)"
+  pricekgR_CPI     = "Price per kilogram (Real)",
+  daily_landings_mt = "Daily landings (mt)"
 )
 # Readable labels for continuous variables
 factor_labels <- c(
@@ -164,7 +168,7 @@ kable(
 ## A Simple Hedonic Model
 We first estimate a simple hedonic model using data from 2013-2024. We aggregate to the "CAMSID, market-category, gear, area, datesail, dateland, dealer" level (this is basically the CAMSID-subtrip-market category") and deflate to real prices using the CPI-U for Q1 of 2023.  We perform some aggregation of gears, aggregating to the following gear categories: "Line and Hand", "Trawl", "Gillnet", "Pot and Trap" and "All other" gears.  We aggregate the "Mixed or Unsized" market category with the "Unclassified" market category. We also aggregate the Small, Extra Small, and PeeWee into a single, Small category. Table @\ref(tab:bsb-hedonic-summary) summarizes the data used to estiamte the hedonic model. 
 
-We include transactions from New Hampshire to North Carolina where the nominal price is between \$0.15 and \$12 per pound. The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. We weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.
+We include transactions from New Hampshire to North Carolina where the nominal price is between \$0.15 and \$12 per pound (\$0.33 to \$5.44 per kg). The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. We weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.
 
 The estimating equation in the hedonic model is 
 \begin{align}
@@ -174,7 +178,7 @@ p_{id}&= \sum_{k=1}^K a_{k} Market Category_{id} + \sum_{g=1}^G b_{k} Gear_{id} 
 
 We also include a set of factor variables for state, year, and month. We estimate equation \ref{HedonicEstimatingEquation} with a full set of factor variables for Market Category, exclude 1 level from all other factors to avoid perfect linearity.  Equation \ref{HedonicEstimatingEquation} is estimated by Ordinary Least Squares; there are undoubtedly more sophisticated models that could be used, but OLS suffices for these exploratory purposes. The omitted levels are Trawl Gear, Rhode Island, 2013, and January.  The coefficients associated with the market categories can be interpreted as the conditional average price per pound of landings in that category that were caught by trawl gear and landed in Rhode Island in January of 2013.  Coefficients for the other factor variables can be interpreted as premia or discounts relative to the omitted factor.
 
-Table \ref{HedonicTableA} contains some results of the more interesting results. There are 42.24 millions pounds of Black Sea Bass spread over 525,000 transactions during the 2013-2024 time period.  We prefer the weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass received \$5.93 per pound, which Small Black Sea bass were priced at \$3.39 per pound.  Unclassified Black Sea bass were priced between the Medium and Large Market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to Round fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
+Table \ref{HedonicTableA} contains some results of the more interesting results. There were over 42 million pounds (19,160 metric tons) of Black Sea Bass landed and sold in nearly 526,000 transactions during the 2013-2024 time period.  We prefer the weighted specification, which has a more intuitive interpretation. Jumbo Black Sea bass prices average \$13.08 per kg , which Small Black Sea bass were priced at \$7.46 per kg.  Unclassified Black Sea bass were priced between the Medium and Large market categories, suggesting that average size of  Unclassified fish lies between those two categories. All of the gear categories receive premia relative to trawl caught fish.  Live fish receives a slight premia relative to Round fish. Increases in Total landings cause slight declines in prices, this occurs at a decreasing rate. 
 
 
 Figure \@ref(fig:HedonicMarginals) shows the results for the month, year, and state factor variables. The Year dummies indicate a substantial decrease in the real price of black sea bass over the 2013-2024 period.  Prices also vary by year, month, and state. 
