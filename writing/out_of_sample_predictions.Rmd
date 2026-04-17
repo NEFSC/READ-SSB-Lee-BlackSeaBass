@@ -264,8 +264,9 @@ oos_data_calibration_applied <-
   oos_predictable %>%
   cal_apply(calibrate_iso)
 
-oos_data_calibration_applied <-oos_data_calibration_applied %>%
-  rename(SEMESTER=semester)
+oos_data_calibration_applied <-oos_data_calibration_applied  %>%
+  mutate(SEMESTER=as.numeric(as.character(semester))) %>%
+  select(-semester)
 ```
 
 
@@ -321,7 +322,8 @@ YRS_predictions<-  YRS_predictions %>%
   rename(live_metric_tons=live_lbs)
 
 oos_unpredictable<-oos_unpredictable %>%
-  rename(SEMESTER=semester)
+  mutate(SEMESTER=as.numeric(as.character(semester))) %>%
+  select(-semester)
 
 # get the unpredictables to the same format
 oos_Uncs<-oos_unpredictable %>%
@@ -395,7 +397,8 @@ ambitious_predictions_cal_applied <-
   cal_apply(calibrate_iso)
 
 ambitious_predictions_cal_applied <-ambitious_predictions_cal_applied %>%
-  rename(SEMESTER=semester)
+  mutate(SEMESTER=as.numeric(as.character(semester))) %>%
+  select(-semester)
 
 
 write_rds(ambitious_predictions_cal_applied, file=here("results","ranger",glue("out_of_sample_predictions_disaggregated_{modeltype}{finalfit_vintage}.Rds")))
