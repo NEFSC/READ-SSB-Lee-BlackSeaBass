@@ -1,4 +1,4 @@
-Unweighted and Weighted Hedonic Price Regression (2013-2024)
+Weighted and Unweighted Hedonic Price Regression (2013-2024)
 
 |                               | Weighted   | Unweighted |
 |-------------------------------|------------|------------|

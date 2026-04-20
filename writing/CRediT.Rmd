@@ -1,0 +1,13 @@
+
+# Acknowledgements{-}
+The authors are grateful to Geret DePiper, Chris Legault, Brian Linton, and Charles Perretti for comments and suggestions. The findings and conclusions of this article are those of the authors and do not necessarily reflect the views or opinions of NOAA Fisheries.  
+
+
+# CRediT{-}
+
+ML: Conceptualization, Formal Analysis, Investigation, Methodology, Validation, Visualization, Writing - Original Draft, Writing -Review and Editing
+
+EL: Investigation, Methodology, Writing - Original Draft, Writing - Review and Editing
+
+ 
+ 
