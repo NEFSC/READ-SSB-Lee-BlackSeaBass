@@ -274,6 +274,10 @@ unk.region <- full_join(
 
 ##### 2) Do length distributions vary across market categories, regions, quarters and semesters?   #####  
 
+len.all<-len.all %>%
+  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                           "SMALL", 
+                           MKTCOMB))
 
 ##### List unique factors #####
 grs  <- len.all %>% distinct(BSB.GEAR.CAT1) %>% pull()
