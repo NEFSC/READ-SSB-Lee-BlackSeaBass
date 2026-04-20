@@ -719,15 +719,15 @@ nocalibrate_results<-nocalibrate_results%>%
 transactions_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)%>%
     mutate(
-    predicted_transactions = comma(predicted_transactions, accuracy = 0.1),
+    predicted_transactions = comma(predicted_transactions, accuracy = 1),
     transactions = comma(transactions, accuracy = 1)                        
   )
 
 weights_nocalibrate_predictions<-nocalibrate_results %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`)%>%
     mutate(
-    true_mt = comma(true_mt, accuracy =0.1),
-    predicted_mt = comma(predicted_mt, accuracy = 0.1)                        
+    true_mt = comma(true_mt, accuracy =1),
+    predicted_mt = comma(predicted_mt, accuracy = 1)                        
   )
 
 ```
@@ -749,8 +749,9 @@ kable(
 ) %>%
   kable_styling(
     latex_options = c("hold_position"),
-    font_size     = 10
-  ) 
+    font_size     = 10 ) %>%
+ column_spec(2:4, latex_column_spec = "r")
+
 
 
 
@@ -772,8 +773,9 @@ kable(
 ) %>%
   kable_styling(
     latex_options = c("hold_position"),
-    font_size     = 10
-  ) 
+    font_size     = 10) %>%
+ column_spec(2:4, latex_column_spec = "r")
+
 
 ```
 ### Hard prediction confusion matrix
