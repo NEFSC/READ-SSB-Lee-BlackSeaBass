@@ -36,7 +36,7 @@ more_variables <- c("market_desc", "mygear", "grade_desc", "state", "year", "mon
 # Readable labels for continuous variables
 continuous_labels <- c(
   pricekgR_CPI     = "Price per kilogram (Real)",
-  daily_landings_mt = "Daily landings (mt)"
+  daily_landings_mt = "Landings (mt)"
 )
 # Readable labels for continuous variables
 factor_labels <- c(
@@ -155,7 +155,7 @@ kable(
 ) %>%
   kable_styling(
     latex_options = c("hold_position"),
-    font_size     = 10
+    font_size     = 9
   ) %>%
   column_spec(1, width = "4cm", bold = TRUE) %>%
   column_spec(2, width = "3cm") %>%
