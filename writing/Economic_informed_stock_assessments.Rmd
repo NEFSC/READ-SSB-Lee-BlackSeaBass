@@ -469,9 +469,9 @@ knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_no
 ```
 
 
-## Testing Results
+## Validation Results
 
-After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we predict class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model. 
+After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we validate model performance by predicting class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model. 
 
 ```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
 knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
