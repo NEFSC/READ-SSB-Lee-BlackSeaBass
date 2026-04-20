@@ -159,7 +159,6 @@ ambitious_aggregate_oos_predictions<-readRDS(here("data_folder","predictions",pa
 
 # Introduction
 
-
 <!--- Include the next 2 child documents.   --->
 ```{r, child=here("writing", c("summary.Rmd")),  eval=FALSE}
 ```
@@ -803,6 +802,11 @@ knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
 
+\newpage
+
+<!--- Include the CRediT and acknowledgement statements   --->
+```{r, child=here("writing", c("CRediT.Rmd")),  eval=TRUE}
+```
 
 <!---
 The boneyard:
