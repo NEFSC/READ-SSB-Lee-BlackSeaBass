@@ -126,7 +126,7 @@ reallocate_market_categories <- function(species_itis             = NULL,
   # CAA_OLD: original StockEff numbers at age (NO_AT_AGE_LENGTH), summed
   #          across all length bins within stock/year/age.
   # CAA_NEW: reapportioned numbers at age (NO_AT_AGE_LENGTH_NEW), same grouping.
-  land.CAA.OLD <- comm.land.length.age %>%
+  land.CAA <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
     summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH, na.rm=TRUE),
               CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE), .groups = "drop")
