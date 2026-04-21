@@ -1,7 +1,7 @@
 #' @title LAA_calculation
 #' @description Use reapportionment information to recalculate Landings-at-age
 #' @param species_itis A string specifying a single itis code to query stockeff 
-#' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
+#' @param out_of_sample_predictions A data frame specifying reapportioned metric tons across market categories. This dataframe must be be zero padded.  If there are 3 market categories in every year in the original data, there must be 3 in this dataframe. 
 #' \itemize{
 #'   \item{YEAR}
 #'   \item{SEMESTER}
