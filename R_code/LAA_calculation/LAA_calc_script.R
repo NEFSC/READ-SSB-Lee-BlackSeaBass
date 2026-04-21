@@ -84,21 +84,68 @@ aggregated_landings<-aggregated_landings %>%
 
 # Stick LANDINGS_KG_CAMS into bsb_stockeff$comm.land.res's LANDINGS_KG
 
-bsb_stockeff$comm.land.res<-bsb_stockeff$comm.land.res %>%
+comm.land.res_updated<-bsb_stockeff$comm.land.res %>%
   left_join(aggregated_landings, by=join_by(YEAR, SPECIES_ITIS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, BLOCK_ID==SEMESTER))
 
-# NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
+comm.land.res_updated <- comm.land.res_updated %>%
+  mutate(LANDINGS_KG = case_when(
+    is.na(LANDINGS_KG_CAMS) ~ LANDINGS_KG,
+    .default=LANDINGS_KG_CAMS)
+    ) %>%
+  select(-c(MARKET_DESC,LANDINGS_KG_CAMS))
+  
 
-land.CAA_refactored <- reallocate_market_categories(
+
+
+# NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
+# Substitute in CAMS land for stockeff landings where available (2013-2024)
+# Run the conversion to Catch at age
+land.CAA <- reallocate_market_categories(
+  species_itis             = "167687",
+  mkt.res                  = bsb_stockeff$mkt.res,
+  comm.land.res            = comm.land.res_updated,
+  comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+  out_of_sample_predictions = out_of_sample_predictions1
+)
+
+
+
+
+
+# Run the conversion to Catch at age on the stockeff data
+OG.land.CAA <- reallocate_market_categories(
   species_itis             = "167687",
   mkt.res                  = bsb_stockeff$mkt.res,
   comm.land.res            = bsb_stockeff$comm.land.res,
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-  out_of_sample_predictions = readRDS(predictions_full_location1)
+  out_of_sample_predictions = out_of_sample_predictions1
 )
 
 
-mm<-bsb_stockeff$mkt.res
-zz<-bsb_stockeff$comm.land.res
+
+
+# NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
+# Substitute in CAMS land for stockeff landings where available (2013-2024)
+# Run the conversion to Catch at age
+# use the ambitious predictions that force all unclassifieds to be allocated to something
+land.CAA.ambitious <- reallocate_market_categories(
+  species_itis             = "167687",
+  mkt.res                  = bsb_stockeff$mkt.res,
+  comm.land.res            = comm.land.res_updated,
+  comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+  out_of_sample_predictions = out_of_sample_predictions2
+)
+
+
+
+# Run the conversion to Catch at age on the stockeff data
+# use the ambitious predictions that force all unclassifieds to be allocated to something
+OG.land.CAA.abmitious <- reallocate_market_categories(
+  species_itis             = "167687",
+  mkt.res                  = bsb_stockeff$mkt.res,
+  comm.land.res            = bsb_stockeff$comm.land.res,
+  comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+  out_of_sample_predictions = out_of_sample_predictions2
+)
 
 
