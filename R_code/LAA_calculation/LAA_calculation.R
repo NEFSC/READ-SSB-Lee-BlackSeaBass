@@ -1,7 +1,7 @@
 #' @title LAA_calculation
 #' @description Use reapportionment information to recalculate Landings-at-age
 #' @param species_itis A string specifying a single itis code to query stockeff 
-#' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
+#' @param out_of_sample_predictions A data frame specifying reapportioned metric tons across market categories. This dataframe must be be zero padded.  If there are 3 market categories in every year in the original data, there must be 3 in this dataframe. 
 #' \itemize{
 #'   \item{YEAR}
 #'   \item{SEMESTER}
@@ -73,7 +73,8 @@ LAA_calculation <- function(species_itis = NULL,
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   
   #create a marker flag on in out_of_sample_predictions to make the logic of subsequent case_when a little safer.
-  out_of_sample_predictions$has_rf_pred<-1
+  out_of_sample_predictions <- out_of_sample_predictions %>% 
+    mutate(has_rf_pred = 1)
   ## Combine the stockeff files and apportionment file
   comm.land.length.age <- comm.land.res  %>% 
     left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
@@ -81,9 +82,11 @@ LAA_calculation <- function(species_itis = NULL,
     left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
   
   # CONSTRUCT LANDINGS_KG_ADJUSTED
-  # Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
-  # Where the original market category is unclassified, use the new apportion value
-  # Where the original market category is not unclassified, add category apportion value to the original landings
+  # is.na(has_rf_pred) Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
+  # MARKET_DESC=="UNCLASSIFIED" Where the original market category is unclassified, use the new apportion value.  This is correct because 
+  ##    1.  The RF model may "decline" to make a classifcation for some unclassified observations and we want to retain them as UNCLASSIFIED here. 
+  ##    2.  THe RF model may classify "all" the unclassifeds. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
+  # MARKET_DESC!="UNCLASSIFIED", add category apportion value to the original landings
   # MARKET_DESC_ORIG refers the original market category and MARKET_DESC is the RF classified new market category.
   
   comm.land.length.age <- comm.land.length.age %>% 
