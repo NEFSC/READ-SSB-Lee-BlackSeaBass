@@ -74,7 +74,7 @@ aggregated_landings <-aggregated_landings %>%
   mutate(SPECIES_ITIS="167687",
          SEX_TYPE="NONE",
          REGION_ID=1
-         ) 
+  ) 
 
 # pull NEPP4 from bsb_stockeff$mkt.res
 
@@ -85,7 +85,7 @@ aggregated_landings<-aggregated_landings %>%
 # Stick LANDINGS_KG_CAMS into bsb_stockeff$comm.land.res's LANDINGS_KG
 
 bsb_stockeff$comm.land.res<-bsb_stockeff$comm.land.res %>%
-  left_join(aggregated_landings, by=join_by(YEAR, SPECIES_IITS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, BLOCK_ID==SEMESTER))
+  left_join(aggregated_landings, by=join_by(YEAR, SPECIES_ITIS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, BLOCK_ID==SEMESTER))
 
 # NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
 
@@ -102,4 +102,3 @@ mm<-bsb_stockeff$mkt.res
 zz<-bsb_stockeff$comm.land.res
 
 
-     
