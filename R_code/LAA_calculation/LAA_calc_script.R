@@ -58,7 +58,7 @@ original_combined_dataset <-readRDS(file = input_path)
 landings_prepped<-original_combined_dataset %>%
   mutate(YEAR = as.numeric(as.character(year)),
          STOCK_ABBREV= as.character(toupper(stockarea)),
-         SEMESTER= as.character(semester),
+         SEMESTER= as.integer(semester),
          MARKET_DESC = toupper(as.character(market_desc)),
          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
                                   MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
