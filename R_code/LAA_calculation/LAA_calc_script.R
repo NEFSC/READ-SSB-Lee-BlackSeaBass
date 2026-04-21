@@ -1,3 +1,7 @@
+# This script has two goals
+# 1. Make sure that the refactoring of the LAA calculation works
+# 2. show how to uget NAA.
+
 library(here)
 library(glue)
 library("conflicted")
@@ -42,10 +46,18 @@ bsb_stockeff<-get_stockeff(species_itis = 167687,
 dbDisconnect(connection)
 
 
-# bring in my own 2013-2024 "cams land" data 
 
 # =============================================================================
 # Section 2: READ in original combined dataset
+# I need to bring in my own own 2013-2024 "cams land" data to make things internally consistent
+# the out_of_sample_predictions1 dataset does a prediction of market category for the unclassified market category
+# For pre 2013 data, we just use landings
+# For 2013-2024 data, we replace the original unclassified with the New unclassified in the prediction dataset
+# For 2013-2024 data, we add the newlly  clasiifes to the original values when there are predictions
+# If the data are internally consistent, this rebalancing has no change to total weights. However it is not, so it might be
+
+# Importing my original combined dataset is a stopgap that allows for testing
+
 # =============================================================================
 
 
@@ -66,7 +78,7 @@ landings_prepped<-original_combined_dataset %>%
 
 aggregated_landings<-landings_prepped %>%
   group_by(YEAR,STOCK_ABBREV, SEMESTER, MARKET_DESC) %>%
-  summarise(LANDINGS_KG_CAMS=sum(livlb/2.204, na.rm=TRUE),.groups="drop_last")
+  summarise(LANDINGS_KG_CAMS=sum(livlb, na.rm=TRUE)/2.20462,.groups="drop_last")
 
 # make some columns for the merge
 
@@ -94,9 +106,11 @@ comm.land.res_updated <- comm.land.res_updated %>%
   ) %>%
   select(-c(MARKET_DESC,LANDINGS_KG_CAMS))
 
-
-
 # NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
+
+
+# =============================================================================
+# Section 3A: Allocate and compute new Catch at Age. 
 # Substitute in CAMS land for stockeff landings where available (2013-2024)
 # Run the conversion to Catch at age
 land.CAA <- reallocate_market_categories(
@@ -108,6 +122,7 @@ land.CAA <- reallocate_market_categories(
 )
 
 # TEST.  If i've done the allocation correctly, the total of CAA_OLD and CAA New are the same.
+# Note, this is not actually a good test, because a kg of Large is not the same number of idinviduals as a kg of Smalls.
 test1<-land.CAA %>%
   filter(YEAR>=2013) %>%
   summarise(CAA_OLD=sum(CAA_OLD),
@@ -132,10 +147,12 @@ OG.land.CAA <- reallocate_market_categories(
   out_of_sample_predictions = out_of_sample_predictions1
 )
 
+# =============================================================================
+# Section 3B: Allocate and compute new Catch at Age. 
+# use the ambitious predictions that force all unclassifieds to be allocated to something
+# note that I'm passing in "out_of_sample_predictions2" here
 
 
-
-# NEITHER LANDINGS_KG_NOADJ NOR EXP_RATIO are used downstream
 # Substitute in CAMS land for stockeff landings where available (2013-2024)
 # Run the conversion to Catch at age
 # use the ambitious predictions that force all unclassifieds to be allocated to something
@@ -151,7 +168,7 @@ land.CAA.ambitious <- reallocate_market_categories(
 
 # Run the conversion to Catch at age on the stockeff data
 # use the ambitious predictions that force all unclassifieds to be allocated to something
-OG.land.CAA.abmitious <- reallocate_market_categories(
+OG.land.CAA.ambitious <- reallocate_market_categories(
   species_itis             = "167687",
   mkt.res                  = bsb_stockeff$mkt.res,
   comm.land.res            = bsb_stockeff$comm.land.res,
@@ -160,10 +177,33 @@ OG.land.CAA.abmitious <- reallocate_market_categories(
 )
 
 
+# =============================================================================
+# You can probably stop here. One of these 4 objects is what you want for the next step.
+# =============================================================================
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# Section 4A: Some testing
+# The CAA numbers didn't match and shouldn't. I realized that late, so I re-engineered the merges 
+# to ensure that weights matched.
+
+# The first thing i did was check the order of the merges.
+
+
+# make a flag column
 out_of_sample_predictions1 <- out_of_sample_predictions1 %>%
   mutate(has_rf_pred = 1)
 
@@ -185,6 +225,10 @@ comm.land.length.age_DEFAULT <- comm.land.res_updated %>%
                          MARKET_DESC, BLOCK_ID == SEMESTER))
 
 
+
+
+# Reorder, the joins.  1 to 3, to 4 then 2.
+
 comm.land.length.age_REVISED <- comm.land.res_updated %>%
   left_join(bsb_stockeff$mkt.res,
             by = join_by(NESPP4)) %>%
@@ -195,29 +239,28 @@ comm.land.length.age_REVISED <- comm.land.res_updated %>%
             by = join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE,
                          STOCK_ABBREV, REGION_ID, BLOCK_ID)) 
 
-#comm.land.length.age_DEFAULT<-comm.land.length.age_DEFAULT %>%
-#  mutate(source=1)
-
-
-#comm.land.length.age_REVISED<-comm.land.length.age_REVISED %>%
-#  mutate(source=2)
-
-# identical datasets come out.
+# identical datasets come out, so we're good
 test<-rbind(comm.land.length.age_REVISED, comm.land.length.age_DEFAULT)
 z<-duplicated(test)
 table(z)
 
+# =============================================================================
+# Section 4B: Some testing
 
-#SHort circuit the age key
+#SHort circuit the age key and pull out just weights
+
+#join to market category names
 comm.land.length.age_SS <- comm.land.res_updated %>%
   left_join(bsb_stockeff$mkt.res,
             by = join_by(NESPP4)) 
 
+# create some flag variables for the merge to make sure I don't gain or lose rows.
 comm.land.length.age_SS  <- comm.land.length.age_SS  %>%
   mutate(.in_left  = TRUE)
 out_of_sample_predictions1 <- out_of_sample_predictions1 %>%
   mutate(.in_right = TRUE)
 
+#join to the out of sample predictions
 comm.land.length.age_SS<-comm.land.length.age_SS %>%
   full_join(out_of_sample_predictions1,
             by = join_by(SPECIES_ITIS, YEAR, STOCK_ABBREV,
@@ -227,13 +270,14 @@ comm.land.length.age_SS<-comm.land.length.age_SS %>%
   ) %>%
   mutate(
     .merge = case_when(
-      .in_left & !.in_right ~ 1L,
-      !.in_left &  .in_right ~ 2L,
-      .in_left &  .in_right ~ 3L
+      .in_left & !.in_right ~ 1L, # in left dataset
+      !.in_left &  .in_right ~ 2L, # in right dataset 
+      .in_left &  .in_right ~ 3L # in both
     )
   )
-
+# looks good, I expect this because I don't have predictions pre 2013
 table(comm.land.length.age_SS$YEAR, comm.land.length.age_SS$.merge)
+
 
 #Update with the apportionment
 comm.land.length.age_SS <- comm.land.length.age_SS %>%
@@ -247,7 +291,7 @@ comm.land.length.age_SS <- comm.land.length.age_SS %>%
 
 
 
-# TEST.  If i've done the allocation correctly, the total of CAA_OLD and CAA New are the same.
+# TEST.  If i've done the allocation correctly, the total of LANDINGS_KG and LANDINGS_KG_ADJUSTED are the same.
 test1<-comm.land.length.age_SS %>%
   group_by(YEAR, STOCK_ABBREV, BLOCK_ID) %>%
   summarise(LANDINGS_KG=sum(LANDINGS_KG),
@@ -256,6 +300,8 @@ test1<-comm.land.length.age_SS %>%
   mutate(LANDINGS_KG = scales::number(LANDINGS_KG, accuracy = 1, big.mark = ","),
          LANDINGS_KG_ADJUSTED = scales::number(LANDINGS_KG_ADJUSTED, accuracy = 1, big.mark = ",")
          )
+
+
 #It's not perfect, it's within 10kg and I don't know why.
 View(test1)
 
