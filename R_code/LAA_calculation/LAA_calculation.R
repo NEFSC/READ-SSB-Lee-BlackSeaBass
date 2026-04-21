@@ -70,13 +70,13 @@ LAA_calculation <- function(species_itis = NULL,
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   
 
-    comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
-  comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
+  #comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
+  #comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
   ## Combine the stockeff files and apportionment file
   comm.land.length.age <- comm.land.res  %>% 
-    left_join(comm.land.length.age.res) %>% 
-    left_join(mkt.res) %>% 
-    left_join(out_of_sample_predictions)
+    left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
+    left_join(mkt.res, by=join_by(NESPP4)) %>% 
+    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
   
   # Where there isn't any new landings (for some years) use the old landings
   # Where the old market category is unclassified, make that the new apportion value
