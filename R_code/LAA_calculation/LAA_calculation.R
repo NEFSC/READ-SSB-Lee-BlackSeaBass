@@ -92,10 +92,10 @@ LAA_calculation <- function(species_itis = NULL,
     ) 
   
   ################################################################################
-  # Calculate weight at age and length
+  # Calculate weight at age and length using LANDINGS_KG_ADJUSTED
   ################################################################################
   
-  ##### !! Change the LANDINGS_KG to whatever new one came out of the apportionment process!
+
   comm.land.length.age <- comm.land.length.age %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_ADJUSTED/AVG_FISH_WT)
   comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
   comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_AGE_LENGTH_NEW = WT_AT_LENGTH_NEW*PROP_AT_AGE)
