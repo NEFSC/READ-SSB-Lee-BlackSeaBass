@@ -66,22 +66,8 @@ LAA_calculation <- function(species_itis = NULL,
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   dbDisconnect(connection)
   
-  ################################################################################
-  # Restructure columns and names and merge stockeff with out_of_sample_predictions
-  ################################################################################
-  # out_of_sample_predictions <- out_of_sample_predictions %>% 
-  #   ungroup() %>%
-  #   mutate(YEAR = as.numeric(as.character(year)),
-  #          BLOCK_ID=as.numeric(as.character(semester)),
-  #          STOCK_ABBREV = toupper(stockarea),
-  #          MARKET_DESC = toupper(Market.Comb),
-  #          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
-  #                                   MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
-  #          MARKET_DESC_ORIG = toupper(original_market_category),
-  #          LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
-  #   select(YEAR,BLOCK_ID, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
-  
-  comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
+
+    comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
   comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
   ## Combine the stockeff files and apportionment file
   comm.land.length.age <- comm.land.res  %>% 
