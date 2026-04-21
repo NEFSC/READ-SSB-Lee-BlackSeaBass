@@ -19,8 +19,8 @@
 #'
 #' @return A data frame of the landings at age 
 #' \itemize{
-#'   \item{indices - A matrix containing stratified mean indices by weight (WT) and numbers (NO), by year, season, and survey}
-#'   \item{strata_means_summary - A matrix of strata means used in index calculations by weight (CATCH_WT) and numbers (CATCH_NO) for each year, season, and survey. Strata included in summary are specified using summary_strata argument}
+#'   \item{indices - FILL IN }
+#'   \item{strata_means_summary - FILL IN}
 #' }
 #' @examples
 #' CAA<- LAA_calculation(species_itis = '167687',
