@@ -80,9 +80,9 @@ LAA_calculation <- function(species_itis = NULL,
   # Where the old market category isn't unclassified, add apportion value to old landings
   comm.land.length.age <- comm.land.length.age %>% 
     mutate(LANDINGS_KG_ADJUSTED = case_when(
-      is.na(MARKET_DESC_ORIG) ~ LANDINGS_KG),
+      is.na(MARKET_DESC_ORIG) ~ LANDINGS_KG,
       MARKET_DESC_ORIG == MARKET_DESC ~ LANDINGS_KG_CATEGORY_APPORTION,
-      MARKET_DESC_ORIG != MARKET_DESC ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION
+      MARKET_DESC_ORIG != MARKET_DESC ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
     ) 
   
   ################################################################################
