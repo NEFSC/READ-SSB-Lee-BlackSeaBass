@@ -67,7 +67,6 @@ LAA_calculation <- function(species_itis = NULL,
   # Query the landings by age and length from StockEff:
   comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS in ({species_itis})")
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
-  dbDisconnect(connection)
   
 
     comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
