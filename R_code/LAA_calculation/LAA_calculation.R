@@ -1,6 +1,6 @@
 #' @title LAA_calculation
 #' @description Use reapportionment information to recalculate Landings-at-age
-#' @param species_itis A string specifying the itis code to query stockeff 
+#' @param species_itis A string specifying a single itis code to query stockeff 
 #' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
 #' \itemize{
 #'   \item{YEAR}
@@ -44,7 +44,8 @@ LAA_calculation <- function(species_itis = NULL,
                             lyr = NULL,
                             connection = NULL){
 
-  if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
+  if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
+  else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
   else{
     
   ################################################################################
