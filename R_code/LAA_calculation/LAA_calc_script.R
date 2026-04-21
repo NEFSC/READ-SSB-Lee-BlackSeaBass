@@ -120,6 +120,11 @@ land.CAA <- reallocate_market_categories(
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
   out_of_sample_predictions = out_of_sample_predictions1
 )
+output_path  <- here("data_folder","predictions")
+output_file <- glue("cams_adusted_landings_at_age{original_dataset_vintage}.Rds")
+output_file <- file.path(output_path, output_file)
+write_rds(land.CAA,file = output_file)
+
 
 # TEST.  If i've done the allocation correctly, the total of CAA_OLD and CAA New are the same.
 # Note, this is not actually a good test, because a kg of Large is not the same number of idinviduals as a kg of Smalls.
@@ -146,6 +151,9 @@ OG.land.CAA <- reallocate_market_categories(
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
   out_of_sample_predictions = out_of_sample_predictions1
 )
+output_file <- glue("stockeff_adusted_landings_at_age{original_dataset_vintage}.Rds")
+output_file <- file.path(output_path, output_file)
+write_rds(OG.land.CAA,file = output_file)
 
 # =============================================================================
 # Section 3B: Allocate and compute new Catch at Age. 
@@ -163,6 +171,9 @@ land.CAA.ambitious <- reallocate_market_categories(
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
   out_of_sample_predictions = out_of_sample_predictions2
 )
+output_file <- glue("cams_ambitious_landings_at_age{original_dataset_vintage}.Rds")
+output_file <- file.path(output_path, output_file)
+write_rds(land.CAA.ambitious,file = output_file)
 
 
 
@@ -176,6 +187,9 @@ OG.land.CAA.ambitious <- reallocate_market_categories(
   out_of_sample_predictions = out_of_sample_predictions2
 )
 
+output_file <- glue("stockeff_ambitious_landings_at_age{original_dataset_vintage}.Rds")
+output_file <- file.path(output_path, output_file)
+write_rds(OG.land.CAA.ambitious,file = output_file)
 
 # =============================================================================
 # You can probably stop here. One of these 4 objects is what you want for the next step.
@@ -310,7 +324,6 @@ View(test1)
 # Go back to the regular way in the code:
 
 
-comm.land.length.age_DEFAULT
 
 comm.land.length.age_SS <- comm.land.length.age_SS %>%
   filter(YEAR>=2013) %>%
