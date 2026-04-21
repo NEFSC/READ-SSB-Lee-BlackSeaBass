@@ -97,8 +97,9 @@ reallocate_market_categories <- function(species_itis             = NULL,
   comm.land.length.age <- comm.land.length.age %>%
     mutate(LANDINGS_KG_ADJUSTED = case_when(
       is.na(has_rf_pred)         ~ LANDINGS_KG,
-      MARKET_DESC == "UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
-      MARKET_DESC != "UNCLASSIFIED" ~ LANDINGS_KG + LANDINGS_KG_CATEGORY_APPORTION
+      !is.na(has_rf_pred)  & MARKET_DESC == "UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
+      !is.na(has_rf_pred)  & MARKET_DESC != "UNCLASSIFIED" ~ LANDINGS_KG + LANDINGS_KG_CATEGORY_APPORTION,
+      .default = NA_real_
     ))
 
   # --- Scaling chain ----------------------------------------------------
