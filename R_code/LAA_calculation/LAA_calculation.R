@@ -70,20 +70,25 @@ LAA_calculation <- function(species_itis = NULL,
                                    where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   
+  #create a marker flag on in out_of_sample_predictions to make the logic of subsequent case_when a little safer.
+  out_of_sample_predictions$has_rf_pred<-1
   ## Combine the stockeff files and apportionment file
   comm.land.length.age <- comm.land.res  %>% 
     left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
     left_join(mkt.res, by=join_by(NESPP4)) %>% 
     left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
   
-  # Where there isn't any new landings (for some years) use the old landings
-  # Where the old market category is unclassified, make that the new apportion value
-  # Where the old market category isn't unclassified, add apportion value to old landings
+  # CONSTRUCT LANDINGS_KG_ADJUSTED
+  # Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
+  # Where the original market category is unclassified, use the new apportion value
+  # Where the original market category is not unclassified, add category apportion value to the original landings
+  # MARKET_DESC_ORIG refers the original market category and MARKET_DESC is the RF classified new market category.
+  
   comm.land.length.age <- comm.land.length.age %>% 
     mutate(LANDINGS_KG_ADJUSTED = case_when(
-      is.na(MARKET_DESC_ORIG) ~ LANDINGS_KG,
-      MARKET_DESC_ORIG == MARKET_DESC ~ LANDINGS_KG_CATEGORY_APPORTION,
-      MARKET_DESC_ORIG != MARKET_DESC ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
+      is.na(has_rf_pred) ~ LANDINGS_KG,
+      MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
+      MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
     ) 
   
   ################################################################################
