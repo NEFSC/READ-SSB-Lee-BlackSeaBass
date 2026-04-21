@@ -66,7 +66,8 @@ LAA_calculation <- function(species_itis = NULL,
   
   comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
   # Query the landings by age and length from StockEff:
-  comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS in ({species_itis})")
+  comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o 
+                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   
 
