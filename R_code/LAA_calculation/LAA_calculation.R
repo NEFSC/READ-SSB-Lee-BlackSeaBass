@@ -61,7 +61,9 @@ LAA_calculation <- function(species_itis = NULL,
   
   comm.land.qry <- glue("select * 
                           from stockeff.mv_cf_stock_caa_land_block_o 
-                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}")
+                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
+                          and LANDINGS_KG IS NOT NULL")
+  
   
   
   comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
