@@ -111,12 +111,12 @@ LAA_calculation <- function(species_itis = NULL,
   ################################################################################
   
   land.CAA.OLD <- comm.land.length.age %>%
-    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE) %>%
     summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH)) %>%
     ungroup()
   
   land.CAA.NEW <- comm.land.length.age %>%
-    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
     summarize(CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW)) %>%
     ungroup()
   
