@@ -1,7 +1,7 @@
 #' @title LAA_calculation
 #' @description Use reapportionment information to recalculate Landings-at-age
-#' @param species_itis A string specifying the itis code to query stockeff 
-#' @param out_of_sample_predictions A data frame frame specifying reapportioned metric tons across market caategories
+#' @param species_itis A string specifying a single itis code to query stockeff 
+#' @param out_of_sample_predictions A data frame specifying reapportioned metric tons across market categories. This dataframe must be be zero padded.  If there are 3 market categories in every year in the original data, there must be 3 in this dataframe. 
 #' \itemize{
 #'   \item{YEAR}
 #'   \item{SEMESTER}
@@ -19,8 +19,8 @@
 #'
 #' @return A data frame of the landings at age 
 #' \itemize{
-#'   \item{indices - A matrix containing stratified mean indices by weight (WT) and numbers (NO), by year, season, and survey}
-#'   \item{strata_means_summary - A matrix of strata means used in index calculations by weight (CATCH_WT) and numbers (CATCH_NO) for each year, season, and survey. Strata included in summary are specified using summary_strata argument}
+#'   \item{indices - FILL IN }
+#'   \item{strata_means_summary - FILL IN}
 #' }
 #' @examples
 #' CAA<- LAA_calculation(species_itis = '167687',
@@ -44,7 +44,8 @@ LAA_calculation <- function(species_itis = NULL,
                             lyr = NULL,
                             connection = NULL){
 
-  if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis) print("species_itis doesn't match between requested and what provided by apportion file")
+  if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
+  else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
   else{
     
   ################################################################################
@@ -52,58 +53,54 @@ LAA_calculation <- function(species_itis = NULL,
   ################################################################################
   
   # Query the market categories from StockEff:
-  mkt.qry <- paste0("select NESPP4, market_desc ",
-                          "from stockeff.e_cf_market_c ",
-                          "where species_itis in ", species_itis, sep="")
+  mkt.qry <- glue("select NESPP4, market_desc 
+                          from stockeff.e_cf_market_c 
+                          where species_itis in ({species_itis})" )
   mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
   # Query the aggregate landings from StockEff:
-  comm.land.qry <- paste0("select * ",
-                          "from stockeff.mv_cf_stock_caa_land_block_o ",
-                          "where species_itis in ", species_itis, " and year <= ", lyr, sep="")
+  
+  comm.land.qry <- glue("select * 
+                          from stockeff.mv_cf_stock_caa_land_block_o 
+                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
+                          and LANDINGS_KG IS NOT NULL")
+  
+  
+  
   comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
   # Query the landings by age and length from StockEff:
-  comm.land.length.age.qry <- paste("select * from stockeff.v_cf_stock_caa_num_len_age_o where SPECIES_ITIS='",species_itis,"'",sep='')
+  comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o 
+                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
-  dbDisconnect(connection)
   
-  ################################################################################
-  # Restructure columns and names and merge stockeff with out_of_sample_predictions
-  ################################################################################
-  # out_of_sample_predictions <- out_of_sample_predictions %>% 
-  #   ungroup() %>%
-  #   mutate(YEAR = as.numeric(as.character(year)),
-  #          BLOCK_ID=as.numeric(as.character(semester)),
-  #          STOCK_ABBREV = toupper(stockarea),
-  #          MARKET_DESC = toupper(Market.Comb),
-  #          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
-  #                                   MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
-  #          MARKET_DESC_ORIG = toupper(original_market_category),
-  #          LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
-  #   select(YEAR,BLOCK_ID, STOCK_ABBREV,MARKET_DESC_ORIG, species_itis,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
-  
-  comm.land.length.age.res <- comm.land.length.age.res %>% rename(SEMESTER=BLOCK_ID)
-  comm.land.res <- comm.land.res %>% rename(SEMESTER=BLOCK_ID)
+  #create a marker flag on in out_of_sample_predictions to make the logic of subsequent case_when a little safer.
+  out_of_sample_predictions <- out_of_sample_predictions %>% 
+    mutate(has_rf_pred = 1)
   ## Combine the stockeff files and apportionment file
   comm.land.length.age <- comm.land.res  %>% 
-    left_join(comm.land.length.age.res) %>% 
-    left_join(mkt.res) %>% 
-    left_join(out_of_sample_predictions)
+    left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
+    left_join(mkt.res, by=join_by(NESPP4)) %>% 
+    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
   
-  # Where there isn't any new landings (for some years) use the old landings
-  # Where the old market category is unclassified, make that the new apportion value
-  # Where the old market category isn't unclassified, add apportion value to old landings
+  # CONSTRUCT LANDINGS_KG_ADJUSTED
+  # is.na(has_rf_pred) Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
+  # MARKET_DESC=="UNCLASSIFIED" Where the original market category is unclassified, use the new apportion value.  This is correct because 
+  ##    1.  The RF model may "decline" to make a classifcation for some unclassified observations and we want to retain them as UNCLASSIFIED here. 
+  ##    2.  THe RF model may classify "all" the unclassifeds. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
+  # MARKET_DESC!="UNCLASSIFIED", add category apportion value to the original landings
+  # MARKET_DESC_ORIG refers the original market category and MARKET_DESC is the RF classified new market category.
+  
   comm.land.length.age <- comm.land.length.age %>% 
     mutate(LANDINGS_KG_ADJUSTED = case_when(
-      MARKET_DESC_ORIG == MARKET_DESC ~ LANDINGS_KG_CATEGORY_APPORTION,
-      MARKET_DESC_ORIG != MARKET_DESC ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION,
-      is.na(MARKET_DESC_ORIG) ~ LANDINGS_KG)
+      is.na(has_rf_pred) ~ LANDINGS_KG,
+      MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
+      MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
     ) 
   
   ################################################################################
-  # Calculate weight at age and length
+  # Calculate weight at age and length using LANDINGS_KG_ADJUSTED
   ################################################################################
   
-  ##### !! Change the LANDINGS_KG to whatever new one came out of the apportionment process!
+
   comm.land.length.age <- comm.land.length.age %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_ADJUSTED/AVG_FISH_WT)
   comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
   comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_AGE_LENGTH_NEW = WT_AT_LENGTH_NEW*PROP_AT_AGE)
@@ -114,12 +111,12 @@ LAA_calculation <- function(species_itis = NULL,
   ################################################################################
   
   land.CAA.OLD <- comm.land.length.age %>%
-    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE) %>%
     summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH)) %>%
     ungroup()
   
   land.CAA.NEW <- comm.land.length.age %>%
-    group_by(STOCK_ABBREV, YEAR, AGE) %>%
+    group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
     summarize(CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW)) %>%
     ungroup()
   
