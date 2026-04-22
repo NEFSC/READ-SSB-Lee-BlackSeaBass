@@ -676,9 +676,9 @@ Social science information can be another source of information about catch. Sem
 ```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
 
-## Additional Model fit and diagnostics
+## Additional Model fit and diagnostics{-}
 
-### Pre-calibration ROC curve
+### Pre-calibration ROC curve{-}
 
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
 knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
@@ -687,7 +687,7 @@ knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_
 The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not overfit the model.
 
 
-### Pre-calibration confusion matrix and aggregate predictions
+### Pre-calibration confusion matrix and aggregate predictions{-}
 
 
 These are the predictions that come out of the non-calibrated models.
@@ -787,7 +787,7 @@ kable(
 
 
 ```
-### Hard prediction confusion matrix
+### Hard prediction confusion matrix{-}
 
 <!--- 
 These figures are created with
@@ -804,7 +804,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 ```
 
 
-## Out of Sample Predictions
+## Out of Sample Predictions{-}
 
 In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref{fig:ambitious-out-of-sample-preds} predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
