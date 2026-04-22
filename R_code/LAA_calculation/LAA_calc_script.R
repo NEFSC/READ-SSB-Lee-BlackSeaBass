@@ -141,6 +141,11 @@ test1<-land.CAA %>%
             CAA_NEW=sum(CAA_NEW)
   )
 
+#format, so the thing left behind is easy on the eyes
+land.CAA<-land.CAA %>%
+  mutate(CAA_NEW = scales::number(CAA_NEW, accuracy = 1, big.mark = ","),
+         CAA_OLD = scales::number(CAA_OLD, accuracy = 1, big.mark = ",")
+  )
 
 
 # Run the conversion to Catch at age on the stockeff data
@@ -154,6 +159,13 @@ OG.land.CAA <- reallocate_market_categories(
 output_file <- glue("stockeff_adusted_landings_at_age{original_dataset_vintage}.Rds")
 output_file <- file.path(output_path, output_file)
 write_rds(OG.land.CAA,file = output_file)
+
+
+#format, so the thing left behind is easy on the eyes
+OG.land.CAA<-OG.land.CAA %>%
+  mutate(CAA_NEW = scales::number(CAA_NEW, accuracy = 1, big.mark = ","),
+         CAA_OLD = scales::number(CAA_OLD, accuracy = 1, big.mark = ",")
+  )
 
 # =============================================================================
 # Section 3B: Allocate and compute new Catch at Age. 
@@ -176,6 +188,12 @@ output_file <- file.path(output_path, output_file)
 write_rds(land.CAA.ambitious,file = output_file)
 
 
+#format, so the thing left behind is easy on the eyes
+land.CAA.ambitious<-land.CAA.ambitious %>%
+  mutate(CAA_NEW = scales::number(CAA_NEW, accuracy = 1, big.mark = ","),
+         CAA_OLD = scales::number(CAA_OLD, accuracy = 1, big.mark = ",")
+  )
+
 
 # Run the conversion to Catch at age on the stockeff data
 # use the ambitious predictions that force all unclassifieds to be allocated to something
@@ -191,6 +209,11 @@ output_file <- glue("stockeff_ambitious_landings_at_age{original_dataset_vintage
 output_file <- file.path(output_path, output_file)
 write_rds(OG.land.CAA.ambitious,file = output_file)
 
+#format, so the thing left behind is easy on the eyes
+OG.land.CAA.ambitious<-OG.land.CAA.ambitious %>%
+  mutate(CAA_NEW = scales::number(CAA_NEW, accuracy = 1, big.mark = ","),
+         CAA_OLD = scales::number(CAA_OLD, accuracy = 1, big.mark = ",")
+  )
 # =============================================================================
 # You can probably stop here. One of these 4 objects is what you want for the next step.
 # =============================================================================
