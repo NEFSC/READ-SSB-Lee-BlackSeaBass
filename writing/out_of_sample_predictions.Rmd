@@ -459,9 +459,22 @@ ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
            LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons*1000) %>% 
     select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC_ORIG, SPECIES_ITIS,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
 
+# Pad out the Ambitious classifications
+padded_unc<-ambitious_YRS_predictions %>%
+  group_by(YEAR, SEMESTER, STOCK_ABBREV, MARKET_DESC_ORIG, SPECIES_ITIS) %>%
+  slice(1) %>%
+  ungroup() %>%
+  mutate(MARKET_DESC="UNCLASSIFIED",
+         LANDINGS_KG_CATEGORY_APPORTION=0)
+
+
+padded<-rbind(ambitious_YRS_predictions, padded_unc)
+padded<-padded %>%
+  arrange(YEAR, SEMESTER, STOCK_ABBREV, MARKET_DESC_ORIG, SPECIES_ITIS, MARKET_DESC)
+stopifnot(nrow(padded)==nrow(YRS_predictions))
 #YRS -- year, region, SEMESTER
 
-write_rds(ambitious_YRS_predictions, file=here("data_folder","predictions",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(padded, file=here("data_folder","predictions",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 # Column Names
 # This gets consumed by the LAA_calculation function, so don't change the variable names or things will break downstream.
