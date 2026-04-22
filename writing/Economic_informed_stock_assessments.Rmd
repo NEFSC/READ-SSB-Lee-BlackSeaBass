@@ -545,7 +545,7 @@ kable(
   label     = "transaction-predictions"
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+ #   latex_options = c("hold_position"),
     font_size     = 10
   ) %>%
  column_spec(2:4, latex_column_spec = "r")  %>%
@@ -583,7 +583,7 @@ kable(
   label     = "weighted-predictions"
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+ #   latex_options = c("hold_position"),
     font_size     = 10
   ) %>%
   column_spec(2:4, latex_column_spec = "r")%>%
@@ -595,9 +595,9 @@ kable(
 
 #  Out of Sample Predictions
 
-We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref{fig:out-of-sample-preds} illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
+We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref(fig:out-of-sample-preds) illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
 
-```{r out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester. " }
+```{r out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -756,9 +756,10 @@ kable(
   label     = "uncal-trans-predictions"
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+ #   latex_options = c("hold_position"),
     font_size     = 10 ) %>%
- column_spec(2:4, latex_column_spec = "r")
+ column_spec(2:4, latex_column_spec = "r") %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
 
 
 
@@ -780,9 +781,10 @@ kable(
   label     = "uncal-weights-predictions"
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+ #   latex_options = c("hold_position"),
     font_size     = 10) %>%
- column_spec(2:4, latex_column_spec = "r")
+ column_spec(2:4, latex_column_spec = "r") %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
 
 
 ```
