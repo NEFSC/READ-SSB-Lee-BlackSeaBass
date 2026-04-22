@@ -450,13 +450,13 @@ We present results of the initial tuning, calibration, and validation.  The init
 
 ## Tuning and Calibration results
 
-```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
+```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning"}
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 In-sample ROC curves from tuning are quite similar across folds and the initial steepness indicates the tuned random forest can distinguish between the four principal market categories (Figure  \@ref(fig:rocTune)).  The random forest model performs exceedingly well for the small market category, despite the small market category being relatively rare in the data. The model performs worst at classifying the Large market category; referring back to  (Figure \@ref(fig:length-histograms)) illustrates the relatively high degree of overlap between the prices of Large with its neighboring Medium and Jumbo market categories.  
 
-```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+```{r vip,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
 knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
@@ -464,7 +464,7 @@ The VIP confirms that the three price variables are the most important in predic
 
 The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).^[We experimented beta and multinomial logistic calibration, but isotonic regression performed the best]
 
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
+```{r calibrationplots,echo=FALSE,fig.show='p',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
 knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
 ```
 
@@ -473,14 +473,14 @@ knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_no
 
 After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we validate model performance by predicting class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model. 
 
-```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
 knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
 We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).   For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 72\% of Jumbo, 64\% of Large, 71\% of Medium, and 55\% of Small landings. Reassuringly, the model mis-predictions frequently offset.  Consider the true "Jumbo" market category. The Random Forest incorrectly classified 204mt of Jumbo as large, 48mt as Medium, and 5mt as Small.  However, this is almost perfectly offset by the 204mt of true Large, 35mt of true Medium, and 4mt of true Small that are incorrectly classified as Jumbo.  Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions) illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
 
 <!---This is slightly different than the standard method in which observations are assigned to the class with the highest probability.  --->
-```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
 
@@ -590,7 +590,7 @@ kable(
 
 We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref(fig:out-of-sample-preds) illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
 
-```{r out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
+```{r out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -679,7 +679,7 @@ Social science information can be another source of information about catch. Sem
 
 ### Pre-calibration ROC curve{-}
 
-```{r rocFinal,echo=FALSE,out.width="70%",fig.show='hold', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
+```{r rocFinal,echo=FALSE,out.width="70%",fig.show='p', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
 knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
@@ -800,7 +800,7 @@ knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{
 ```
 
 A confusion matrix for the calibrated model, done on "soft" predictions. 
-```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated.  "}
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated.  "}
 knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
 ```
 
@@ -809,7 +809,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 
 In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref{fig:ambitious-out-of-sample-preds} predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
-```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
+```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
 knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
