@@ -116,8 +116,8 @@ stat_areas<-stat_areas %>%
 
 
 options(scipen=0)
-
-lbs_per_mt<-2204.62
+lbs_per_kg<-2.20462
+lbs_per_mt<-lbs_per_kg*1000
 
 imagefolder<-here("images")
 finalfit_vintage<-"2026-03-16"
@@ -257,8 +257,7 @@ knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color
 Figure \@ref(fig:LenHist2) illustrates these data gaps and their attendant problems; there are no biosamples for Unclassified fish in the South region after 2013 and very few in the north, particularly after 2018^[All measured Unclassified fish in the 2019-2024 time period came from a 2 week time period in a single port in 2020.  There are also relatively few samples of Jumbo in the South from 2014-2018 and Small in the North from 2019-2024.].  In all three time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is therefore likely to produce catch-at-length estimates that are too large. Within a region, borrowing data from an adjacent market category is also likely to produce poor estimates of catch-at-length.  For the Unclassified category, it is not clear which market category is adjacent.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves the stock assessment scientists in an uncomfortable place. 
 
 
-
-# Methods and Data
+# Methods
 
 
 ## A Stylized Theoretical Model Guides Our Modeling Approach 
@@ -267,7 +266,7 @@ The general goal of this research is to use economic theory and market informati
 
 In this research, we use the transaction level prices to make inferences about the unobserved market category of Unclassified transactions.  Three fundamental facts guide the modeling approach. First, a perfectly competitive market for fish implies the Law of One Price: homogenous goods will have identical market equilibrium prices.  Second, that heterogeneous composite goods can be unbundled into their constituent attributes using a hedonic model and when competitive markets for attributes exists, these attributes will have identical market prices. Third, that all models, including those of markets are only approximations to reality.
 
-### The Competitive Market Equilibrium and the Law of One Price
+## The Competitive Market Equilibrium and the Law of One Price
 
 The existence of a competitive market for black sea bass is critical to our ability to use prices to infer market category.  It ensures that the prices capture all relevant quality information and that there is a single price^[All identical goods will sell at the same price; therefore observations of identical goods with different prices *suggest* that some conditions of a competitive market are absent [@Lamont2003].  Variations of the law of one price that account for heterogenous goods, informational assymmetries [@Salop1982], and different data availability have been proposed and tested statistically [@Asche1999; @Nielsen2009; @Pettersen2018].].  The intuition behind the law of one price is straightforward.  A dealer that offers less than the market equilibrium price, will purchase no fish; fishing firms would sell to another dealer.  A dealer that offer more than the market equilbrium price will purchase all the fish and this new "too high" price becomes the new equilibrium price.
 
@@ -319,14 +318,13 @@ After training the model and calibrating probabilities, we predict out of sample
 use the trained model to predict the probability of class memembership^[The alternative is to assign class membership to the highest predicted class] and aggregate the corresponding live weight to the year-, market category-, and subregion level.  We then convert these adjusted landings to an age structure and compare it with the traditional age structure. 
 
 
-
-## Data, Pre-Processing, and Feature Engineering
+# Data, Pre-Processing, and Feature Engineering
 
 We use Catch Accounting and Monitoring System (CAMS)^[Documentation at https://apps-garfo.fisheries.noaa.gov/cams/index.html] data from 2013 to 2024 to train our model. The CAMS data compiled by GARFO consists of dealer transactions matched to vessel trip reports. Dealer data are transaction-level reports of fish purchases by federally permitted fish dealers from each vessel.  They are disaggregated to the trip and market category level and include landed weight (pounds) and value (nominal US Dollars).  Prices are converted to Real 2023Q1 values using the CPI for all urban consumers (CPIAUCSL). Vessel trip report data are reports of fishing activity by federally permitted vessels that are disaggregated to the statistical area-gear-trip level and include information about area fished, gear used, trip length, and estimates of quantity kept (hail weights) and discarded at the species level.   Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.  When vessels fish in multiple statistical areas or using multiple gears, they file more than one report per trip.  One of the functions of the CAMS data system is to allocate trip-level dealer records to the appropriate statistical area.  CAMS allocates in proportion to the hail weights on those trip reports, splitting a single trip record into multiple observations.
 
 Black Sea Bass may be caught by firms without a federal fishing permit and sold to dealers without a federal dealer permit.  In some states, firms without a federal permit can fish for black sea bass in state waters (within 3 miles of land) and sell it to fish dealers who do not have a federal permit.  These sales are also in our data and the CAMS system imputes both statistical area (area adjacent to landing port) and gear used when missing. 
 
-Our observational units are these allocated sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In the exploratory analysis (the hedonic model presented in Table \ref{HedonicTableA}) and the Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers.].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, we are not interested in predictions of aggregate transactions; our goal is to obtain a prediction of aggregate weight prediction of the true but  unobserved market category of Unclassified fish.   Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their frequency weight. This results in bootstrap samples which more closely resemble the frequency weighted data instead of the raw, unweighted data.
+Our observational units are these allocated sales transactions; the dependent variable is the market category and explanatory variables include transformations of price and other variables that impact prices.  In the exploratory analysis (the hedonic model presented in Table \ref{HedonicMarketCats}) and the Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers.].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, we are not interested in predictions of aggregate transactions; our goal is to obtain a prediction of aggregate weight prediction of the true but  unobserved market category of Unclassified fish.   Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their frequency weight. This results in bootstrap samples which more closely resemble the frequency weighted data instead of the raw, unweighted data.
 
 Economic theory described in the theoretical model and on-the-ground subject-matter expertise (the black sea bass stock assessment and commercial fishery) guide explanatory factors, factor engineering, selection of data, and validation procedures [@Mullainathan2017]. 
 
@@ -367,7 +365,7 @@ estimation_dataset <- bind_rows(
   testing(data_split)    %>% mutate(partition = "test")
 )
 
-my_selection<-c("priceR_CPI","lndlb")
+my_selection<-c("priceR_CPI","lndlb",)
 
 
 
