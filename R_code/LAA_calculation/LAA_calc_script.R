@@ -369,7 +369,7 @@ comm.land.length.age_DEFAULT <- comm.land.length.age_DEFAULT %>%
 # CAA_OLD: original StockEff numbers at age (NO_AT_AGE_LENGTH), summed
 #          across all length bins within stock/year/age.
 # CAA_NEW: reapportioned numbers at age (NO_AT_AGE_LENGTH_NEW), same grouping.
-land.CAA <- comm.land.length.age_DEFAULT %>%
+land.CAA_test <- comm.land.length.age_DEFAULT %>%
   group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
   summarize(CAA_OLD = sum(NO_AT_AGE_LENGTH, na.rm=TRUE),
             CAA_NEW = sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE), .groups = "drop")
@@ -377,7 +377,7 @@ land.CAA <- comm.land.length.age_DEFAULT %>%
 # Full join preserves any stock/year/age combinations present in one
 # summary but not the other (e.g., years with no RF predictions).
 
-land.CAA<-land.CAA %>%
+land.CAA_test<-land.CAA_test %>%
   mutate(CAA_NEW = scales::number(CAA_NEW, accuracy = 1, big.mark = ","),
        CAA_OLD = scales::number(CAA_OLD, accuracy = 1, big.mark = ",")
 )
