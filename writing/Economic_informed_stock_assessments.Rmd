@@ -443,6 +443,7 @@ First, there is less quality assurance and quality control for the species value
 In addition to necessitating a modified target encoding practice, buyers with an unobserved propensity to either buy or grade fish into particular classes has a potential effect on cross-validation that is worth discussion.  @Roberts2017 note that standard cross-validation techniques are overly optimistic when observations are dependent, as they would be with this type of unobserved heterogeneity.  This occurs because the hold out data used for cross-validation is not actually independent. @Roberts2017 suggest that the practical implications of this depend on the purposes of the model; if prediction on "similar" data is the goal, then a standard cross-validation may be appropriate.  We believe this is the case: we observe records of sales from vessels to dealers, train our model on a subset (the Classified transactions) of those data, and predict out of sample on the remaining Unclassified transactions. At every point in the process, we are able to observe the dealer and it's propensity to grade or purchase particular market categories^[If, however, our objective was to predict class membership for new dealers, the standard cross validation could lead to overly optimistic training results and poor out of sample prediction].  
 
 To summarize, our modeling approach is to tune two hyperaparameters using 75\% of our dataset using a standard 10-fold cross-validation. We frequency weight our observations by pounds landed, use a weighted log-loss function to tune, and use controls for prices, economic activity, and biological availability. We calibrate using a 15\% hold out sample, experimenting with isotonic, multinomial, and beta calibration methods. After selecting a final model, we validate on the final 15\% holdout sample. 
+
 # Results
 
 We present results of the initial tuning, calibration, and validation.  The initial tuning found optimal hyperparameter values of $mtry=25$ and $min_n=161$ respectively.  The calibration steps find moderate gain from isotonic calibration, and the validation shows the model fits well. The tuning and validation model fit statistics are similar, suggesting the model is not overfit.  Although the model is not a causal one, the importance of explanatory factors in the Variable Importance Plots make intuitive sense; prices and dealer-specific effects are important factors in the classification model.
@@ -664,8 +665,15 @@ Social science information can be another source of information about catch. Sem
 
 # Appendix{-}
 
-```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
+{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
+```
+
+```
+{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
+```
+
+
 
 ## Additional Model fit and diagnostics{-}
 
@@ -806,13 +814,6 @@ knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
 
-## Data Summaries {-}
-
-```{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
-```
-
-For brevity some tables were not pres
-Here are some tables with transaction level summary statistics. They are analogous to those rp
 
 
 
