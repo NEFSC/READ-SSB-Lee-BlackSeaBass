@@ -49,12 +49,12 @@ combined_dataset<-combined_dataset %>%
 
 # To upper case, rename as SMALL_COMB, and relevel to re-order
 combined_dataset<-combined_dataset %>%
-  mutate(market_desc=str_to_upper(market_desc))%>%
-  mutate(market_desc = if_else(market_desc == "SMALL", 
-                               "SMALL.COMB", 
-                               market_desc))
+  mutate(market_desc=str_to_upper(market_desc))#%>%
+ # mutate(market_desc = if_else(market_desc == "SMALL", 
+#                               "SMALL.COMB", 
+#                               market_desc))
 combined_dataset<-combined_dataset %>%
-  mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL.COMB", "MEDIUM", "LARGE", "JUMBO")))
+  mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL", "MEDIUM", "LARGE", "JUMBO")))
 
 price.mktcomb <- ggplot(
   combined_dataset %>% filter(pricekgR_CPI >= 0 & pricekgR_CPI <= 10*lbs_per_kg),
@@ -350,6 +350,10 @@ unk.region <- full_join(
 
 ##### 2) Do length distributions vary across market categories, regions, quarters and semesters?   #####  
 
+len.all<-len.all %>%
+ mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                               "SMALL", 
+                               MKTCOMB))
 
 ##### List unique factors #####
 grs  <- len.all %>% distinct(BSB.GEAR.CAT1) %>% pull()
