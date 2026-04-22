@@ -549,7 +549,9 @@ kable(
     latex_options = c("hold_position"),
     font_size     = 10
   ) %>%
- column_spec(2:4, latex_column_spec = "r")
+ column_spec(2:4, latex_column_spec = "r")  %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
 
 
 
@@ -585,7 +587,8 @@ kable(
     latex_options = c("hold_position"),
     font_size     = 10
   ) %>%
-  column_spec(2:4, latex_column_spec = "r")
+  column_spec(2:4, latex_column_spec = "r")%>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
 
 
 ```
