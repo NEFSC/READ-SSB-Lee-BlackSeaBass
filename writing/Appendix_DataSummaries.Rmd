@@ -1,35 +1,13 @@
 <!--- 
 R markdown chunk to print tables of summary statistics in the appendix
---->################ 
+---> 
 
 
+## Data Summaries{-}
 
-Unwieghted table 1
+For brevity some descriptive statistics were not presented in the main text.  
 
 
-```{r print-tbl-cont-UnweightedApp, echo=FALSE, warning=FALSE, message=FALSE, results='asis', eval=FALSE}
-knitr::kable(
-  UnWeighted_cont_table_notot,
-  format   = "latex",
-  booktabs = TRUE,
-  escape   = FALSE,
-  caption  = "Summary statistics (mean and  standard deviation) of continuous variables by market description. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
-  align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
-  linesep  = ""
-) %>%
-  kable_styling(
-    latex_options = c("hold_position"),
-    full_width    = FALSE, # required to avoid tabu breakage
-    font_size     = 9
-  ) %>%
-  add_header_above(
-    c(" " = 1, "Market Category" = 4),
-    bold = TRUE
-  ) 
-
-```
-
-weighted cont table 2 is not printed in main paper
 ```{r print-tbl-cont-weighted-Appendix, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=FALSE}
 
 knitr::kable(
@@ -42,16 +20,42 @@ knitr::kable(
   linesep  = ""
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+    #latex_options = c("hold_position"),
     full_width    = FALSE, # required to avoid tabu breakage
     font_size     = 9
   ) %>%
   add_header_above(
     c(" " = 1, "Market Category" = 4),
     bold = TRUE
-  ) 
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
 
 ```
+
+
+```{r print-tbl-cont-UnweightedApp, echo=FALSE, warning=FALSE, message=FALSE, results='asis', eval=FALSE}
+knitr::kable(
+  UnWeighted_cont_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  escape   = FALSE,
+  caption  = "Summary statistics (unweighted mean and  standard deviation) of continuous variables by market description. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
+  align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    #latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Market Category" = 4),
+    bold = TRUE
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+```
+
 
 ```{r print-tbl-cont-UNweighted-Appendix, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=FALSE}
 
@@ -60,19 +64,20 @@ knitr::kable(
   format   = "latex",
   booktabs = TRUE,
   escape   = FALSE,
-  caption  = "Summary statistics AAA (weighted mean and weighted standard deviation) of continuous variables by market description.  Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
+  caption  = "Summary statistics AAA (Unweighted mean and weighted standard deviation) of continuous variables by market description.  Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
   align    = c("l", rep("c", ncol(UnWeighted_cont_table2_notot) - 1)),
   linesep  = ""
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+    #latex_options = c("hold_position"),
     full_width    = FALSE, # required to avoid tabu breakage
     font_size     = 9
   ) %>%
   add_header_above(
     c(" " = 1, "Market Category" = 4),
     bold = TRUE
-  ) 
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
 
 ```
 
@@ -83,24 +88,23 @@ knitr::kable(
   booktabs = TRUE,
   longtable=FALSE,
   escape   = FALSE,
-  caption  = "Percentage distribution of year, month, and state of landing variables by market description.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  caption  = "Percentage distribution of year, month, and state of landing variables by market description (unweighted).  For each variable, the column values sum to 100 (but may not, due to rounding).",
   align    = c("l", "l", rep("c", ncol(UWcat_vars_time_geo_table_notot) - 2)),
   linesep  = ""
 ) %>%
   kable_styling(
-    latex_options = c("hold_position"),
+  #  latex_options = c("hold_position"),
     full_width    = FALSE, # required to avoid tabu breakage
     font_size     = 9
   ) %>%
   add_header_above(
     c(" " = 2, "Market Category" = 4),
     bold = TRUE
-  )
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
 ```
 
-
-
-unweighted method table
 
 ```{r print-tbl-cat-geoUW-Appendix, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
 
@@ -110,7 +114,7 @@ knitr::kable(
   booktabs = TRUE,
   longtable=FALSE,
   escape   = FALSE,
-  caption  = "Percentage distribution of production variables by market description.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  caption  = "Percentage distribution of production variables by market description (unweighte).   For each variable, the column values sum to 100 (but may not, due to rounding).",
   align    = c("l", "l", rep("c", ncol(UWcat_method_table_notot) - 2)),
   linesep  = ""
 ) %>%
