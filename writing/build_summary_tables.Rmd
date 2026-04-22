@@ -1,0 +1,317 @@
+<!--- 
+R markdown chunk to build tables of summary statistics
+--->################ 
+
+
+```{r setup-tables, include=FALSE}
+
+# Load data.  Rescale to SI units. Random Forests are insensitive to rescaling, so this is just 
+# for presentation of results.
+estimation_dataset <- bind_rows(
+  training(data_split)   %>% mutate(partition = "train"),
+  validation(data_split) %>% mutate(partition = "validation"),
+  testing(data_split)    %>% mutate(partition = "test")
+)
+
+vars_to_rescale <- c("priceR_CPI",
+                     "lndlb",
+                     "trip_level_BSB",
+                     "StateOtherQJumbo",     
+                     "StateOtherQLarge",    
+                     "StateOtherQMedium",   
+                     "StateOtherQSmall",  
+                     "StockareaOtherQJumbo", 
+                     "StockareaOtherQLarge",
+                     "StockareaOtherQMedium",
+                     "StockareaOtherQSmall",
+                     "MA7_StockareaQJumbo",
+                     "MA7_StockareaQLarge",  
+                     "MA7_StockareaQMedium", 
+                     "MA7_StockareaQSmall",
+                     "MA7_StateQJumbo",      
+                     "MA7_StateQLarge",      
+                     "MA7_StateQMedium",     
+                     "MA7_StateQSmall",      
+                     "MA7_gearQJumbo",      
+                     "MA7_gearQLarge",       
+                     "MA7_gearQMedium",      
+                     "MA7_gearQSmall")      
+
+
+
+
+#remove the hardhat fweight declaration and add a noweights=1 columnn to make it easier to generate the unweighted columns.
+estimation_dataset4tables<-estimation_dataset %>%
+  mutate(
+    weighting = as.numeric(weighting),
+    noweights=1)
+
+estimation_dataset4tables<-estimation_dataset4tables %>%
+  mutate(
+    across(
+      all_of(vars_to_rescale),
+      ~ .x / lbs_per_kg,
+      .names = "{.col}_kg"
+    )
+  )
+
+# --- Weighted SD (frequency weights) ---
+weighted_sd <- function(x, w) {
+  valid <- complete.cases(x, w)
+  x <- x[valid]
+  w <- w[valid]
+  xbar <- weighted.mean(x, w)
+  sqrt(sum(w * (x - xbar)^2) / (sum(w) - 1))
+}
+
+# --- Variable definitions ---
+cont_vars <- list(
+  priceR_CPI_kg = "Real Price per kg(Real 2023 USD)",
+  lndlb_kg        = "Transaction Size (kg)",
+  trip_level_BSB_kg = "Trip landings of Black Sea Bass (kg)",
+  Price_Diff_J  = "Price Difference Relative to Jumbo",
+  Price_Diff_L  = "Price Difference Relative to Large",
+  Price_Diff_M  = "Price Difference Relative to Medium",
+  LagSharePoundsJumbo  = "Dealer Propensity to purchase Jumbo ", 
+  LagSharePoundsLarge  = "Dealer Propensity to purchase Large", 
+  LagSharePoundsMedium = "Dealer Propensity to purchase Medium", 
+  LagSharePoundsSmall  = "Dealer Propensity to purchase Small"  
+  )
+
+cont_vars2<-list(
+  StateOtherQJumbo_kg  ="Daily Landings in the state of Jumbo",    
+  StateOtherQLarge_kg  ="Daily Landings in the state of Large",      
+  StateOtherQMedium_kg  ="Daily Landings in the state of Medium",      
+  StateOtherQSmall_kg   ="Daily Landings in the state of Small",    
+  StockareaOtherQJumbo_kg ="Daily Landings from the stockarea of Jumbo",   
+  StockareaOtherQLarge_kg  ="Daily Landings from the stockarea of Large",   
+  StockareaOtherQMedium_kg  ="Daily Landings from the stockarea of Medium",   
+  StockareaOtherQSmall_kg ="Daily Landings from the stockarea of Small",
+  MA7_StateQJumbo_kg  ="Landings in the state of Jumbo (7 day average)",    
+  MA7_StateQLarge_kg  ="Landings in the state of Large (7 day average)",      
+  MA7_StateQMedium_kg  ="Landings in the state of Medium (7 day average)",      
+  MA7_StateQSmall_kg   ="Landings in the state of Small (7 day average)",    
+  MA7_StockareaQJumbo_kg ="Landings from the stockarea of Jumbo (7 day average)",   
+  MA7_StockareaQLarge_kg  ="Landings from the stockarea of Large (7 day average)",   
+  MA7_StockareaQMedium_kg  ="Landings from the stockarea of Medium (7 day average)",   
+  MA7_StockareaQSmall_kg ="Landings from the stockarea of Small (7 day average)",   
+  MA7_gearQJumbo_kg ="Landings by the same gear of Jumbo (7 day average)",   
+  MA7_gearQLarge_kg  ="Landings by the same gear of Large (7 day average)",   
+  MA7_gearQMedium_kg  ="Landings by the same gear of Medium (7 day average)",   
+  MA7_gearQSmall_kg ="Landings by the same gear of Small (7 day average)",   
+  MA7_stockarea_trips  ="Trips to the stockarea (7 day average)",
+  MA7_state_trips      ="Trips landing in state (7 day average)"
+  )
+
+cat_vars_time_geo <- list(
+  month = "Month",
+  year  = "Year",
+  state = "State"
+)
+
+cat_vars_method <- list(
+  mygear      = "Gear",
+  stockarea   = "Stock Area",
+  grade_desc  = "Grade",
+  catch_share = "Management System",          
+  shore       = "Caught from Shore",         
+  stateonlyF   = "Only State Permitted",
+  semester    = "Semester",
+  stockarea   = "Stock Area"
+)
+
+# --- Market description level order; month labels ---
+
+mkt_levels <- c("Jumbo", "Large", "Medium", "Small")
+month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+ estimation_dataset4tables <-  estimation_dataset4tables %>%
+  mutate(
+    market_desc = factor(market_desc, levels = mkt_levels),
+    month       = factor(month_labels[month], levels = month_labels),
+    shoreF      = factor(shore, levels = c(0, 1), labels = c("No", "Yes")),
+    stateonlyF  = factor(nofederal, levels = c(0, 1), labels = c("No", "Yes"))
+
+  )
+```
+
+```{r tbl-cont-A, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# --- Continuous variable table ---
+
+compute_cont_group <- function(data, var, wt) {
+  data %>%
+    group_by(market_desc) %>%
+    summarise(
+      mean_val = weighted.mean(.data[[var]], .data[[wt]], na.rm = TRUE),
+      sd_val   = weighted_sd(.data[[var]], .data[[wt]]),
+      .groups  = "drop"
+    ) %>%
+    mutate(cell = sprintf("\\makecell{%.2f \\\\ (%.2f)}", mean_val, sd_val))
+}
+
+compute_cont_total <- function(data, var, wt) {
+  m <- weighted.mean(data[[var]], data[[wt]], na.rm = TRUE)
+  s <- weighted_sd(data[[var]], data[[wt]])
+  sprintf("\\makecell{%.2f \\\\ (%.2f)}", m, s)
+}
+
+cont_rows <- lapply(names(cont_vars), function(v) {
+  grp <- compute_cont_group( estimation_dataset4tables, v, "weighting")
+  tot <- compute_cont_total( estimation_dataset4tables, v, "weighting")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+Weighted_cont_table <- bind_rows(cont_rows)
+Weighted_cont_table_notot <- Weighted_cont_table %>%
+  select(-Total)
+
+
+
+################################################################################
+# UNWEIGHTED TABLE
+cont_rowsUW <- lapply(names(cont_vars), function(v) {
+  grp <- compute_cont_group( estimation_dataset4tables, v, "noweights")
+  tot <- compute_cont_total( estimation_dataset4tables, v, "noweights")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+UnWeighted_cont_table <- bind_rows(cont_rowsUW)
+UnWeighted_cont_table_notot <- UnWeighted_cont_table %>%
+  select(-Total)
+#This will be printed in the appendix
+################################################################################
+
+```
+
+
+```{r build-tbl-contB, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# --- Continuous variable table ---
+
+cont_rows2 <- lapply(names(cont_vars2), function(v) {
+  grp <- compute_cont_group( estimation_dataset4tables, v, "weighting")
+  tot <- compute_cont_total( estimation_dataset4tables, v, "weighting")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars2[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+Weighted_cont_table2 <- bind_rows(cont_rows2)
+Weighted_cont_table2_notot <- Weighted_cont_table2 %>%
+  select(-Total)
+
+
+################################################################################
+# UNWEIGHTED TABLE
+cont_row2sUW <- lapply(names(cont_vars2), function(v) {
+  grp <- compute_cont_group( estimation_dataset4tables, v, "noweights")
+  tot <- compute_cont_total( estimation_dataset4tables, v, "noweights")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars2[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+UnWeighted_cont_table2 <- bind_rows(cont_row2sUW)
+UnWeighted_cont_table2_notot <- UnWeighted_cont_table2 %>%
+  select(-Total)
+#This will be printed in the appendix
+################################################################################
+
+```
+
+
+
+
+
+```{r build-tbl-cat-time, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# --- Categorical table 1: Month and Year ---
+
+compute_cat_group <- function(data, var, wt) {
+  data %>%
+    group_by(market_desc, .data[[var]]) %>%
+    summarise(w = sum(.data[[wt]], na.rm = TRUE), .groups = "drop") %>%
+    group_by(market_desc) %>%
+    mutate(pct = sprintf("%.1f", 100 * w / sum(w))) %>%
+    ungroup() %>%
+    select(market_desc, level = all_of(var), pct)
+}
+
+compute_cat_total <- function(data, var, wt) {
+  data %>%
+    group_by(.data[[var]]) %>%
+    summarise(w = sum(.data[[wt]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(pct = sprintf("%.1f", 100 * w / sum(w))) %>%
+    rename(level = all_of(var)) %>%
+    select(level, pct)
+}
+
+build_cat_table <- function(data, var_list, wt) {
+  rows <- lapply(names(var_list), function(v) {
+    grp <- compute_cat_group(data, v, wt)
+    tot <- compute_cat_total(data, v, wt)
+
+    wide <- grp %>%
+      pivot_wider(names_from = market_desc, values_from = pct) %>%
+      left_join(tot %>% rename(Total = pct), by = "level") %>%
+      mutate(
+        level    = as.character(level),
+        Variable = ifelse(row_number() == 1, var_list[[v]], ""),
+        level    = paste0("\\quad ", level)
+      ) %>%
+      select(Variable, Level = level, all_of(mkt_levels), Total)
+
+    wide
+  })
+  bind_rows(rows)
+}
+
+cat_vars_time_geo_table <- build_cat_table( estimation_dataset4tables, cat_vars_time_geo, "weighting")
+cat_vars_time_geo_table_notot <-cat_vars_time_geo_table %>%
+  select(-Total)
+
+################################################################################
+# UNWEIGHTED TABLE
+UWcat_vars_time_geo_table <- build_cat_table( estimation_dataset4tables, cat_vars_time_geo, "noweights")
+UWcat_vars_time_geo_table_notot <-UWcat_vars_time_geo_table %>%
+  select(-Total)
+
+#This will be printed in the appendix
+################################################################################
+```
+
+
+
+
+```{r build-tbl-cat-geo, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# --- Categorical table 2: State and Stock Area ---
+
+cat_method_table <- build_cat_table( estimation_dataset4tables, cat_vars_method, "weighting")
+cat_method_table_notot <-cat_method_table %>%
+  select(-Total)
+
+################################################################################
+# UNWEIGHTED TABLE
+UWcat_method_table <- build_cat_table( estimation_dataset4tables, cat_vars_method, "noweights")
+UWcat_method_table_notot <-UWcat_method_table %>%
+  select(-Total)
+
+#This will be printed in the appendix
+################################################################################
+```
+
+
