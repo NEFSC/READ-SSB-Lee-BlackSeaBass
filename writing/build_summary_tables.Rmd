@@ -115,9 +115,8 @@ cat_vars_method <- list(
   grade_desc  = "Grade",
   catch_share = "Management System",          
   shore       = "Caught from Shore",         
-  stateonlyF   = "Only State Permitted",
+  stateonlyF  = "Only State Permitted",
   semester    = "Semester",
-  stockarea   = "Stock Area"
 )
 
 # --- Market description level order; month labels ---
