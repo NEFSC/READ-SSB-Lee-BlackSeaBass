@@ -2,33 +2,21 @@ library(tidyverse)
 library(conflicted)
 conflicts_prefer(dplyr::filter())
 
-#' @title reallocate_market_categories
-#' @description Join StockEff query results with RF-based market category reapportionment
-#'   predictions, construct adjusted landings, and return catch-at-age (CAA) by stock and year.
+#' @title get_ages
+#' @description Take dataframe of catch by market category, stockarea,  and year
+#'    and return catch-at-age (CAA) by stock and year.
 #'
 #' @param species_itis A single character string specifying the ITIS code. Must match
 #'   SPECIES_ITIS values in out_of_sample_predictions.
-#' @param mkt.res Data frame. Market category lookup (NESPP4, MARKET_DESC) returned by get_stockeff().
-#' @param comm.land.res Data frame. Aggregate landings by block returned by get_stockeff().
+#' @param comm.land.res Data frame. Aggregate landings by block. Could be returned by get_stockeff() or constructed in an analogous way.  
 #' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_stockeff().
-#' @param out_of_sample_predictions Data frame. RF-model reapportioned landings in metric tons
-#'   across market categories. Required columns:
-#' \itemize{
-#'   \item{YEAR}
-#'   \item{SEMESTER}
-#'   \item{STOCK_ABBREV}
-#'   \item{MARKET_DESC_ORIG}
-#'   \item{SPECIES_ITIS}
-#'   \item{MARKET_DESC}
-#'   \item{LANDINGS_KG}
-#' }
 #'
 #' @return A data frame of catch-at-age with columns:
 #' \itemize{
 #'   \item{STOCK_ABBREV}
 #'   \item{YEAR}
 #'   \item{AGE}
-#'   \item{CAA — numbers at age from original StockEff landings}
+#'   \item{CAA — Catch at age corresponding to comm.land.res}
 #' }
 #'
 #' @examples
