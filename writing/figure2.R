@@ -1,4 +1,5 @@
 # Code to make figure2 
+# Length histograms for Each market category. North and South overlaid.  binned into year groups.
 # Note, the year bins are hard-coded, which could cause problems later.
 # This does not run on unix/conatiner (windows)
 library("here")
