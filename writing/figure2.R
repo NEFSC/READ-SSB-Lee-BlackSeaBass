@@ -274,10 +274,9 @@ unk.region <- full_join(
 
 ##### 2) Do length distributions vary across market categories, regions, quarters and semesters?   #####  
 
-len.all<-len.all %>%
-  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
-                           "SMALL", 
-                           MKTCOMB))
+
+
+
 
 ##### List unique factors #####
 grs  <- len.all %>% distinct(BSB.GEAR.CAT1) %>% pull()
@@ -290,6 +289,23 @@ regions <- len.all %>% distinct(REGION) %>% filter(!REGION=='Unknown') %>% pull(
 
 n.mkts <- length(mkts)
 n.mktcombs <- length(mktcombs)
+
+
+#Adjust the labeling, relabel MKTCOMB=SMALL.COMB to SMALL and push that into the figure.
+len.all<-len.all %>%
+  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                           "SMALL", 
+                           MKTCOMB))
+mkt.cat.names<-mkt.cat.names %>%
+  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                           "SMALL", 
+                           MKTCOMB))
+mkts <- mkt.cat.names %>% distinct(MKTNM) %>% 
+  filter(MKTNM %in% unique(len.all$MKTNM)) %>% pull()
+mktcombs <- mkt.cat.names %>% distinct(MKTCOMB) %>% 
+  filter(MKTCOMB %in% unique(len.all$MKTCOMB)) %>% pull()
+
+
 
 windows(record = TRUE)
 
