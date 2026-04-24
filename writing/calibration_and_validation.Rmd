@@ -251,7 +251,32 @@ vi_data <- final_fit %>%
   extract_fit_parsnip() %>%
   vi(method = "model") %>%          # pulls ranger's permutation importance
   #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
-  mutate(Variable = forcats::fct_reorder(Variable, Importance))
+  mutate(
+    Variable = forcats::fct_reorder(Variable, Importance),
+    Variable = forcats::fct_recode(Variable,
+      "Price Difference Relative to Jumbo" = "Price_Diff_J",
+      "Price Difference Relative to Large" = "Price_Diff_L",
+      "Price Difference Relative to Medium" = "Price_Diff_M",
+      "Dealer Propensity to Purchase Small" = "LagSharePoundsSmall",
+      "Dealer Propensity to Purchase Medium" = "LagSharePoundsMedium",
+      "Dealer Propensity to Purchase Large" = "LagSharePoundsLarge",
+      "Dealer Propensity to Purchase Jumbo" = "LagSharePoundsJumbo",
+      "Year" = "year",
+      "Stockarea catch of Jumbo" = "MA7_StockareaQJumbo",
+      "Stockarea catch of Large" = "MA7_StockareaQLarge",
+      "Stockarea catch of Medium" = "MA7_StockareaQMedium",
+      "Stockarea catch of Small" = "MA7_StockareaQSmall",
+      "State catch of Jumbo" = "MA7_StateQJumbo",
+      "State catch of Large" = "MA7_StateQLarge",
+      "State catch of Medium" = "MA7_StateQMedium",
+      "State catch of Small" = "MA7_StateQSmall",
+      "Gear catch of Jumbo" = "MA_gearQJumbo",
+      "Gear catch of Large" = "MA7_gearQLarge",
+      "Gear catch of Medium" = "MA7_gearQMedium",
+      "Gear catch of Small" = "MA7_gearQSmall",
+      "Transaction Weight" = "lndlb",
+      "State Trips" = "MA7_state_trips")
+    )
 
 
 
