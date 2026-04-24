@@ -1,5 +1,6 @@
-# Code to make the graphics 
-
+# Code to make the graphics in Figure 1
+# Stacked Length Histogram by Aggregated Market Category
+# Stacked price per kg histogram by same aggregations
 
 library("here")
 
@@ -61,7 +62,7 @@ price.mktcomb <- ggplot(
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
-    binwidth  = 0.25,
+    binwidth  = 0.50,
     fill      = "grey80",
     colour    = "grey20",
     linewidth = 0.3
@@ -350,10 +351,9 @@ unk.region <- full_join(
 
 ##### 2) Do length distributions vary across market categories, regions, quarters and semesters?   #####  
 
-len.all<-len.all %>%
- mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
-                               "SMALL", 
-                               MKTCOMB))
+
+
+
 
 ##### List unique factors #####
 grs  <- len.all %>% distinct(BSB.GEAR.CAT1) %>% pull()
@@ -368,14 +368,32 @@ n.mkts <- length(mkts)
 n.mktcombs <- length(mktcombs)
 
 
+#Adjust the labeling, relabel MKTCOMB=SMALL.COMB to SMALL and push that into the figure.
+len.all2<-len.all %>%
+  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                           "SMALL", 
+                           MKTCOMB))
+mkt.cat.names2<-mkt.cat.names %>%
+  mutate(MKTCOMB = if_else(MKTCOMB == "SMALL.COMB", 
+                           "SMALL", 
+                           MKTCOMB))
+mkts2 <- mkt.cat.names %>% distinct(MKTNM) %>% 
+  filter(MKTNM %in% unique(len.all2$MKTNM)) %>% pull()
+mktcombs2 <- mkt.cat.names2 %>% distinct(MKTCOMB) %>% 
+  filter(MKTCOMB %in% unique(len.all2$MKTCOMB)) %>% pull()
+
+
+
 ### A)
 # Plot length frequencies by combined market categories
 
+
 # Ggplot
-plot.data <- len.all %>% 
+plot.data <- len.all2 %>% 
   select(MKTCOMB, LENGTH, NUMLEN) %>%
   uncount(NUMLEN) %>% ungroup() %>%
-  mutate(MKTCOMB = factor(MKTCOMB, levels = mktcombs))
+  mutate(MKTCOMB = factor(MKTCOMB, levels = mktcombs2))
+
 nbins <- length(min(plot.data$LENGTH):max(plot.data$LENGTH))
 lfplot.mktcomb <- plot.data %>% 
   ggplot() +
