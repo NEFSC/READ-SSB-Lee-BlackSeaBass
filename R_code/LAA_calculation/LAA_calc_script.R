@@ -107,7 +107,24 @@ ages_CAMS<-get_ages(
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
 )
 
+# cut out the unclassifieds
+out_of_sample_predictions1<-aggregated_landings2 %>%
+  filter(MARKET_DESC != "UNCLASSIFIED") 
 
+ages_CAMS_no_unclass<-get_ages(
+  species_itis             = "167687",
+  comm.land.res            = aggregated_landings_nounc,
+  comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+)
+
+ages_reclass <-
+  get_ages(
+    species_itis             = "167687",
+    comm.land.res            = out_of_sample_predictions1,
+    comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+  )
+
+#Then you have to merge together in a reasonable way. (needs a rename of the columns)
 
 
 
