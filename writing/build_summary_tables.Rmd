@@ -13,8 +13,7 @@ estimation_dataset <- bind_rows(
   testing(data_split)    %>% mutate(partition = "test")
 )
 
-vars_to_rescale <- c("priceR_CPI",
-                     "lndlb",
+vars_to_rescale <- c("lndlb",
                      "trip_level_BSB",
                      "StateOtherQJumbo",     
                      "StateOtherQLarge",    
@@ -54,6 +53,8 @@ estimation_dataset4tables<-estimation_dataset4tables %>%
       .names = "{.col}_kg"
     )
   )
+estimation_dataset4tables <-estimation_dataset4tables %>%
+  mutate(priceR_CPI_kg=priceR_CPI*lbs_per_kg)
 
 # --- Weighted SD (frequency weights) ---
 weighted_sd <- function(x, w) {
