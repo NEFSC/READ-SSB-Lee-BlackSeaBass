@@ -11,6 +11,7 @@ conflicts_prefer(dplyr::filter())
 here::i_am("R_code/LAA_calculation/revised_LAA_test_script.R")
 source(here("R_code/LAA_calculation/get_stockeff.R"))
 source(here("R_code/LAA_calculation/reallocate_market_categories.R"))
+source(here("R_code/LAA_calculation/get_ages.R"))
 
 drv<-dbDriver("Oracle")
 connection <- eval(nefscdb_con)
@@ -88,11 +89,27 @@ aggregated_landings <-aggregated_landings %>%
          REGION_ID=1
   ) 
 
+
 # pull NEPP4 from bsb_stockeff$mkt.res
 
 aggregated_landings<-aggregated_landings %>%
   left_join(bsb_stockeff$mkt.res, by=join_by(MARKET_DESC)) %>%
   relocate(YEAR, SPECIES_ITIS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, SEMESTER)
+
+aggregated_landings2<-aggregated_landings %>%
+  rename(BLOCK_ID=SEMESTER)  
+
+#try the get_ages.R Script
+
+ages_CAMS<-get_ages(
+  species_itis             = "167687",
+  comm.land.res            = aggregated_landings2,
+  comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
+)
+
+
+
+
 
 # Stick LANDINGS_KG_CAMS into bsb_stockeff$comm.land.res's LANDINGS_KG
 
