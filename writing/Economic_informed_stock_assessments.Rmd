@@ -198,10 +198,6 @@ Firms operating in federal waters must hold a federal permit; fishing vessel ope
 Although all states have enacted some form of Limited Access, there is substantial variability in management across the states. Three states (Maryland, Delaware, and Virgina) currently manage the fishery with an Individual Fishing Quota (IFQ) program, while the other states manage with varying combinations of minimum size limits, possession limits, and season closures.  Possession limits vary widely by state; the IFQ states do not have  possession limits while Massachusetts and Rhode Island use seasonally varying limits that have been as restrictive as 50 lbs/day or as liberal as 1,500 lbs per week.
 
 
-```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Real (2023Q1 USD) Price Frequencies by market categories, 2013-2024."}
-knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
-```
-
 Fishing vessels catch fish and deliver the catch to buyers (fish dealers).  Dealers report purchase quantities and value by market category to NOAA Fisheries.  This market structure, in which the quantity and quality supplied is determined before prices adjust to equalize quantity supplied and quantity demanded, is common in fish markets [@Barten1989; @Kristofersson2007;@Gobillon2017].  There are four prevalent market categories (Jumbo, Large, Medium, and Small), plus an "Unclassified" category^[Following the stock assessment, "Mixed or Unsized" is aggregated with "Unclassified";  "Extra Small" and "PeeWee" are aggregated with Small category; "Extra Large" is aggregated with "Jumbo"].  Figure \@ref(fig:length-histograms) illustrates that fish in the "Unclassified" category are precisely that, an unobserved combination of the other market categories. No standardized definition of the market categories exists and the definitions themselves may vary over time (year-to-year, month-to-month) and geography (state-to-state or stock area to stock area).  Many fish dealers act as wholesalers, selling whole fish to processors, restaurants, or final consumers. Other fish dealers are vertically integrated with some downstream entities, processing and selling filleted fish to downstream customers. Vertical integration, in which a firm has control of the harvest and dealer activities also occurs, for these observations, it is unclear that prices reported are truly equilibrium prices. 
 
 The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
@@ -217,7 +213,6 @@ It creates a the hedonic_table_market_cats.tex file
 --->
 
 
-\input{../results/hedonic_table_market_cats.tex}
 
 ## Black Sea Bass and the Stock Assessment Enterprise 
 
@@ -249,10 +244,6 @@ The biosampling efforts have been supplemented by partners and stakeholders, lik
 Biosamplers try to meet the sample requests by traveling to ports at times where a variety of species and sized fish are likely to be landed. They may also travel to a specific port to fulfill the scientific requests for a particular species, stock, or market category. When these requests are unfulfilled, the resultant data gaps necessiatate changes in the stock assessment. Modelers will relax the specificity of the information, i.e., borrow across regions or semesters, and in extreme cases may take length and age distribution data from fisheries-independent sources rather than from the catch subsamples. However, it is preferable to have unbiased and precise
 sample information to convert the total landings in pounds to landings-at-age, which are necessary for age-based stock assessments like WHAM.
 
-
-```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
-knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
-```
 
 Figure \@ref(fig:LenHist2) illustrates these data gaps and their attendant problems; there are no biosamples for Unclassified fish in the South region after 2013 and very few in the north, particularly after 2018^[All measured Unclassified fish in the 2019-2024 time period came from a 2 week time period in a single port in 2020.  There are also relatively few samples of Jumbo in the South from 2014-2018 and Small in the North from 2019-2024.].  In all three time periods, landed fish tend to be slightly smaller in the South region relative to the North region, reflecting differing regional tendencies for grading.  Filling data gaps in the South with data from the North is therefore likely to produce catch-at-length estimates that are too large. Within a region, borrowing data from an adjacent market category is also likely to produce poor estimates of catch-at-length.  For the Unclassified category, it is not clear which market category is adjacent.  Borrowing data from adjacent time periods also may be problematic from both theoretical and empirical perspectives. Unclassified black sea bass must be allocated to an age category in order to conduct an age-structured stock assessment, but without any additional information Figure \@ref(fig:LenHist2) leaves the stock assessment scientists in an uncomfortable place. 
 
@@ -319,9 +310,6 @@ use the trained model to predict the probability of class memembership^[The alte
 
 
 # Data, Pre-Processing, and Feature Engineering
-<!--- Build Summary Statistics Data   --->
-```{r, child=here("writing","build_summary_tables.Rmd"), eval=TRUE}
-```
 
 We use Catch Accounting and Monitoring System (CAMS)^[Documentation at https://apps-garfo.fisheries.noaa.gov/cams/index.html] data from 2013 to 2024 to train our model. The CAMS data compiled by GARFO consists of dealer transactions matched to vessel trip reports. Dealer data are transaction-level reports of fish purchases by federally permitted fish dealers from each vessel.  These reports are disaggregated to the trip and market category level and include landed weight (pounds) and value (nominal US Dollars).  Prices are converted to Real 2023Q1 values using the CPI for all urban consumers (CPIAUCSL). Vessel trip report data are reports of fishing activity by federally permitted vessels that are disaggregated to the statistical area-gear-trip level and include information about area fished, gear used, trip length, and estimates of quantity kept (hail weights) and discarded at the species level.   Matching is performed based on the Vessel trip report serial number. When this match fails, matching is done based on the vessel permit number, dealer identifier, and date which are contained in both the vessel reports and the dealer reports.  When vessels fish in multiple statistical areas or using multiple gears, they file more than one report per trip.  One of the functions of the CAMS data system is to allocate trip-level dealer records to the appropriate statistical area.  CAMS allocates in proportion to the hail weights on those trip reports, splitting a single trip record into multiple observations.
 
@@ -330,30 +318,6 @@ Black Sea Bass may be caught by firms without a federal fishing permit and sold 
 Our observational units are these allocated sales transactions.  In the exploratory analysis (the hedonic model presented in Table \ref{HedonicMarketCats}) and the Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers.].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, we are not interested in predictions of aggregate transactions; our goal is to obtain a prediction of aggregate weight prediction of the true but  unobserved market category of Unclassified fish.   Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds. During the fitting of the individual trees, observations are drawn with replacement in proportion to their frequency weight. This results in bootstrap samples which more closely resemble the frequency weighted data instead of the raw, unweighted data.
 
 
-<!---print table Continous A --->
-```{r tbl-cont-weightedA, echo=FALSE, warning=FALSE, message=FALSE, results='asis', eval=TRUE}
-knitr::kable(
-  Weighted_cont_table_notot,
-  format   = "latex",
-  booktabs = TRUE,
-  escape   = FALSE,
-  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
-  align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
-  linesep  = ""
-) %>%
-  kable_styling(
-#    latex_options = c("hold_position"),
-    full_width    = FALSE, # required to avoid tabu breakage
-    font_size     = 9
-  ) %>%
-  add_header_above(
-    c(" " = 1, "Market Category" = 4),
-    bold = TRUE
-  ) %>%
-    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
-
-
-```
 
 Economic theory described in the theoretical model and on-the-ground subject-matter expertise (the black sea bass stock assessment and commercial fishery) guide explanatory factors, factor engineering, selection of data, and validation procedures [@Mullainathan2017]. The dependent variable is the market category.  The explanatory variables can broadly be characterized into two groups: there are variables that control for the supply of each of the market categories and variables that impact include transformations of price and other variables that impact prices.  The first group includes prices and factors that may impact prices, like gear, state of landing, stock sub-unit, year, month, and semester.  These are necessary to minimize the any potentially confounding effects. Table \@ref(tab:tbl-cont-weightedA) is a good boi.
 
@@ -361,62 +325,6 @@ The second group conIt also contains seven day moving averages of landings, by m
 
 
 
-```{r print-tbl-cat-timeA, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
-
-
-knitr::kable(
-  cat_vars_time_geo_table_notot,
-  format   = "latex",
-  booktabs = TRUE,
-  longtable=FALSE,
-  escape   = FALSE,
-  caption  = "Percentage distribution of year, month, and state of landing variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total landings.  For each variable, the column values sum to 100 (but may not, due to rounding).",
-  align    = c("l", "l", rep("c", ncol(cat_vars_time_geo_table_notot) - 2)),
-  linesep  = ""
-) %>%
-  kable_styling(
-    #latex_options = c("hold_position"),
-    full_width    = FALSE, # required to avoid tabu breakage
-    font_size     = 9
-  ) %>%
-  add_header_above(
-    c(" " = 2, "Market Category" = 4),
-    bold = TRUE
-  ) %>%
-    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
-
-
-```
-
-The second category contains   
-
-
-
-
-```{r print-tbl-cat-geoA, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
-knitr::kable(
-  cat_method_table_notot,
-  format   = "latex",
-  booktabs = TRUE,
-  longtable=FALSE,
-  escape   = FALSE,
-  caption  = "Percentage distribution of production variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total.  For each variable, the column values sum to 100 (but may not, due to rounding).",
-  align    = c("l", "l", rep("c", ncol(cat_method_table_notot) - 2)),
-  linesep  = ""
-) %>%
-  kable_styling(
-    #latex_options = c("hold_position"),
-    full_width    = FALSE,
-    font_size     = 9
-  ) %>%
-  add_header_above(
-    c(" " = 2, "Market Description" = 4),
-    bold = TRUE
-  ) %>%
-    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
-
-
-```
 
 Machine learning algorithms can often benefit from preprocessing data and factor engineering. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the greatest decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  Unlike many other machine learning models, Random Forest models are scale invariant; explanatory factors do not need to be centered at zero or scaled to have similar variances. Except for prices, all explanatory factors enter the model in raw form. 
 
@@ -446,50 +354,189 @@ The theoretical model sketch also guides inclusion and exclusion of data used to
 
 First, there is less quality assurance and quality control for the species value field which we use to construct prices. While there are checks to ensure that the values are within a reasonable range, firms that do not report accurately may not be required to improve their reporting accuracy. We handle this by excluding transactions with prices that are too high (over \$15 per pound) or too low (under \$0.15 per pound).  Second, buyers and sellers may be owned by the same entity, and the reported *ex-vessel* prices are likely to be insensitive to market forces.  Fully disentangling ownership is difficult, but inspection of the data suggested that some dealers-vessel pairs were exclusively trading with each other, suggesting some vertical integration.  Third, firms may also participate in forward contracting in which the price of fish is determined well in advance of landing.  To account  for the final two, we excluded transactions from dealer-year-market category combinations where the standard deviation of prices was less than 0.10.  Table Summary statistics describes characteristics of the full dataset and the cleaned dataset.
 
-
-
-
-
 # Results
 
 Our procedure is to tune two hyperaparameters using 75\% of our dataset, calibrate on 15\%, and validate on the final 15\% holdout sample. We present results of the initial tuning, calibration, and validation.  To summarize, the initial tuning found optimal hyperparameter values of $mtry=25$ and $min_n=161$ respectively.  The calibration steps find moderate gain from isotonic calibration, and the validation shows the model fits well. The tuning and validation model fit statistics are similar, suggesting the model is not overfit.  Although the model is not a causal one, the importance of explanatory factors in the Variable Importance Plots make intuitive sense.
 
 ## Tuning and Calibration results
 
-
-```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
-knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
-```
-
 In-sample ROC curves from tuning are quite similar across folds and the initial steepness indicates the tuned random forest can distinguish between the four principal market categories (Figure  \@ref(fig:rocTune)).  The random forest model performs exceedingly well for the small market category, despite the small market category being relatively rare in the data. The model performs worst at classifying the Large market category; referring back to  (Figure \@ref(fig:length-histograms)) illustrates the relatively high degree of overlap between the prices of Large with its neighboring Medium and Jumbo market categories.  
-
-```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
-knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
-```
 
 The VIP confirms that the three price variables are the most important in predicting market category (Figure \@ref(fig:vip)) and the four measures designed to capture the Dealer propensities to purchase particular categories are the next most important factors.
 
 The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The isotonic regression used to calibrate predictions corrects much, but not all, of the model underconfidence and improves the log loss (Equation \ref{logloss1}) by approximately 5\% (from 0.526 to 0.497).^[We experimented beta and multinomial logistic calibration, but isotonic regression performed the best]
-
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
-knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
-```
 
 
 ## Validation Results
 
 After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we validate model performance by predicting class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model. 
 
-```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
-knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
-```
-
 We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).   For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 72\% of Jumbo, 64\% of Large, 71\% of Medium, and 55\% of Small landings. Reassuringly, the model mis-predictions frequently offset.  Consider the true "Jumbo" market category. The Random Forest incorrectly classified 204mt of Jumbo as large, 48mt as Medium, and 5mt as Small.  However, this is almost perfectly offset by the 204mt of true Large, 35mt of true Medium, and 4mt of true Small that are incorrectly classified as Jumbo.  Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions) illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
 
 <!---This is slightly different than the standard method in which observations are assigned to the class with the highest probability.  --->
-```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
-knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
+
+
+
+#  Out of Sample Predictions
+
+We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref(fig:out-of-sample-preds) illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
+
+We convert the landings of these observations into a length structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
+
+
+# Discussion
+
+No manuscripts would be complete without a discussion of caveats. Here they are.
+
+## General approach
+
+In equation \@ref(unknown1), we develop the intuition behind the model using two market categories and note that we can deduce the composition of the unclassfied transaction based on the price.  However, we have more than two market categories, so the theoretical model is fundamentally underindentfied without additional assumtions.  That is, with four distinct, constant prices ($p_S \leq p_M \leq p_L \leq p_J$), an arbitrary price between $p_S$ and $p_J$ could be constructed with many weighted combinations of prices.  This is slightly troubling in theory, but because there is substantial overlap in sizes even for disparate size categories, it may have minor consequences for aggregate accuracy.  That is, consider a transaction of Unclassifieds that trades at $p_L$, is assigned 100% probability of being Large, but is actually a mix of Medium and Jumbo.  Figure \@ref(fig:length-histograms) suggests the practical implications of this error may be minimal.
+
+<!---
+### More that two market categories
+
+When there are more than two market categories (say, Medium), equation \ref{unknown1} becomes:
+
+\begin{align}
+p&= \beta_1 p^J+ \beta_2 p^L + (1-\beta_1-\beta_2) \\\label{unknown2}
+\sum_{i=1}^3 \beta_i&=1\\
+\geq 0 & \beta_i \geq 1 \hspace{2mm} \forall i=1,2
+\end{align}
+Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
+--->
+
+
+
+## Method critiques 
+
+Predicting out of sample is always difficult. We train the model on Classified observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost of sorting borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish. We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.
+
+
+
+Our Random Forest model does very well at predicting observations and comparatively worse at weights (Table \@ref(tab:transaction-predictions and \@ref(tab:weighted-predictions)).  This is a bit surprising; by frequency weighting the bootstrap samples in the Random Forest we expected the opposite to occur.
+
+We use a Random Forest model as a probability machine.  This is a well-known and easy to implement approach. However, the Random Forest does not account for the ordinal relationship between the size classes. Although there is overlap in the length distributions (a particular Jumbo fish might be smaller than a Large), the size categories themselves are ordered, and "Learning to Rank" models may fit better. Alternatively, an alternative loss function used during tuning and traing that penalizes near misses (A Jumbo classified as a Large) less severely than bad ones (A Jumbo classified as a Small) may also improve our aggregate predictions without switching to a different model.
+
+## Extensions
+
+We view this as a reasonable method for generally filling in gaps in historical data.  In addition to the above caveats, one other is warranted. Black Sea Bass prices are approximately monotone in size; larger fish have higher prices.  Using prices as an additional source of information would be difficult if there were a non-monotone relationship between size and prices.
+
+Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
+
+
+In the United States, socioeconomic information has been used in fish stock assessments in limited ways. @chan2022 highlights three entry points for  socioeconomic information in the stock assessment process: data collection, data processing, and parameterizing stock assessment models, stock projections, and understanding effects of policies.  This effort illustrates a novel method of using socioeconomic information in the data processing step.  It also suggests a method for optimizing the collection of portside sampling data. Collecting these data are costly and price information could be a substitute that allows this effort to be reallocated to other stocks and species. Candiates include difficult-to-sample categories when there is size overlap with neighboring categories, prices that depend approximately monotonically on size, and competitive markets for fish.  We specifically caution against forgoing age-sampling to  "end" market categories (Jumbo and Small in the case of Black Sea Bass).
+
+Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
+
+A common entry point is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004].  These are particularly important for fisheries which do not have fishery independent data collections.  Recently, @vanpoorten2016 illustrate how entry and exit can shape selectivity and @kleiven2022 illustrate how accounting for changing technology impacted abundance estimates for European lobster.
+
+Social science information can be another source of information about catch. Semi-structured interviews with fishing industry participants found that true catch of redfish (*Sebastes mentella*) was at least twice as high as the officially reported catch, which was used to select from competing stock assessment models [@duplisea2018a,@duplisea2018b]. @Gervasi2025 illustrate how similar methods can be used for Gulf Red Snapper in the Southeast United States.
+ 
+
+# Conclusions
+
+
+\clearpage
+
+
+<!---
+\newpage
+--->
+# References
+<div id="refs"></div>
+
+
+\clearpage
+
+# Tables{-}
+
+\input{../results/hedonic_table_market_cats.tex}
+
+<!--- Build Summary Statistics Data   --->
+```{r, child=here("writing","build_summary_tables.Rmd"), eval=TRUE}
 ```
+
+
+
+<!---print table Continous A --->
+```{r tbl-cont-weightedA, echo=FALSE, warning=FALSE, message=FALSE, results='asis', eval=TRUE}
+knitr::kable(
+  Weighted_cont_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  escape   = FALSE,
+  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
+  align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
+  linesep  = ""
+) %>%
+  kable_styling(
+#    latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Market Category" = 4),
+    bold = TRUE
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+```
+```{r print-tbl-cat-timeA, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
+
+
+knitr::kable(
+  cat_vars_time_geo_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  longtable=FALSE,
+  escape   = FALSE,
+  caption  = "Percentage distribution of year, month, and state of landing variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total landings.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  align    = c("l", "l", rep("c", ncol(cat_vars_time_geo_table_notot) - 2)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    #latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 2, "Market Category" = 4),
+    bold = TRUE
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+```
+
+
+
+```{r print-tbl-cat-geoA, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
+knitr::kable(
+  cat_method_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  longtable=FALSE,
+  escape   = FALSE,
+  caption  = "Percentage distribution of production variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  align    = c("l", "l", rep("c", ncol(cat_method_table_notot) - 2)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    #latex_options = c("hold_position"),
+    full_width    = FALSE,
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 2, "Market Description" = 4),
+    bold = TRUE
+  ) %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+```
+
+
 
 
 ```{r validation-predictions, echo=FALSE, warning=FALSE}
@@ -592,81 +639,48 @@ kable(
 
 ```
 
+\clearpage
 
-#  Out of Sample Predictions
+# Figures{-}
 
-We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref(fig:out-of-sample-preds) illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
+
+```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Real (2023Q1 USD) Price Frequencies by market categories, 2013-2024."}
+knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
+```
+
+
+```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
+knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
+```
+
+
+
+```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="ROC curves from tuning"}
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
+```
+
+```{r vip,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
+```
+
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
+knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
+```
+
+
+```{r roc-Valid,echo=FALSE,fig.show='hold', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
+```
+
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
+```
+
 
 ```{r out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
-
-We convert the landings of these observations into a length structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
-
-
-# Discussion
-
-No manuscripts would be complete without a discussion of caveats. Here they are.
-
-## General approach
-
-In equation \@ref(unknown1), we develop the intuition behind the model using two market categories and note that we can deduce the composition of the unclassfied transaction based on the price.  However, we have more than two market categories, so the theoretical model is fundamentally underindentfied without additional assumtions.  That is, with four distinct, constant prices ($p_S \leq p_M \leq p_L \leq p_J$), an arbitrary price between $p_S$ and $p_J$ could be constructed with many weighted combinations of prices.  This is slightly troubling in theory, but because there is substantial overlap in sizes even for disparate size categories, it may have minor consequences for aggregate accuracy.  That is, consider a transaction of Unclassifieds that trades at $p_L$, is assigned 100% probability of being Large, but is actually a mix of Medium and Jumbo.  Figure \@ref(fig:length-histograms) suggests the practical implications of this error may be minimal.
-
-<!---
-### More that two market categories
-
-When there are more than two market categories (say, Medium), equation \ref{unknown1} becomes:
-
-\begin{align}
-p&= \beta_1 p^J+ \beta_2 p^L + (1-\beta_1-\beta_2) \\\label{unknown2}
-\sum_{i=1}^3 \beta_i&=1\\
-\geq 0 & \beta_i \geq 1 \hspace{2mm} \forall i=1,2
-\end{align}
-Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
---->
-
-
-
-## Method critiques 
-
-Predicting out of sample is always difficult. We train the model on Classified observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost of sorting borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish. We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.
-
-
-
-Our Random Forest model does very well at predicting observations and comparatively worse at weights (Table \@ref(tab:transaction-predictions and \@ref(tab:weighted-predictions)).  This is a bit surprising; by frequency weighting the bootstrap samples in the Random Forest we expected the opposite to occur.
-
-We use a Random Forest model as a probability machine.  This is a well-known and easy to implement approach. However, the Random Forest does not account for the ordinal relationship between the size classes. Although there is overlap in the length distributions (a particular Jumbo fish might be smaller than a Large), the size categories themselves are ordered, and "Learning to Rank" models may fit better. Alternatively, an alternative loss function used during tuning and traing that penalizes near misses (A Jumbo classified as a Large) less severely than bad ones (A Jumbo classified as a Small) may also improve our aggregate predictions without switching to a different model.
-
-## Extensions
-
-We view this as a reasonable method for generally filling in gaps in historical data.  In addition to the above caveats, one other is warranted. Black Sea Bass prices are approximately monotone in size; larger fish have higher prices.  Using prices as an additional source of information would be difficult if there were a non-monotone relationship between size and prices.
-
-Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
-
-
-In the United States, socioeconomic information has been used in fish stock assessments in limited ways. @chan2022 highlights three entry points for  socioeconomic information in the stock assessment process: data collection, data processing, and parameterizing stock assessment models, stock projections, and understanding effects of policies.  This effort illustrates a novel method of using socioeconomic information in the data processing step.  It also suggests a method for optimizing the collection of portside sampling data. Collecting these data are costly and price information could be a substitute that allows this effort to be reallocated to other stocks and species. Candiates include difficult-to-sample categories when there is size overlap with neighboring categories, prices that depend approximately monotonically on size, and competitive markets for fish.  We specifically caution against forgoing age-sampling to  "end" market categories (Jumbo and Small in the case of Black Sea Bass).
-
-Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
-
-A common entry point is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004].  These are particularly important for fisheries which do not have fishery independent data collections.  Recently, @vanpoorten2016 illustrate how entry and exit can shape selectivity and @kleiven2022 illustrate how accounting for changing technology impacted abundance estimates for European lobster.
-
-Social science information can be another source of information about catch. Semi-structured interviews with fishing industry participants found that true catch of redfish (*Sebastes mentella*) was at least twice as high as the officially reported catch, which was used to select from competing stock assessment models [@duplisea2018a,@duplisea2018b]. @Gervasi2025 illustrate how similar methods can be used for Gulf Red Snapper in the Southeast United States.
- 
-
-# Conclusions
-
-
-\clearpage
-
-
-<!---
-\newpage
---->
-# References
-<div id="refs"></div>
-
-
 
 \clearpage
 
@@ -807,7 +821,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 
 ## Out of Sample Predictions{-}
 
-In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref{fig:ambitious-out-of-sample-preds} predicts for all observations, *including* from dealers that exhibit little variation in prices.
+In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref(fig:ambitious-out-of-sample-preds) predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
 ```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='hold', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
 knitr::include_graphics(here("results", "ranger", "final",
@@ -819,7 +833,7 @@ knitr::include_graphics(here("results", "ranger", "final",
 ```{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
 ```
 
-For brevity some tables were not pres
+For brevity some tables were not presented in the manuscript.
 Here are some tables with transaction level summary statistics. They are analogous to those rp
 
 
