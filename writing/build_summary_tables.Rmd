@@ -13,6 +13,13 @@ estimation_dataset <- bind_rows(
   testing(data_split)    %>% mutate(partition = "test")
 )
 
+oos<-oos_data %>%
+  mutate(weighting = frequency_weights(weighting))
+
+estimation_dataset<-bind_rows(
+  estimation_dataset,
+  oos
+)
 vars_to_rescale <- c("lndlb",
                      "trip_level_BSB",
                      "StateOtherQJumbo",     
@@ -122,7 +129,7 @@ cat_vars_method <- list(
 
 # --- Market description level order; month labels ---
 
-mkt_levels <- c("Jumbo", "Large", "Medium", "Small")
+mkt_levels <- c("Jumbo", "Large", "Medium", "Small","Unclassified")
 month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
  estimation_dataset4tables <-  estimation_dataset4tables %>%
