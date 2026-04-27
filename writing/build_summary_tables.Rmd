@@ -13,8 +13,7 @@ estimation_dataset <- bind_rows(
   testing(data_split)    %>% mutate(partition = "test")
 )
 
-vars_to_rescale <- c("priceR_CPI",
-                     "lndlb",
+vars_to_rescale <- c("lndlb",
                      "trip_level_BSB",
                      "StateOtherQJumbo",     
                      "StateOtherQLarge",    
@@ -54,6 +53,8 @@ estimation_dataset4tables<-estimation_dataset4tables %>%
       .names = "{.col}_kg"
     )
   )
+estimation_dataset4tables <-estimation_dataset4tables %>%
+  mutate(priceR_CPI_kg=priceR_CPI*lbs_per_kg)
 
 # --- Weighted SD (frequency weights) ---
 weighted_sd <- function(x, w) {
@@ -72,7 +73,7 @@ cont_vars <- list(
   Price_Diff_J  = "Price Difference Relative to Jumbo",
   Price_Diff_L  = "Price Difference Relative to Large",
   Price_Diff_M  = "Price Difference Relative to Medium",
-  LagSharePoundsJumbo  = "Dealer Propensity to purchase Jumbo ", 
+  LagSharePoundsJumbo  = "Dealer Propensity to purchase Jumbo", 
   LagSharePoundsLarge  = "Dealer Propensity to purchase Large", 
   LagSharePoundsMedium = "Dealer Propensity to purchase Medium", 
   LagSharePoundsSmall  = "Dealer Propensity to purchase Small"  
@@ -115,9 +116,8 @@ cat_vars_method <- list(
   grade_desc  = "Grade",
   catch_share = "Management System",          
   shore       = "Caught from Shore",         
-  stateonlyF   = "Only State Permitted",
-  semester    = "Semester",
-  stockarea   = "Stock Area"
+  stateonlyF  = "Only State Permitted",
+  semester    = "Semester"
 )
 
 # --- Market description level order; month labels ---
