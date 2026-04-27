@@ -1,5 +1,5 @@
 
-## Do prices vary by size? 
+## Do prices vary by size?{-}
 <!--- 
 The hedonic model is estimated by 
 global in_string 2026-03-03
@@ -165,7 +165,7 @@ kable(
 
 ```
 
-## A Simple Hedonic Model
+## A Simple Hedonic Model{-}
 We first estimate a simple hedonic model using data from 2013-2024. We aggregate to the "CAMSID, market-category, gear, area, datesail, dateland, dealer" level (this is basically the CAMSID-subtrip-market category") and deflate to real prices using the CPI-U for Q1 of 2023.  We perform some aggregation of gears, aggregating to the following gear categories: "Line and Hand", "Trawl", "Gillnet", "Pot and Trap" and "All other" gears.  We aggregate the "Mixed or Unsized" market category with the "Unclassified" market category. We also aggregate the Small, Extra Small, and PeeWee into a single, Small category. Table \@ref(tab:bsb-hedonic-summary) summarizes the data used to estiamte the hedonic model. 
 
 We include transactions from New Hampshire to North Carolina where the nominal price is between \$0.15 and \$12 per pound (\$0.33 to \$5.44 per kg). The quantity of fish in each transaction varies and an unweighted regression of price on independent variables would explain the conditional mean price per transaction. We weight each transaction by the pounds landed and the weighted regression can be interpreted as explaining the conditional mean price per pound.  Since the CAMS data "allocates" quantity sold to statistical areas or gears, this weighting makes the regression "invariant" to that allocation.
