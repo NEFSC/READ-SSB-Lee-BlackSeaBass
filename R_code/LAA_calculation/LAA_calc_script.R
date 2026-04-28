@@ -22,21 +22,25 @@ source(here("R_code/LAA_calculation/get_ages.R"))
 
 
 
-predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
-predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
+predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("SA_out_of_sample_predictions_YRS_*.Rds"))
+predictions_vintage<-gsub("SA_out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
 predictions_vintage<-gsub(".Rds","",predictions_vintage)
 predictions_vintage<-max(predictions_vintage)
 
-predictions_full_location1<-here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
-predictions_full_location2<-here("data_folder","predictions", glue("ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
+predictions_full_location1<-here("data_folder","predictions", glue("SA_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
+predictions_full_location2<-here("data_folder","predictions", glue("SA_ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
 
 # out_of_sample_predictions1 contains some Unclassifieds
 # out_of_sample_predictions2 does not.
 out_of_sample_predictions1<-readRDS(predictions_full_location1)
 out_of_sample_predictions2<-readRDS(predictions_full_location2)
 
-original_dataset_vintage <-"2026-03-16"
 
+
+original_dataset_vintage<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("PRED_BSB_original_combined_dataset*.Rds"))
+original_dataset_vintage<-gsub("PRED_BSB_original_combined_dataset","",original_dataset_vintage)
+original_dataset_vintage<-gsub(".Rds","",original_dataset_vintage)
+original_dataset_vintage<-max(original_dataset_vintage)
 
 lbs_to_kg<-2.20462
 
@@ -70,7 +74,7 @@ dbDisconnect(connection)
 
 
 # Read in the BSB_original_combined_dataset
-input_file <- glue("BSB_original_combined_dataset{original_dataset_vintage}.Rds")
+input_file <- glue("PRED_BSB_original_combined_dataset{original_dataset_vintage}.Rds")
 input_folder_path  <- here("data_folder", "main", "commercial")
 input_file<- file.path(input_folder_path, input_file)
 
@@ -159,6 +163,7 @@ out_of_sample_predictions2<-out_of_sample_predictions2 %>%
 # =============================================================================
 
 
+# Pass in bsb_stockeff$comm.land.res. This should match the stockeff CAA
 
 ages_stockeff<-get_ages(
   species_itis             = "167687",
@@ -169,7 +174,7 @@ ages_stockeff<-get_ages(
 )
 
 
-# Pass in aggregated_landings2
+# Pass in aggregated_landings2. This is the CAA corresponding to the minimally processed CAMS data
 
 ages_CAMS<-get_ages(
   species_itis             = "167687",
@@ -179,6 +184,7 @@ ages_CAMS<-get_ages(
   caa.new.name = "CAA_CAMS"
 )
 
+# Pass in aggregated_landings_nounc.  This is the CAA corresponding CAMS, WITHOUT any unclassified fish
 
 ages_CAMS_no_unclass<-get_ages(
   species_itis             = "167687",
@@ -188,6 +194,7 @@ ages_CAMS_no_unclass<-get_ages(
   caa.new.name = "CAA_No_Unclass"
 )
 
+# Pass in aggregated_landings_nounc.  CAA corresponding to the Unclassified fish in CAMS
 
 ages_CAMS_only_unclass<-get_ages(
   species_itis             = "167687",
@@ -198,6 +205,7 @@ ages_CAMS_only_unclass<-get_ages(
 )
 
 
+# Pass in out_of_sample_predictions1.  CAA corresponding to the conservative predictions from the random forest
 
 
 ages_reclass <-
@@ -208,6 +216,7 @@ ages_reclass <-
     comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
     caa.new.name = "CAA_reclass1"
   )
+# Pass in out_of_sample_predictions1.  CAA corresponding to the ambitious predictions from the random forest
 
 ages_reclass_amb <-
   get_ages(
