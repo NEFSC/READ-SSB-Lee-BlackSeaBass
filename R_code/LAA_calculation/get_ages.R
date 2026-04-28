@@ -3,12 +3,13 @@ library(conflicted)
 conflicts_prefer(dplyr::filter())
 
 #' @title get_ages
-#' @description Take dataframe of catch by SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, and BLOCK_ID
-#'    and return catch-at-age (CAA) by stock and year.
+#' @description This function converts a dataframe of catch by SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, and BLOCK_ID
+#'    and return catch-at-age (CAA) by at the SPECIES_ITIS,STOCK_ABBREV, and YEAR level.  
 #' @param species_itis A single character string specifying the ITIS code. Must match
 #'   SPECIES_ITIS values in out_of_sample_predictions.
 #' @param comm.land.res Data frame. Aggregate landings by block. Could be returned by get_stockeff() or constructed in an analogous way.  
 #' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_stockeff().
+#' @param landings.kg.name The name of the column that will contains landings, in kilograms in the input dataframe. 
 #' @param caa.new.name The name of the new column that will contains the Catch-at-Age returned by this function. 
 
 #'
@@ -32,6 +33,8 @@ conflicts_prefer(dplyr::filter())
 #'   species_itis             = "167687",
 #'   comm.land.res            = stockeff_data$comm.land.res,
 #'   comm.land.length.age.res = stockeff_data$comm.land.length.age.res,
+#'   landings.kg.name="LANDINGS_KG",
+#'   caa.new.name = "CAA_NEW"
 #' )
 
 get_ages <- function(      species_itis             = NULL,
