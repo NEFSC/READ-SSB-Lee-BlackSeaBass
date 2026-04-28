@@ -1,5 +1,13 @@
 ###############################################################################
-# Purpose: 	Final Data preparation for Machine Learning Models
+# Purpose: 	Final Data preparation for stock assessment
+# The original data prep included some landings that are not in the North or South stock
+# They are in from the South Atlantic stock. It is appropriate to include them in the 
+# training model (they are landed at similar dealers and are part of the 'market')
+# However, we need to exclude them from the model-to-assessment pipeline. 
+
+# This code does that.
+
+
 # Inputs:
 #   - landings_cleaned_$date.dta (from wrappers)
 #   - camsid_specific_cleaned_
@@ -10,8 +18,8 @@
 
 
 # Outputs:
-#   - estimation_dataset.Rds Ready for estimation
-#   - unclassified_dataset.Rds Unclassified Transactions. Use these to predict after estimating.
+#   - PRED_BSB_original_combined_dataset.Rds Classified transactions.  
+#   - PRED_BSB_unclassified_dataset.Rds Unclassified Transactions. Use these to predict after estimating.
 
 ###############################################################################
 # Packages 
