@@ -235,8 +235,8 @@ state adjust == difference between each states Jumbo, Large, and Medium price an
  */
 
 
-clonevar imp_ma15stateprice=ma14stateprice
-replace imp_ma15stateprice=ma14price - state_adjust if imp_ma14stateprice==.
+clonevar imp_ma14stateprice=ma14stateprice
+replace imp_ma14stateprice=ma14price - state_adjust if imp_ma14stateprice==.
 
 
 keep dlr_date market_desc state imp_ma14stateprice
