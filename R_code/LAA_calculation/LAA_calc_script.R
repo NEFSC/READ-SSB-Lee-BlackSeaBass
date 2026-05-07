@@ -37,8 +37,8 @@ out_of_sample_predictions2<-readRDS(predictions_full_location2)
 
 
 
-original_dataset_vintage<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("PRED_BSB_original_combined_dataset*.Rds"))
-original_dataset_vintage<-gsub("PRED_BSB_original_combined_dataset","",original_dataset_vintage)
+original_dataset_vintage<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_original_combined_dataset*.Rds"))
+original_dataset_vintage<-gsub("BSB_original_combined_dataset","",original_dataset_vintage)
 original_dataset_vintage<-gsub(".Rds","",original_dataset_vintage)
 original_dataset_vintage<-max(original_dataset_vintage)
 
@@ -74,7 +74,7 @@ dbDisconnect(connection)
 
 
 # Read in the BSB_original_combined_dataset
-input_file <- glue("PRED_BSB_original_combined_dataset{original_dataset_vintage}.Rds")
+input_file <- glue("BSB_original_combined_dataset{original_dataset_vintage}.Rds")
 input_folder_path  <- here("data_folder", "main", "commercial")
 input_file<- file.path(input_folder_path, input_file)
 
