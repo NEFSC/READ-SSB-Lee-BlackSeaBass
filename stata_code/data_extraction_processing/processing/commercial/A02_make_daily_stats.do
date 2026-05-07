@@ -1,6 +1,10 @@
 **********************************************************************
 * Purpose: 	code to make the "daily statistics files"
 
+
+* Note: This operates on "stockarea" and not "stock_abbrev". Stock_abbrev is the actual
+* stock boundaries. stockarea extends them slightly to include some catch from 700s (South of south) and 400s (north of north).
+* this makes sense from a 'market' standpoint, but we want to use stock_abbrev for any predictions.
 * Inputs:
 *   - landings_cleaned_$date.dta (
 * Outputs:
@@ -10,6 +14,10 @@
 *   - gear_ma_$date.dta /*7 day moving sum of gearQJumbo gearQLarge gearQMedium gearQSmall gearQUnclassified */
 *   - daily_ma_$date.dta /*7 day moving sum of QJumbo, QLarge, QMedium, QSmall, QUnclassified */
 *   - camsid_specific_cleaned_ /* landings specific to the camsid, mostly landings by "other trips" */
+
+
+
+
 **********************************************************************
 
 
