@@ -108,7 +108,7 @@ grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", gl
 
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
-  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
+  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, stock_abbrev, status) %>%
   summarise(value=sum(value),
             valueR_CPI=sum(valueR_CPI),
            lndlb=sum(lndlb),
