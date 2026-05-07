@@ -351,6 +351,7 @@ combined_dataset<-combined_dataset %>%
               state =="SC"  ~ 0,
               .default=mark_in)
 )
+
 combined_dataset<-combined_dataset %>%
   rename(STOCK_ABBREV=stock_abbrev)
 
@@ -378,4 +379,6 @@ estimation_dataset<-combined_dataset %>%
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.Rds")))
 haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.dta")))
 
-
+# take a quick look
+zz<-estimation_dataset %>% filter(is.na(LagSharePoundsMedium))
+table(zz$year)
