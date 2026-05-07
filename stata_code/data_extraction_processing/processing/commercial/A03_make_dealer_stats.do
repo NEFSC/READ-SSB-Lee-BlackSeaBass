@@ -18,7 +18,7 @@
 use "${data_main}\commercial\landings_cleaned_${in_string}.dta", replace
 bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 
-keep if year>=2010 & year<=2014
+keep if year>=2010 & year<=2012
 /* sum by dlr and market category */
 collapse (sum) lndlb TransactionCount, by(dlrid market_desc)
 decode market_desc, gen(mymarket)
@@ -33,11 +33,11 @@ local sizes Jumbo Large Medium Small
 
 foreach  l of local sizes {
 	replace lndlb`l'=0 if lndlb`l'==.
-	label var lndlb`l'  "Dealer level pounds purchased from 2010-2014 in market category `l'"
+	label var lndlb`l'  "Dealer level pounds purchased from 2010-2012 in market category `l'"
 	rename lndlb`l' DealerHLbsPurchased`l'
 	
 	replace TransactionCount`l'=0 if TransactionCount`l'==.
-	label var TransactionCount`l'  "Dealer level number of transactions from 2010-2014 in market category `l' "
+	label var TransactionCount`l'  "Dealer level number of transactions from 2010-2012 in market category `l' "
 
 	
 }
@@ -49,15 +49,15 @@ egen totaltrans=rowtotal(TransactionCount*)
 
 local sizes Jumbo Large Medium Small
 foreach l of local sizes{
-	gen Share2014`l'=DealerHLbsPurchased`l'/totalland
-	label var Share2014`l' "Dealer Share of pounds from 2010-2014 in market category `l'"
-	gen Frac2014T`l'=TransactionCount`l'/totaltrans
-	label var Frac2014T`l' "Dealer Fraction of total transactions from 2010-2014 in market category `l'"
+	gen Share2012`l'=DealerHLbsPurchased`l'/totalland
+	label var Share2012`l' "Dealer Share of pounds from 2010-2012 in market category `l'"
+	gen Frac2012T`l'=TransactionCount`l'/totaltrans
+	label var Frac2012T`l' "Dealer Fraction of total transactions from 2010-2012 in market category `l'"
 
 }
 drop totalland totaltrans
 
-order dlrid DealerHLbsPurchased* TransactionCount* Share2014* Frac2014T*
+order dlrid DealerHLbsPurchased* TransactionCount* Share2012* Frac2012T*
 
 compress
 
@@ -74,7 +74,6 @@ save "${data_main}\commercial\dlrid_historical_stats_${vintage_string}.dta", rep
 /* Previous Year landings */
 
 use "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
-keep if year>=2014
 
 bysort dlrid camsid market_desc: gen TransactionCount=_n==1
 /* sum by dlr and market category */
