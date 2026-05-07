@@ -174,7 +174,7 @@ do these camsids really correspond to a single "trip" or are they just state agg
 */
 /* merge deflators _merge=1 has been the current month */ 
 merge m:1 dateq using "${my_datapull}/data_folder/external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2025 & month>=5 if _merge==1
+assert year==2026 & month>=3 if _merge==1
 drop if _merge==1
 drop _merge
 gen valueR_CPI=value/fCPIAUCSL_2023Q1
