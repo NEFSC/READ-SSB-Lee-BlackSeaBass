@@ -351,6 +351,9 @@ combined_dataset<-combined_dataset %>%
               state =="SC"  ~ 0,
               .default=mark_in)
 )
+combined_dataset<-combined_dataset %>%
+  rename(STOCK_ABBREV=stock_abbrev)
+
 
 write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 haven::write_dta(combined_dataset, path=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.dta")))
