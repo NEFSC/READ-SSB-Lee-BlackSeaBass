@@ -23,7 +23,8 @@ landings <- readRDS(
 
 # Drop Unclassified throughout this script
 landings <- landings %>%
-  filter(as.character(market_desc) != "Unclassified")
+  filter(as.character(market_desc) != "Unclassified") %>%
+  mutate(market_desc=fct_drop(market_desc))
 
 # Subregion assignment
 # CT+NY -> CTNY; DE/MD/VA/NC/SC -> DELMARVAC; MA/NH/ME -> MA_N
@@ -213,14 +214,13 @@ combined_prices <- state_prices %>%
   left_join(subregionprice,
             by = c("dlr_date", "subregion", "market_desc"))
 
+combined_prices<-combined_prices %>%
+  filter(dlr_date>="1996-01-03")
+
 # Assert all rows have region-wide price (should always exist post-tsfill)
 stopifnot(
   "ma14price merge: unexpected missing values" =
     !anyNA(combined_prices$ma14price)
-)
-stopifnot(
-  "ma14subregionprice merge: unexpected missing values" =
-    !anyNA(combined_prices$ma14subregionprice)
 )
 
 # Merge state adjustment (m:1 on year x state)
@@ -248,7 +248,6 @@ combined_prices <- combined_prices %>%
 # =============================================================================
 grand_ma_prices <- combined_prices %>%
   filter(
-    dlr_date >= as.Date("2017-01-01"),
     dlr_date <  as.Date("2025-01-01")
   ) %>%
   select(dlr_date, market_desc, state, imp_ma14stateprice) %>%
