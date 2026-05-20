@@ -43,10 +43,8 @@ for (lvl in sizes) {
 # -----------------------------------------------------------------------------
 # Daily market-level totals: DailyQ{Size}
 # -----------------------------------------------------------------------------
+
 landings <- landings %>%
-  select(-starts_with("DailylndlbxJ"), -starts_with("DailylndlbxL"),
-         -starts_with("DailylndlbxM"), -starts_with("DailylndlbxS"),
-         -starts_with("DailylndlbxU")) %>%
   group_by(dlr_date) %>%
   mutate(
     DailyQJumbo        = sum(lndlbxJumbo),
@@ -105,6 +103,8 @@ landings <- landings %>%
   ungroup()
 
 # State x day x trip totals: StateOwnQ{Size}
+# adding state to the group_by() produces only a small 
+# slight difference between this and the "OwnQ" 
 landings <- landings %>%
   group_by(dlr_date, camsid, state) %>%
   mutate(
@@ -136,6 +136,8 @@ landings <- landings %>%
 
 # -----------------------------------------------------------------------------
 # Stockarea x day totals: StockareaQ{Size}
+# This is the "extended" stockarea, where we've included some landings from statistical areas
+# not in the North/South.  This is intentionally not STOCK_ABBRV  
 # -----------------------------------------------------------------------------
 landings <- landings %>%
   group_by(dlr_date, stockarea) %>%
@@ -277,9 +279,11 @@ saveRDS(
 # Denominator is always 7 because gaps are filled with 0, not NA.
 # Reproduced with tidyr::complete() + zero-fill + zoo::rollmeanr(k=7, fill=NA).
 # =============================================================================
-rolling_ma7 <- function(x) {
-  zoo::rollmeanr(x, k = 7, fill = NA)
+
+rolling_ma <- function(x) {
+  slider::slide_dbl(x, mean, .before=6, .after=0, fill = NA)
 }
+
 
 # =============================================================================
 # Output 2: daily_ma
@@ -303,6 +307,12 @@ daily_ma <- landings %>%
     .names = "MA7_{.col}"
   )) %>%
   select(dlr_date, starts_with("MA7_"))
+
+
+
+
+
+
 
 saveRDS(
   daily_ma,
