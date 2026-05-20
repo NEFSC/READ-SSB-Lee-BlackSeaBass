@@ -280,7 +280,7 @@ saveRDS(
 # Reproduced with tidyr::complete() + zero-fill + slider::slide_dbl( .before=6, .after=0, fill = NA)
 # =============================================================================
 
-rolling_ma <- function(x) {
+rolling_ma7 <- function(x) {
   slider::slide_dbl(x, mean, .before=6, .after=0, fill = NA)
 }
 
