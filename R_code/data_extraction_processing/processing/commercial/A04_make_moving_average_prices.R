@@ -16,13 +16,9 @@
 #   Reproduced with slider::slide_index() using .before=14, .after=-1.
 ###############################################################################
 
-library(tidyverse)
-library(glue)
-library(slider)
-
 landings <- readRDS(
-  file.path(data_main, "commercial",
-            glue("landings_cleaned_{vintage_string}.Rds"))
+  file = here("data_folder", "main", "commercial",
+              glue("landings_cleaned_{vintage_string}.Rds"))
 )
 
 # Drop Unclassified throughout this script
@@ -271,6 +267,6 @@ grand_ma_prices <- combined_prices %>%
 
 saveRDS(
   grand_ma_prices,
-  file = file.path(data_main, "commercial",
-                   glue("grand_moving_average_prices_{vintage_string}.Rds"))
+  file = here("data_folder", "main", "commercial",
+              glue("grand_moving_average_prices_{vintage_string}.Rds"))
 )

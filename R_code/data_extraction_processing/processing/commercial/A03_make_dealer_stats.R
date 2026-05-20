@@ -12,12 +12,9 @@
 # Expects in environment: vintage_string, data_main
 ###############################################################################
 
-library(tidyverse)
-library(glue)
-
 landings <- readRDS(
-  file.path(data_main, "commercial",
-            glue("landings_cleaned_{vintage_string}.Rds"))
+  file = here("data_folder", "main", "commercial",
+              glue("landings_cleaned_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -66,7 +63,7 @@ historical_wide <- historical_wide %>%
   mutate(
     totalland  = rowSums(select(., paste0("DealerHLbsPurchased", sizes_hist)),
                          na.rm = TRUE),
-    totaltrans = rowSums(select(., paste0("TransactionCount",    sizes_hist)),
+    totaltrans = rowSums(select(., paste0("TransactionCount_",    sizes_hist)),
                          na.rm = TRUE)
   )
 
@@ -74,7 +71,7 @@ for (s in sizes_hist) {
   historical_wide[[glue("Share2014{s}")]] <-
     historical_wide[[glue("DealerHLbsPurchased{s}")]] / historical_wide$totalland
   historical_wide[[glue("Frac2014T{s}")]] <-
-    historical_wide[[glue("TransactionCount{s}")]] / historical_wide$totaltrans
+    historical_wide[[glue("TransactionCount_{s}")]] / historical_wide$totaltrans
 }
 
 historical_wide <- historical_wide %>%
@@ -82,8 +79,8 @@ historical_wide <- historical_wide %>%
 
 saveRDS(
   historical_wide,
-  file = file.path(data_main, "commercial",
-                   glue("dlrid_historical_stats_{vintage_string}.Rds"))
+  file = here("data_folder", "main", "commercial",
+              glue("dlrid_historical_stats_{vintage_string}.Rds"))
 )
 
 
@@ -145,6 +142,6 @@ lag_wide <- lag_wide %>%
 
 saveRDS(
   lag_wide,
-  file = file.path(data_main, "commercial",
-                   glue("dlrid_lag_stats_{vintage_string}.Rds"))
+  file = here("data_folder", "main", "commercial",
+              glue("dlrid_lag_stats_{vintage_string}.Rds"))
 )
