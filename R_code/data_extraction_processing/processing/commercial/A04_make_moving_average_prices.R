@@ -101,15 +101,15 @@ moving_average_prices <- daily_by_market %>%
   mutate(
     valueR_CPI_sum   = slide_index_dbl(
       valueR_CPI, dlr_date, sum, na.rm = TRUE,
-      .before = 14, .after = -1
+      .before = 15, .after = -1
     ),
     lndlb_sum        = slide_index_dbl(
       lndlb, dlr_date, sum, na.rm = TRUE,
-      .before = 14, .after = -1
+      .before = 15, .after = -1
     ),
     valueR_CPI_count = slide_index_int(
       !is.na(valueR_CPI), dlr_date, sum,
-      .before = 14, .after = -1
+      .before = 15, .after = -1
     ),
     ma14price = valueR_CPI_sum / lndlb_sum
   ) %>%
