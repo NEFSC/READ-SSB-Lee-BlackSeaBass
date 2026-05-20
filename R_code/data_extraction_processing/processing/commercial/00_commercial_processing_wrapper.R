@@ -31,7 +31,7 @@ vintage_string <- "2026-05-01"   # matches Stata vintage_string / output vintage
 
 source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
-source(here("R_code", "data_extracting_processing","processing","commercial",  "A01_make_landings_cleaned.R"))
-source(here("R_code", "data_extracting_processing","processing","commercial",  "A02_make_daily_stats.R"))
-source(here("R_code", "data_extracting_processing","processing", "commercial", "A03_make_dealer_stats.R"))
-source(here("R_code", "data_extracting_processing","processing", "commercial", "A04_make_moving_average_prices.R"))
+source(here("R_code", "data_extraction_processing","processing","commercial",  "A01_make_landings_cleaned.R"))
+source(here("R_code", "data_extraction_processing","processing","commercial",  "A02_make_daily_stats.R"))
+source(here("R_code", "data_extraction_processing","processing", "commercial", "A03_make_dealer_stats.R"))
+source(here("R_code", "data_extraction_processing","processing", "commercial", "A04_make_moving_average_prices.R"))
