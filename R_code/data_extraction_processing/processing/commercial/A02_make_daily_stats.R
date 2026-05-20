@@ -275,9 +275,9 @@ saveRDS(
 # =============================================================================
 # Helper: 7-day trailing simple moving average
 # Stata: tsfill (zero-fill gaps) then tssmooth ma, window(7 0 0)
-# = simple mean of [t-6, t-5, ..., t] with zeros for gap days.
+# = simple mean of [t-7, t-5, ..., t-1] with zeros for gap days.
 # Denominator is always 7 because gaps are filled with 0, not NA.
-# Reproduced with tidyr::complete() + zero-fill + zoo::rollmeanr(k=7, fill=NA).
+# Reproduced with tidyr::complete() + zero-fill + slider::slide_dbl( .before=6, .after=0, fill = NA)
 # =============================================================================
 
 rolling_ma <- function(x) {
