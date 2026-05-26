@@ -161,6 +161,7 @@ subregionprice <- daily_by_subregion %>%
 # =============================================================================
 # Block 4: State-level 14-day trailing moving average price
 # Drop FL(12), PA(42), SC(45), ME(23), NH(33) before computing.
+# There's so little info there anyway. I'd prefer to use regional prices
 # Stata drops by numeric state code; match on state_string here.
 # Suppressed if <= 3 days of data in the 14-day window.
 # =============================================================================
