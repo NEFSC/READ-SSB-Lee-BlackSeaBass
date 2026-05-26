@@ -27,6 +27,11 @@ landings <- readRDS(
   file = here("data_folder", "main", "commercial",
               glue("landings_cleaned_{vintage_string}.Rds"))
 )
+
+# Drop rows where lndlb is na.
+landings<-landings %>%
+  filter(!is.na(lndlb)) 
+
             
 # -----------------------------------------------------------------------------
 # Construct per-market-category lbs columns

@@ -17,6 +17,12 @@ landings <- readRDS(
               glue("landings_cleaned_{vintage_string}.Rds"))
 )
 
+
+# Drop rows where lndlb is na.
+landings<-landings %>%
+  filter(!is.na(lndlb)) 
+
+
 # =============================================================================
 # Block 1: Historical dealer statistics (2010-2014)
 # Used for target encoding of dlrid.
