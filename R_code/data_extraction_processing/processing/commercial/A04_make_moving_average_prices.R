@@ -69,7 +69,6 @@ state_adjust <- landings %>%
     state_adjust = pricebar - price
   ) %>%
   ungroup() %>%
-  filter(year <= 2024) %>%
   select(year, state, state_adjust)
 
 # =============================================================================
@@ -252,9 +251,6 @@ combined_prices <- combined_prices %>%
 # Final: trim date range, reshape wide by market_desc, rename
 # =============================================================================
 grand_ma_prices <- combined_prices %>%
-  filter(
-    dlr_date <  as.Date("2025-01-01")
-  ) %>%
   select(dlr_date, market_desc, state, imp_ma14stateprice) %>%
   pivot_wider(
     id_cols     = c(dlr_date, state),
