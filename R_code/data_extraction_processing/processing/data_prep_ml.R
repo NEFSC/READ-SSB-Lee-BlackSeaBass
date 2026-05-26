@@ -63,9 +63,9 @@ data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.dta"))
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.Rds"))
 vintage_string<-gsub("landings_cleaned_","",vintage_string)
-vintage_string<-gsub(".dta","",vintage_string)
+vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
 
 lbs_per_mt<-2204.62
@@ -83,24 +83,25 @@ out_data_string<-Sys.Date()
 #3. Daily landings at the stockarea and market category level 
 #4.  Historical "target encoding" based on 2010-2014 purchases for the dealers AND 1 year lags of dealer purchases.
 
-cleaned_landings<-read_dta(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.dta")))
+cleaned_landings<-readRDS(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.Rds")))
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
-camsid_specific_stats<-read_dta(here("data_folder","main","commercial", glue("camsid_specific_cleaned_",vintage_string,".dta")))
+camsid_specific_stats<-readRDS(here("data_folder","main","commercial", glue("camsid_specific_cleaned_{vintage_string}.Rds")))
 
-daily_ma<-read_dta(here("data_folder","main","commercial", glue("daily_ma_{vintage_string}.dta")))
+daily_ma<-readRDS(here("data_folder","main","commercial", glue("daily_ma_{vintage_string}.Rds")))
 
-state_ma<-read_dta(here("data_folder","main","commercial", glue("state_ma_{vintage_string}.dta")))
+state_ma<-readRDS(here("data_folder","main","commercial", glue("state_ma_{vintage_string}.Rds")))
 
-gear_ma<-read_dta(here("data_folder","main","commercial", glue("gear_ma_{vintage_string}.dta")))
+gear_ma<-readRDS(here("data_folder","main","commercial", glue("gear_ma_{vintage_string}.Rds")))
 
 
-stockarea_ma<-read_dta(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.dta")))
+stockarea_ma<-readRDS(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.Rds")))
 
-dlrid_historical<-read_dta(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.dta")))
-dlrid_lag<-read_dta(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.dta")))
+dlrid_historical<-readRDS(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.Rds")))
+dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.Rds")))
 
-grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.dta")))
+grand_moving_average_prices<-readRDS(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.Rds")))
+
 
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
@@ -118,13 +119,13 @@ cleaned_landings<-cleaned_landings %>%
   ungroup()
 
 # South - Delaware, Florida*, Maryland, North Carolina, South Carolina*, Virginia
-# North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*
+# North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*, Canada*
 # * have no landings or limited landings are are dropped later.
 
 cleaned_landings<-cleaned_landings %>% 
   mutate(region=case_when(
-    state %in% c(9,23,25,33,36,42,44,50) ~ "North",
-    state %in% c(10, 12,24,34, 37,45,51)  ~ "South",
+    state %in% c("CT","ME", "MA", "NH", "NJ", "NY", "PA", "RI", "VT", "CN") ~ "North",
+    state %in% c("DE", "FL", "MD", "NC", "SC", "VA")  ~ "South",
     .default = "Unknown"  )
   )
   
@@ -220,11 +221,11 @@ cleaned_landings<-cleaned_landings %>%
 #Use the variable labels to convert to factors 
 
 cleaned_landings<-cleaned_landings %>%
-  mutate(market_desc=haven::as_factor(market_desc, levels="label"),
-         mygear=haven::as_factor(mygear, levels="label"),
-         state=haven::as_factor(state, levels="label"),
-         grade_desc=haven::as_factor(grade_desc, levels="label"),
-         stockarea=haven::as_factor(stockarea, levels="label")
+  mutate(market_desc=fct_drop(market_desc),
+         mygear=fct_drop(mygear),
+         state=fct_drop(state),
+         grade_desc=fct_drop(grade_desc),
+         stockarea=fct_drop(stockarea)
          )
 
 #Factor the cams status column
@@ -274,8 +275,7 @@ combined_dataset<-cleaned_landings %>%
     mutate(dlrid=forcats::as_factor(dlrid)) %>%
     mutate(region=forcats::as_factor(region)) %>%
     mutate(market_desc=fct_drop(market_desc),
-        year=fct_drop(year),
-        state=fct_drop(state)) 
+        year=fct_drop(year)) 
 
 # order the years and states. I'm also ordering the . I chose not to order the months, because month12 of one year is next to month 1 of the following
 combined_dataset<-combined_dataset %>%
