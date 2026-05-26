@@ -26,15 +26,19 @@ landings <- landings %>%
   filter(as.character(market_desc) != "Unclassified") %>%
   mutate(market_desc=fct_drop(market_desc))
 
-# Subregion assignment
+# Subregion assignment -- this is based on the hedonic model results.  prices tend to be regional (ish)
 # CT+NY -> CTNY; DE/MD/VA/NC/SC -> DELMARVAC; MA/NH/ME -> MA_N
 # CN, PA, FL dropped
+# NJ by itself.
+
+# Add FL to the southern. Add CN to the northern. Add PA to NJ
 landings <- landings %>%
   mutate(
     subregion = case_when(
-      state_string %in% c("CT", "NY")             ~ "CTNY",
-      state_string %in% c("DE", "MD", "VA", "NC", "SC") ~ "DELMARVAC",
-      state_string %in% c("MA", "NH", "ME")        ~ "MA_N",
+      state_string %in% c("CT", "NY")                   ~ "CTNY",
+      state_string %in% c("DE", "MD", "VA", "NC", "SC", "FL")  ~ "DELMARVAC",
+      state_string %in% c("MA", "NH", "ME", "CN", "VT")             ~ "MA_N",
+      state_string %in% c("NJ", "PA")                         ~ "NJ",
       TRUE                                          ~ state_string
     )
   ) %>%
