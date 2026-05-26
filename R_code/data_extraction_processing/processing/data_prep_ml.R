@@ -82,8 +82,31 @@ out_data_string<-Sys.Date()
 #2. Daily landings at the state and market category level
 #3. Daily landings at the stockarea and market category level 
 #4.  Historical "target encoding" based on 2010-2014 purchases for the dealers AND 1 year lags of dealer purchases.
+# 
+# cleaned_landings<-read_dta(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.dta")))
+# #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
+# 
+# camsid_specific_stats<-read_dta(here("data_folder","main","commercial", glue("camsid_specific_cleaned_",vintage_string,".dta")))
+# 
+# daily_ma<-read_dta(here("data_folder","main","commercial", glue("daily_ma_{vintage_string}.dta")))
+# 
+# state_ma<-read_dta(here("data_folder","main","commercial", glue("state_ma_{vintage_string}.dta")))
+# 
+# gear_ma<-read_dta(here("data_folder","main","commercial", glue("gear_ma_{vintage_string}.dta")))
+# 
+# 
+# stockarea_ma<-read_dta(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.dta")))
+# 
+# dlrid_historical<-read_dta(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.dta")))
+# dlrid_lag<-read_dta(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.dta")))
+# 
+# grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.dta")))
+# 
 
-cleaned_landings<-readRDS(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.Rds")))
+
+cleaned_landings<-readRDS(here("data_folder","main","commercial", glue("landings_cleaned_{vintage_string}.Rds"))) 
+
+
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
 camsid_specific_stats<-readRDS(here("data_folder","main","commercial", glue("camsid_specific_cleaned_{vintage_string}.Rds")))
@@ -110,12 +133,13 @@ stockarea_ma<-stockarea_ma%>%
 dlrid_historical<-readRDS(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.Rds")))
 dlrid_historical<-dlrid_historical%>%
   mutate(.in_dlrid_historical = 1L)
+
+
 dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.Rds")))
 dlrid_lag<-dlrid_lag%>%
   mutate(.in_dlrid_lag = 1L)
 
 grand_moving_average_prices<-readRDS(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.Rds")))
-
 grand_moving_average_prices<-grand_moving_average_prices%>%
   mutate(.in_gma = 1L)
 
@@ -123,21 +147,26 @@ grand_moving_average_prices<-grand_moving_average_prices%>%
 # mimics the stata data cleaning that I did for the multinomial logit.
 ###############################################################################
 
+cleaned_landings<-cleaned_landings %>%
+  mutate(flag_in=!is.na(valueR_CPI))
+
+
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
-  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status) %>%
+  ungroup() %>%
+  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status, flag_in) %>%
   summarise(value=sum(value),
-            valueR_CPI=sum(valueR_CPI),
+           valueR_CPI=sum(valueR_CPI),
            lndlb=sum(lndlb),
            livlb=sum(livlb),
-           weighting=sum(weighting)
-  ) %>%
-  ungroup()
+           weighting=sum(weighting),
+           .groups="drop"
+  )
 
 # South - Delaware, Florida*, Maryland, North Carolina, South Carolina*, Virginia
 # North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*, Canada*
 # * have no landings or limited landings are are dropped later.
-
+# this is like a north-south market category region. Similar to the STOCK_ABBREV, although that is based on stat area
 cleaned_landings<-cleaned_landings %>% 
   mutate(region=case_when(
     state %in% c("CT","ME", "MA", "NH", "NJ", "NY", "PA", "RI", "VT", "CN") ~ "North",
@@ -270,14 +299,19 @@ cleaned_landings<-cleaned_landings %>%
       .in_original == 1L & .in_gma == 1L ~ 3L,
     )
   )
+# there's a handful of 1996 records hanging around here.  
+cleaned_landings<-cleaned_landings %>%
+  filter(year>1997)
+
+
 #verify merge worked, stop if it didnt. Cleanup if it did
 stopifnot(all(cleaned_landings$.merge == 3L))
 cleaned_landings<-cleaned_landings %>%
   select(-c(.in_gma,.merge))
 
-inspect<-cleaned_landings %>%
-  dplyr::filter(.merge==1)
 
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_dlrid_historical, .merge_dlrid, .in_dlrid_lag, .merge_dlr_lags, .in_original))
 
 
 
@@ -306,7 +340,7 @@ cleaned_landings<-cleaned_landings %>%
 
 # trip level BSB landings
 cleaned_landings<-cleaned_landings %>%
-  group_by(camsid) %>%
+  group_by(camsid, flag_in) %>%
   mutate(trip_level_BSB=sum(lndlb)) %>%
     ungroup()
 
@@ -373,26 +407,24 @@ cleaned_landings<-cleaned_landings %>%
 # Final Tidyup
 ###############################################################################
 
-# Keep  2013 to 2024 data
+# Keep  2013 to 2025 data
 # deal with factors
 combined_dataset<-cleaned_landings %>%
-    filter(year>=2013 & year<=2024) %>%
+    filter(year>=2013 & year<=2025) %>%
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
-    mutate(year=forcats::as_factor(year)) %>%
-    mutate(month=forcats::as_factor(month)) %>%
-    mutate(semester=forcats::as_factor(semester)) %>%
-    mutate(dlrid=forcats::as_factor(dlrid)) %>%
-    mutate(region=forcats::as_factor(region)) %>%
-    mutate(market_desc=fct_drop(market_desc),
-        year=fct_drop(year)) 
+    mutate(year=factor(year, levels=2013:2025, ordered=TRUE),
+           month=factor(month, levels=1:12, ordered=FALSE), 
+           semester=factor(semester, levels=1:2, ordered=FALSE), 
+           dlrid=factor(dlrid), 
+           region=factor(region), 
+          market_desc=fct_drop(market_desc),
+        year=fct_drop(year)
+    ) 
 
 # order the years and states. I'm also ordering the . I chose not to order the months, because month12 of one year is next to month 1 of the following
 combined_dataset<-combined_dataset %>%
   mutate(state=forcats::fct_relevel(state,c("CN","ME","NH", "MA","RI","CT","NY","NJ","PA","DE","MD","VA","NC","SC")) ) %>%
-  mutate(year=ordered(year),
-         region=ordered(region),
-         semester=ordered(semester),
-         state=ordered(state)
+  mutate(state=ordered(state)
   )
 
 # Encode catch share
@@ -401,12 +433,12 @@ combined_dataset<-combined_dataset %>%
     state %in% c("MD","VA","DE") ~ "CatchShare",
     .default="Non CatchShare")
   ) %>%
-  mutate(catch_share=ordered(as.factor(catch_share)))
+  mutate(catch_share=as.factor(catch_share))
 
 # generate a compact group id variable to take the place of camsid, market_desc, dlrid
 combined_dataset<-combined_dataset %>%
-  arrange(camsid,dlrid, market_desc)%>%
-  group_by(camsid,dlrid, market_desc)%>%
+  arrange(camsid,dlrid, market_desc, flag_in)%>%
+  group_by(camsid,dlrid, market_desc, flag_in)%>%
   mutate(myl_id=cur_group_id()) %>%
   ungroup()
 
@@ -414,14 +446,9 @@ combined_dataset<-combined_dataset %>%
   mutate(myl_id=as.integer(myl_id))
 
 
-
-
-
-
-
-
 # Flag dlrid's that have suspiciously little variance in prices.
 dlr_variability <- combined_dataset %>%
+  filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
   group_by(dlrid, year, market_desc ) %>%
   summarise(transactions=n(),
@@ -429,15 +456,16 @@ dlr_variability <- combined_dataset %>%
             lndlb=sum(lndlb),
             mean_price=mean(price, na.rm=TRUE),
             sd_price=sd(price, na.rm=TRUE),
-            mad_price=mad(price, na.rm=TRUE)
+            mad_price=mad(price, na.rm=TRUE),
+            .groups="drop"
   )%>%
   mutate(cv=sd_price/mean_price) %>%
   arrange(sd_price)
 
 mark_in<-dlr_variability %>%
   mutate(mark_in=case_when(
-    sd_price>=0.1 ~ 1,
-    .default = 0
+    sd_price>=0.1 ~ TRUE,
+    .default = FALSE
   )
   ) %>%
   select(dlrid,year,market_desc, mark_in)
@@ -451,13 +479,14 @@ combined_dataset<-combined_dataset %>%
 # Flag observaions with bad prices, bad pricing data, or from wierd states. 
 combined_dataset<-combined_dataset %>%
   mutate(mark_in=case_when(
-              price<0.15 ~ 0,
-              price>12 ~ 0,
-              is.na(price) ~ 0,
-              state =="CN"  ~ 0,
-              state =="FL"  ~ 0, 
-              state =="PA"  ~ 0,
-              state =="SC"  ~ 0,
+              price<0.15 ~ FALSE,
+              price>12 ~ FALSE,
+              is.na(price) ~ FALSE,
+              state =="CN"  ~ FALSE,
+              state =="FL"  ~ FALSE, 
+              state =="PA"  ~ FALSE,
+              state =="SC"  ~ FALSE,
+              flag_in ==FALSE  ~ FALSE,
               .default=mark_in)
 )
 
@@ -479,7 +508,7 @@ haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercia
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") %>%
   filter(mark_in==1) %>%
-  select(-c("mark_in"))
+  select(-c("mark_in", "flag_in"))
 
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.Rds")))
 haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.dta")))
