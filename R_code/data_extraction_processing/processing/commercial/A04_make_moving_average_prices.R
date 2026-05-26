@@ -26,32 +26,71 @@ landings <- landings %>%
   filter(as.character(market_desc) != "Unclassified") %>%
   mutate(market_desc=fct_drop(market_desc))
 
+# Drop rows where value is na.
+landings<-landings %>%
+  filter(!is.na(valueR_CPI)) 
+
+
+# make a placeholder dataframe (combined_prices).  
+market_cats<-levels(landings$market_desc)
+
+states<-levels(landings$state)
+start_date<-min(landings$dlr_date)
+end_date<-max(landings$dlr_date)
+
+combined_prices <- expand_grid(
+  state = states,
+  market_desc=market_cats,
+  dlr_date  = seq(as.Date(start_date), as.Date(end_date), by = "day")
+)
+
+
+
+
+
+
+
+
 # Subregion assignment -- this is based on the hedonic model results.  prices tend to be regional (ish)
 # CT+NY -> CTNY; DE/MD/VA/NC/SC -> DELMARVAC; MA/NH/ME -> MA_N
-# CN, PA, FL dropped
 # NJ by itself.
+# RI by itself.
 
 # Add FL to the southern. Add CN to the northern. Add PA to NJ
 landings <- landings %>%
   mutate(
     subregion = case_when(
-      state_string %in% c("CT", "NY")                   ~ "CTNY",
-      state_string %in% c("DE", "MD", "VA", "NC", "SC", "FL")  ~ "DELMARVAC",
-      state_string %in% c("MA", "NH", "ME", "CN", "VT")             ~ "MA_N",
-      state_string %in% c("NJ", "PA")                         ~ "NJ",
-      TRUE                                          ~ state_string
+      state %in% c("CT", "NY")                   ~ "CTNY",
+      state %in% c("DE", "MD", "VA", "NC", "SC", "FL")  ~ "DELMARVAC",
+      state %in% c("MA", "NH", "ME", "CN", "VT")             ~ "MA_N",
+      state %in% c("NJ", "PA")                         ~ "NJ",
+      state %in% c("RI")                         ~ "RI",
+      TRUE                                          ~ NA
     )
-  ) %>%
-  filter(!state_string %in% c("CN", "PA", "FL"))
+  ) 
+
+# Add subregion to the panel.
+combined_prices<- combined_prices %>%
+  mutate(
+    subregion = case_when(
+      state %in% c("CT", "NY")                   ~ "CTNY",
+      state %in% c("DE", "MD", "VA", "NC", "SC", "FL")  ~ "DELMARVAC",
+      state %in% c("MA", "NH", "ME", "CN", "VT")             ~ "MA_N",
+      state %in% c("NJ", "PA")                         ~ "NJ",
+      state %in% c("RI")                         ~ "RI",
+      TRUE                                          ~ NA
+    )
+  ) 
 
 # =============================================================================
 # Block 1: Annual state price adjustment
-# Computed on Large, Jumbo, Medium only.
-# state_adjust = regional_average_price - state_average_price
-# Computed over 2010 to 2024 (keep if year <= 2024).
+# Computed on Large, Jumbo, Medium only. There's just not much smalls and Unclassified.
+# state_multiplier = state average divided coastwide average 
+# there will be some state-year combinations without an adjustment factor.
 # =============================================================================
 state_adjust <- landings %>%
   filter(as.character(market_desc) %in% c("Large", "Jumbo", "Medium")) %>%
+  filter(!is.na(valueR_CPI)) %>%
   group_by(year, state) %>%
   summarise(
     valueR_CPI = sum(valueR_CPI),
@@ -62,14 +101,14 @@ state_adjust <- landings %>%
   mutate(
     tv       = sum(valueR_CPI),
     tl       = sum(lndlb),
-    price    = valueR_CPI / lndlb,
-    pricebar = tv / tl,
-    # state_adjust: regional average minus state average
-    # subtract from regional price to get state-level price
-    state_adjust = pricebar - price
+    price    = valueR_CPI / lndlb, #state-year level average price 
+    pricebar = tv / tl,            # year level average price
+    # state_multiplier: state average divided coastwide average 
+    # mutiply the coastwide average to get the state  price
+    state_multiplier = price/pricebar
   ) %>%
   ungroup() %>%
-  select(year, state, state_adjust)
+  select(year, state, state_multiplier)
 
 # =============================================================================
 # Block 2: Region-wide 14-day trailing moving average price by market_desc
@@ -82,6 +121,13 @@ state_adjust <- landings %>%
 # slider::slide_index() with .before=14, .after=-1 excludes day 0,
 # matching Stata's interval specification exactly.
 # =============================================================================
+
+# =============================================================================
+# Block 2A: 
+# A full timeseries dataset of daily value and landings, by market category. 
+# Zero filled with "complete"
+# =============================================================================
+
 daily_by_market <- landings %>%
   group_by(dlr_date, market_desc) %>%
   summarise(
@@ -92,9 +138,18 @@ daily_by_market <- landings %>%
   # tsfill: complete all market_desc x date combinations
   complete(
     market_desc,
-    dlr_date = seq(min(dlr_date), max(dlr_date), by = "day")
-  ) %>%
+    dlr_date = seq(min(dlr_date), max(dlr_date), by = "day"),
+    fill=list(valueR_CPI=0,lndlb=0)) %>%
   arrange(market_desc, dlr_date)
+
+
+
+# =============================================================================
+# Block 2B: 
+# by market category, compute moving sums of value_CPI and lndlb    
+# also create a count variable. 
+# Compute a moving average price for the entire region 
+# =============================================================================
 
 moving_average_prices <- daily_by_market %>%
   group_by(market_desc) %>%
@@ -111,14 +166,17 @@ moving_average_prices <- daily_by_market %>%
       !is.na(valueR_CPI), dlr_date, sum,
       .before = 15, .after = -1
     ),
-    ma14price = valueR_CPI_sum / lndlb_sum
+    coastwide_ma14price = valueR_CPI_sum / lndlb_sum
   ) %>%
   ungroup() %>%
-  select(dlr_date, market_desc, ma14price)
+  select(dlr_date, market_desc, coastwide_ma14price)
+
+#First day min(dlr_date) becomes NaN
 
 # =============================================================================
 # Block 3: Subregion-level 14-day trailing moving average price
 # Suppressed if <= 5 days of data in the 14-day window.
+# Compute a moving average price for subregions  
 # =============================================================================
 daily_by_subregion <- landings %>%
   group_by(dlr_date, subregion, market_desc) %>%
@@ -212,11 +270,18 @@ state_prices <- daily_by_state %>%
 # Merge region-wide and subregion prices onto state-level frame.
 # Stata asserts all three merges are _merge==3.
 # =============================================================================
-combined_prices <- state_prices %>%
+
+# add ma14stateprice to dataframe
+combined_prices <- combined_prices %>%
+  left_join(state_prices,
+  by=c("dlr_date", "state", "subregion", "market_desc"), relationship="one-to-one")
+
+# add coastwide price and subregion moving average prices to dataframe
+combined_prices <- combined_prices %>%
   left_join(moving_average_prices,
-            by = c("dlr_date", "market_desc")) %>%
-  left_join(subregionprice,
-            by = c("dlr_date", "subregion", "market_desc"))
+            by = c("dlr_date", "market_desc")) #%>%
+#  left_join(subregionprice,
+#            by = c("dlr_date", "subregion", "market_desc"))
 
 combined_prices<-combined_prices %>%
   filter(dlr_date>="1996-01-03")
@@ -224,7 +289,7 @@ combined_prices<-combined_prices %>%
 # Assert all rows have region-wide price (should always exist post-tsfill)
 stopifnot(
   "ma14price merge: unexpected missing values" =
-    !anyNA(combined_prices$ma14price)
+    !anyNA(combined_prices$coastwide_ma14price)
 )
 
 # Merge state adjustment (m:1 on year x state)
@@ -236,16 +301,28 @@ combined_prices <- combined_prices %>%
 # Impute missing state prices
 # imp_ma14stateprice = ma14stateprice if available,
 #                    = ma14price - state_adjust otherwise
-# (Corrected from Stata: the typo clonevar/replace bug is fixed here)
 # =============================================================================
 combined_prices <- combined_prices %>%
   mutate(
     imp_ma14stateprice = if_else(
       is.na(ma14stateprice),
-      ma14price - state_adjust,
+      coastwide_ma14price * state_multiplier,
       ma14stateprice
     )
   )
+
+# Some states don't have a multipler, in that case just use the region price 
+combined_prices <- combined_prices %>%
+  mutate(imp_ma14stateprice = case_when(
+         state  %in% c("CN","CT", "DE", "FL", "ME", "NH", "PA", "SC", "VT") & is.na(imp_ma14stateprice) & is.na(state_multiplier) ~ coastwide_ma14price,
+         TRUE ~ imp_ma14stateprice)
+  )
+
+
+
+
+
+
 
 # =============================================================================
 # Final: trim date range, reshape wide by market_desc, rename
@@ -264,6 +341,11 @@ grand_ma_prices <- combined_prices %>%
     SmallMA14price  = Small
   ) %>%
   arrange(dlr_date, state)
+
+# dataset should have no missing values
+stopifnot(
+    !anyNA(grand_ma_prices)
+)
 
 saveRDS(
   grand_ma_prices,
