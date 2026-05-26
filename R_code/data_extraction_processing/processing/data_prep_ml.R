@@ -87,21 +87,37 @@ cleaned_landings<-readRDS(here("data_folder","main","commercial", glue("landings
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
 camsid_specific_stats<-readRDS(here("data_folder","main","commercial", glue("camsid_specific_cleaned_{vintage_string}.Rds")))
+camsid_specific_stats<-camsid_specific_stats%>%
+  mutate(.in_camsid = 1L)
 
 daily_ma<-readRDS(here("data_folder","main","commercial", glue("daily_ma_{vintage_string}.Rds")))
+daily_ma<-daily_ma%>%
+  mutate(.in_dailyma = 1L)
 
 state_ma<-readRDS(here("data_folder","main","commercial", glue("state_ma_{vintage_string}.Rds")))
+state_ma<-state_ma%>%
+  mutate(.in_state_ma = 1L)
 
 gear_ma<-readRDS(here("data_folder","main","commercial", glue("gear_ma_{vintage_string}.Rds")))
+gear_ma<-gear_ma%>%
+  mutate(.in_gear_ma = 1L)
 
 
 stockarea_ma<-readRDS(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.Rds")))
+stockarea_ma<-stockarea_ma%>%
+  mutate(.in_stockarea_ma = 1L)
 
 dlrid_historical<-readRDS(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.Rds")))
+dlrid_historical<-dlrid_historical%>%
+  mutate(.in_dlrid_historical = 1L)
 dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.Rds")))
+dlrid_lag<-dlrid_lag%>%
+  mutate(.in_dlrid_lag = 1L)
 
 grand_moving_average_prices<-readRDS(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.Rds")))
 
+grand_moving_average_prices<-grand_moving_average_prices%>%
+  mutate(.in_gma = 1L)
 
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
@@ -128,46 +144,139 @@ cleaned_landings<-cleaned_landings %>%
     state %in% c("DE", "FL", "MD", "NC", "SC", "VA")  ~ "South",
     .default = "Unknown"  )
   )
-  
-
+# create an indicator variable
+cleaned_landings  <- cleaned_landings  %>%
+   mutate(.in_original  = 1L)
 
 
 # merge in camsid (trip) level statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(camsid_specific_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(camsid_specific_stats, by=join_by(camsid==camsid, dlr_date==dlr_date), relationship="many-to-one") %>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_camsid) ~ 1L,
+      is.na(.in_original) & .in_camsid == 1L ~ 2L,
+      .in_original == 1L & .in_camsid == 1L ~ 3L,
+    )
+)
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_camsid,.merge))
+
 
 # merge in daily level statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(daily_ma, by=join_by(dlr_date==dlr_date), relationship="many-to-one")
+  left_join(daily_ma, by=join_by(dlr_date==dlr_date), relationship="many-to-one")%>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_dailyma) ~ 1L,
+      is.na(.in_original) & .in_dailyma == 1L ~ 2L,
+      .in_original == 1L & .in_dailyma == 1L ~ 3L,
+    )
+  )
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_dailyma,.merge))
+
 
 # merge in state-day statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(state_ma, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(state_ma, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")%>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_state_ma) ~ 1L,
+      is.na(.in_original) & .in_state_ma == 1L ~ 2L,
+      .in_original == 1L & .in_state_ma == 1L ~ 3L,
+    )
+  )
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_state_ma,.merge))
+
 
 # merge in stockarea-day statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(stockarea_ma, by=join_by(stockarea==stockarea, dlr_date==dlr_date), relationship="many-to-one")%>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_stockarea_ma) ~ 1L,
+      is.na(.in_original) & .in_stockarea_ma == 1L ~ 2L,
+      .in_original == 1L & .in_stockarea_ma == 1L ~ 3L,
+    )
+  )
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_stockarea_ma,.merge))
+
 
 # merge in gear-day statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(gear_ma, by=join_by(mygear==mygear, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(gear_ma, by=join_by(mygear==mygear, dlr_date==dlr_date), relationship="many-to-one")%>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_gear_ma) ~ 1L,
+      is.na(.in_original) & .in_gear_ma == 1L ~ 2L,
+      .in_original == 1L & .in_gear_ma == 1L ~ 3L,
+    )
+  )
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_gear_ma,.merge))
 
-
+################################################################################
+############# Not all dealers had "historical landings"#########################
+################################################################################
 # merge in dlrid historical statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")
+  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")%>%
+  mutate(
+    .merge_dlrid = case_when(
+      .in_original == 1L & is.na(.in_dlrid_historical) ~ 1L,
+      is.na(.in_original) & .in_dlrid_historical == 1L ~ 2L,
+      .in_original == 1L & .in_dlrid_historical == 1L ~ 3L,
+    )
+  )
 
+################################################################################
+############# Not all dealers had landings in the previous year ################
+################################################################################
 
 # merge in dlrid lag statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(dlrid_lag, by=join_by(dlrid==dlrid,year==year), relationship="many-to-one")
+  left_join(dlrid_lag, by=join_by(dlrid==dlrid,year==year), relationship="many-to-one")%>%
+  mutate(
+    .merge_dlr_lags = case_when(
+      .in_original == 1L & is.na(.in_dlrid_lag) ~ 1L,
+      is.na(.in_original) & .in_dlrid_lag == 1L ~ 2L,
+      .in_original == 1L & .in_dlrid_lag == 1L ~ 3L,
+    )
+  )
+
 
 
 
 # merge in moving_average_prices  statistics
 cleaned_landings<-cleaned_landings %>%
-  left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")
+  left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")%>%
+  mutate(
+    .merge = case_when(
+      .in_original == 1L & is.na(.in_gma) ~ 1L,
+      is.na(.in_original) & .in_gma == 1L ~ 2L,
+      .in_original == 1L & .in_gma == 1L ~ 3L,
+    )
+  )
+#verify merge worked, stop if it didnt. Cleanup if it did
+stopifnot(all(cleaned_landings$.merge == 3L))
+cleaned_landings<-cleaned_landings %>%
+  select(-c(.in_gma,.merge))
 
+inspect<-cleaned_landings %>%
+  dplyr::filter(.merge==1)
 
 
 
