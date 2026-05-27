@@ -135,6 +135,7 @@ lag_wide <- lag_stats %>%
   pivot_wider(
     id_cols     = c(dlrid, year),
     names_from  = mymarket,
+    names_sep = "",
     values_from = c(LagSharePounds, LagShareTrans, LagPounds, LagTrans)
     # NAs left as NA: dealer did not buy that category that year
   )
