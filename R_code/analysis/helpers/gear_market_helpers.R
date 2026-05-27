@@ -2,9 +2,9 @@
 # Script:  gear_market_helpers.R
 # Purpose: Shared helper functions used across multiple BSB analysis scripts:
 #          (1) apply_gear_categories()       — maps negear codes to 5 gear groups
-#          (2) apply_market_rebinning()       — standard market category rebinning
-#          (3) apply_market_rebinning_dealers() — dealers-analysis variant
-#          (4) apply_grade_cleaning()          — standardizes grade_desc values
+#          (2) apply_bsb_market_rebinning()       — standard market category rebinning
+#          (3) apply_bsb_market_rebinning_dealers() — dealers-analysis variant
+#          (4) apply_bsb_grade_cleaning()          — standardizes grade_desc values
 # Notes:   IMPORTANT -- this rebinning makes sense for black sea bass, but may not 
 #          be optimal for another fishery. Use with care
 #          Gear mapping and market rebinning logic appears in multiple Stata
@@ -74,12 +74,12 @@ apply_gear_categories <- function(df) {
 
 
 # -----------------------------------------------------------------------------
-# apply_market_rebinning()
+# apply_bsb_market_rebinning()
 # Standard rebinning for bsb_exploratory and prices_by_category.
 # Returns df with cleaned market_code and market_desc (ordered factor).
 # Rules: MX→UN, PW+ES→SQ (Small), XG→JB (Jumbo), proper-case titles.
 # -----------------------------------------------------------------------------
-apply_market_rebinning <- function(df) {
+apply_bsb_market_rebinning <- function(df) {
   market_levels <- c("Jumbo", "Large", "Medium", "Small", "Extra Small", "Unclassified")
 
   df %>%
@@ -106,13 +106,13 @@ apply_market_rebinning <- function(df) {
 
 
 # -----------------------------------------------------------------------------
-# apply_market_rebinning_dealers()
+# apply_bsb_market_rebinning_dealers()
 # Dealers-analysis variant: PW stays as ES (Extra Small), not merged into Small.
 # NOTE: intentionally differs from apply_market_rebinning() — Pee Wee is kept
 # as a separate Extra Small record to preserve finer size detail for
 # dealer-pattern analysis.  No XG→JB rule here.
 # -----------------------------------------------------------------------------
-apply_market_rebinning_dealers <- function(df) {
+apply_bsb_market_rebinning_dealers <- function(df) {
   df %>%
     mutate(
       # MX (Mixed/Unsized) → UN (Unclassified)
@@ -130,11 +130,11 @@ apply_market_rebinning_dealers <- function(df) {
 
 
 # -----------------------------------------------------------------------------
-# apply_grade_cleaning()
+# apply_bsb_grade_cleaning()
 # Standardizes grade_desc values and returns an ordered factor.
 # NOTE: Stata maps UNGRADED → "Round" (not "Ungraded"). Faithfully reproduced.
 # -----------------------------------------------------------------------------
-apply_grade_cleaning <- function(df) {
+apply_bsb_grade_cleaning <- function(df) {
   df %>%
     mutate(
       grade_desc = case_when(
