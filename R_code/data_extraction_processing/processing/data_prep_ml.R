@@ -476,7 +476,9 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Flag observaions with bad prices, bad pricing data, or from wierd states. 
+# Flag observaions with bad prices, bad pricing data, or from weird states.
+# this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
+# To predict
 combined_dataset<-combined_dataset %>%
   mutate(mark_in=case_when(
               price<0.15 ~ FALSE,
