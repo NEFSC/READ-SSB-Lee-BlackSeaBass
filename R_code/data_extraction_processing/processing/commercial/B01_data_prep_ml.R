@@ -408,20 +408,21 @@ cleaned_landings<-cleaned_landings %>%
 ###############################################################################
 
 # Keep  2013 to 2025 data
-# deal with factors
+# deal with factors -- 
 combined_dataset<-cleaned_landings %>%
     filter(year>=2013 & year<=2025) %>%
     mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
     mutate(year=factor(year, levels=2013:2025, ordered=TRUE),
            month=factor(month, levels=1:12, ordered=FALSE), 
            semester=factor(semester, levels=1:2, ordered=FALSE), 
-           dlrid=factor(dlrid), 
-           region=factor(region), 
+           dlrid=factor(dlrid, ordered=FALSE)), 
+           region=factor(region, ordered=FALSE)), 
           market_desc=fct_drop(market_desc),
         year=fct_drop(year)
     ) 
 
-# order the years and states. I'm also ordering the . I chose not to order the months, because month12 of one year is next to month 1 of the following
+# order the states.  I chose not to order the month and semester, because month12 of one year is next to month 1 of the following
+# There's only 2 regions and 2 semesters, so no reason to order them.  
 combined_dataset<-combined_dataset %>%
   mutate(state=forcats::fct_relevel(state,c("CN","ME","NH", "MA","RI","CT","NY","NJ","PA","DE","MD","VA","NC","SC")) ) %>%
   mutate(state=ordered(state)
