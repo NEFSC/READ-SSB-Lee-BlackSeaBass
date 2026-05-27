@@ -12,7 +12,7 @@
 #
 # Expects in environment:
 #   in_string, vintage_string, my_datapull, data_main
-#   apply_gear_categories(), apply_market_rebinning(), apply_grade_cleaning()
+#   apply_gear_categories(), apply_bsb_market_rebinning(), apply_bsb_grade_cleaning()
 #   from gear_market_helpers.R (sourced by wrapper)
 ###############################################################################
 
@@ -119,7 +119,7 @@ landings <- apply_gear_categories(landings) %>%
 
 # -----------------------------------------------------------------------------
 # Market category rebinning
-# apply_market_rebinning() recodes market_code / market_desc and returns
+# apply_bsb_market_rebinning() recodes market_code / market_desc and returns
 # market_desc as a factor. Separate into string (market_desc_string) and
 # factor (market_desc) to match Stata's rename + encode pattern.
 # Stata label market_category: 1=Jumbo 2=Large 3=Medium 4=Small
@@ -127,7 +127,7 @@ landings <- apply_gear_categories(landings) %>%
 # -----------------------------------------------------------------------------
 market_levels <- c("Jumbo", "Large", "Medium", "Small", "Extra Small", "Unclassified")
 
-landings <- apply_market_rebinning(landings) %>%
+landings <- apply_bsb_market_rebinning(landings) %>%
   mutate(
     market_desc_string = as.character(market_desc),
     market_desc        = factor(market_desc_string, levels = market_levels)
@@ -141,7 +141,7 @@ landings <- apply_market_rebinning(landings) %>%
 # Stata pattern: drop grade_desc string, rename mygrade -> grade_desc.
 # Net effect reproduced: grade_desc is now the factor.
 # -----------------------------------------------------------------------------
-landings <- apply_grade_cleaning(landings)
+landings <- apply_bsb_grade_cleaning(landings)
 
 # -----------------------------------------------------------------------------
 # State encoding
