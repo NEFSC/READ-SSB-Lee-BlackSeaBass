@@ -80,7 +80,7 @@ excluded_from_estimation_dataset <-excluded_from_estimation_dataset %>%
   
 
 
-# load the 'questionable' status dataset
+# load the "questionable" status dataset
 questionable_status<-readr::read_rds(file=here("data_folder","main","commercial",glue("questionable_status_{vintage_string}.Rds")))
 
 # 
