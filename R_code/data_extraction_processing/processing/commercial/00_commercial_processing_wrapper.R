@@ -35,3 +35,10 @@ source(here("R_code", "data_extraction_processing","processing","commercial",  "
 source(here("R_code", "data_extraction_processing","processing","commercial",  "A02_make_daily_stats.R"))
 source(here("R_code", "data_extraction_processing","processing", "commercial", "A03_make_dealer_stats.R"))
 source(here("R_code", "data_extraction_processing","processing", "commercial", "A04_make_moving_average_prices.R"))
+
+#final data prep.
+# there's no great reason to have these start with B, execpt that the A files were previously made by stata.
+source(here("R_code", "data_extraction_processing","processing",  "commercial", "B01_data_prep_ml.R"))
+# aggreggate landings that were excluded
+
+source(here("R_code", "data_extraction_processing","processing",  "commercial", "B02_handle_not_in_estimation_dataset.R"))
