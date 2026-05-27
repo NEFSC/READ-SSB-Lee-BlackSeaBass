@@ -26,6 +26,13 @@ landings <- read_rds(
 )
 
 # -----------------------------------------------------------------------------
+# Drop zero-pound landings
+# -----------------------------------------------------------------------------
+landings <- landings %>%
+  filter(lndlb != 0)
+
+
+# -----------------------------------------------------------------------------
 # Drop unmatched species codes
 # merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
 # These are VTR discards, orphan species, novel market/grade codes.
@@ -75,11 +82,6 @@ landings <- landings %>%
   filter(questionable_status == 0) %>%
   select(-questionable_status, -day, -s2)
 
-# -----------------------------------------------------------------------------
-# Drop zero-pound landings
-# -----------------------------------------------------------------------------
-landings <- landings %>%
-  filter(lndlb != 0)
 
 # -----------------------------------------------------------------------------
 # Merge gear lookup (m:1 on negear)
