@@ -160,13 +160,21 @@ replace stockarea=2 if area<=613
 
 assert stockarea>=1
 label values stockarea stockunit
+	
+	
+gen str10 stock_abbrev="UNK"
+replace stock_abbrev="SOUTH" if area>=621 & area<=639
+replace stock_abbrev="SOUTH" if inlist(area,614, 615) 
+replace stock_abbrev="NORTH" if inlist(area, 464,465,467,468,510,511,512,513,514,515)
+replace stock_abbrev="NORTH" if inlist(area, 520,521,522,523,524,525,526,530,533,534,537,538,539,541,542)
+replace stock_abbrev="NORTH" if inlist(area, 543,551,552,560,561,562,611,612,613,616)
 
 /* For dealer records with no federal permit number (permit = '000000'), the CAMSID is built as PERMIT, HULLID, dealer partner id, dealer link, and dealer date with the format PERMIT_HULLID_PARTNER_LINK_YYMMDD000000
 do these camsids really correspond to a single "trip" or are they just state aggregated data?
 */
 /* merge deflators _merge=1 has been the current month */ 
 merge m:1 dateq using "${my_datapull}/data_folder/external/deflatorsQ_${in_string}.dta", keep(1 3)
-assert year==2025 & month>=5 if _merge==1
+assert year==2026 & month>=3 if _merge==1
 drop if _merge==1
 drop _merge
 gen valueR_CPI=value/fCPIAUCSL_2023Q1
@@ -195,16 +203,5 @@ replace semester=2 if month>=7
 
 
 save  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace
-
-/*use  "${data_main}\commercial\landings_cleaned_${vintage_string}.dta", replace */
-
-
-
-
-
-
-
-
-
 
 
