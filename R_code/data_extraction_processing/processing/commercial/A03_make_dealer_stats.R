@@ -34,7 +34,7 @@ landings<-landings %>%
 # Stata: bysort dlrid camsid market_desc: gen TransactionCount = (_n==1)
 # then collapse (sum). Net effect: count distinct camsid per dlrid x market_desc.
 historical <- landings %>%
-  filter(year >= 2010, year <= 2014) %>%
+  filter(year >= 2010, year <= 2012) %>%
   group_by(dlrid, camsid, market_desc) %>%
   mutate(TransactionCount = row_number() == 1L) %>%
   ungroup() %>%
@@ -74,9 +74,9 @@ historical_wide <- historical_wide %>%
   )
 
 for (s in sizes_hist) {
-  historical_wide[[glue("Share2014{s}")]] <-
+  historical_wide[[glue("Share2012{s}")]] <-
     historical_wide[[glue("DealerHLbsPurchased{s}")]] / historical_wide$totalland
-  historical_wide[[glue("Frac2014T{s}")]] <-
+  historical_wide[[glue("Frac2012T{s}")]] <-
     historical_wide[[glue("TransactionCount_{s}")]] / historical_wide$totaltrans
 }
 
