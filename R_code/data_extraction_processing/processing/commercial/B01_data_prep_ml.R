@@ -53,7 +53,7 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 # Directories 
 ###############################################################################
-here::i_am("R_code/data_extraction_processing/processing/data_prep_ml.R")
+here::i_am("R_code/data_extraction_processing/processing/commercial/B01_data_prep_ml.R")
 
 #traverse over to the DataPull repository
 mega_dir<-dirname(here::here())
