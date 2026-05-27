@@ -5,7 +5,14 @@
 #   - questionable_status_ (from "A01_make_landings_cleaned.R")
 
 
-# Outputs:
+# During the data prep stages, there is a bit of data that is removed from the training data (estimation
+# sample) fpr various reasons. This is mostly because of null values, but also because of prices that are too low
+# or too high, landings 'out of sample' or some sketchy stuff from DE/VA, and rows that 
+# were landed but not sold.
+ 
+# We put them in a dataset in the predictions folder.
+
+# Outputs: /data_folder/predictions/excluded_from_estimation_dataset  
 
 ###############################################################################
 # Packages 
@@ -73,23 +80,40 @@ excluded_from_estimation_dataset<-combined_dataset %>%
 excluded_from_estimation_dataset <-excluded_from_estimation_dataset %>%
    mutate(YEAR = as.numeric(as.character(year)),
           STOCK_ABBREV= as.character(toupper(stockarea)),
-          SEMESTER= as.integer(semester),
+          BLOCK_ID= as.integer(semester), #create block_id (for stockeff) that is the semester.
           MARKET_DESC = toupper(as.character(market_desc)),
           MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
                                    MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
+   )
   
+excluded_from_estimation_dataset<-excluded_from_estimation_dataset %>%
+  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_to_kg,.groups="drop_last")
 
 
-# load the "questionable" status dataset
-questionable_status<-readr::read_rds(file=here("data_folder","main","commercial",glue("questionable_status_{vintage_string}.Rds")))
 
-# 
-# 
- questionable_status<-questionable_status %>%
+# Load questionable status dataset
+
+qs <- readr::read_rds(file=here("data_folder","main","commercial",glue("questionable_status_{vintage_string}.Rds")))
+
+qs<-qs %>%
    mutate(YEAR = as.numeric(as.character(year)),
           STOCK_ABBREV= as.character(toupper(stockarea)),
-          SEMESTER= as.integer(semester),
+          BLOCK_ID= as.integer(semester), #create block_id (for stockeff) that is the semester.
           MARKET_DESC = toupper(as.character(market_desc)),
           MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
                                  MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
- 
+   )
+
+
+qs<-qs %>%
+  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_to_kg,.groups="drop_last")
+
+
+excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
+  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
+write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_estimation_dataset_{vintage_string}.Rds")))
+
+
