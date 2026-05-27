@@ -53,14 +53,15 @@ historical_wide <- historical %>%
   pivot_wider(
     id_cols     = dlrid,
     names_from  = mymarket,
+    names_sep = "",
     values_from = c(lndlb, TransactionCount),
     values_fill = 0L
   )
 
 # Rename lndlb columns to DealerHLbsPurchased{Size}
 historical_wide <- historical_wide %>%
-  rename_with(~ gsub("^lndlb_", "DealerHLbsPurchased", .x),
-              starts_with("lndlb_"))
+  rename_with(~ gsub("^lndlb", "DealerHLbsPurchased", .x),
+              starts_with("lndlb"))
 
 # Compute totals and shares across the four size categories
 sizes_hist <- c("Jumbo", "Large", "Medium", "Small")
@@ -69,7 +70,7 @@ historical_wide <- historical_wide %>%
   mutate(
     totalland  = rowSums(select(., paste0("DealerHLbsPurchased", sizes_hist)),
                          na.rm = TRUE),
-    totaltrans = rowSums(select(., paste0("TransactionCount_",    sizes_hist)),
+    totaltrans = rowSums(select(., paste0("TransactionCount",    sizes_hist)),
                          na.rm = TRUE)
   )
 
@@ -77,7 +78,7 @@ for (s in sizes_hist) {
   historical_wide[[glue("Share2012{s}")]] <-
     historical_wide[[glue("DealerHLbsPurchased{s}")]] / historical_wide$totalland
   historical_wide[[glue("Frac2012T{s}")]] <-
-    historical_wide[[glue("TransactionCount_{s}")]] / historical_wide$totaltrans
+    historical_wide[[glue("TransactionCount{s}")]] / historical_wide$totaltrans
 }
 
 historical_wide <- historical_wide %>%
