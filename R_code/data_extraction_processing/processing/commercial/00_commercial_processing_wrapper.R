@@ -28,6 +28,7 @@ my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
     
 in_string      <- "2026-05-01"   # matches Stata in_string / data-pull vintage
 vintage_string <- Sys.Date()   # matches Stata vintage_string / output vintage
+lbs_to_kg<-2.20462
 
 source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
