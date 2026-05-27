@@ -25,12 +25,17 @@ landings <- read_rds(
             glue("landings_all_{in_string}.Rds"))
 )
 
-# -----------------------------------------------------------------------------
-# Drop zero-pound landings
-# -----------------------------------------------------------------------------
+# fill dlr_date with record_land if it is missing. This happens for "not sold" records
 landings <- landings %>%
-  filter(lndlb != 0)
+  mutate( 
+    dlr_date = if_else(is.na(dlr_date), record_land, dlr_date) 
+  )
 
+# # -----------------------------------------------------------------------------
+# # Drop zero-pound landings
+# # -----------------------------------------------------------------------------
+# landings <- landings %>%
+#   filter(lndlb != 0)
 
 # -----------------------------------------------------------------------------
 # Drop unmatched species codes
