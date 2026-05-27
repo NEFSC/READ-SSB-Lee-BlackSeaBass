@@ -37,16 +37,7 @@ landings <- landings %>%
 # landings <- landings %>%
 #   filter(lndlb != 0)
 
-# -----------------------------------------------------------------------------
-# Drop unmatched species codes
-# merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
-# These are VTR discards, orphan species, novel market/grade codes.
-# -----------------------------------------------------------------------------
-count(landings %>%
-        filter(merge_species_codes==1))
 
-landings <- landings %>%
-  filter(merge_species_codes != 1)
 
 # -----------------------------------------------------------------------------
 # Date handling
@@ -56,36 +47,47 @@ landings <- landings %>%
 landings <- landings %>%
   mutate(
     dlr_date = as.Date(dlr_date),
-    dateq    = lubridate::quarter(dlr_date, with_year = TRUE)
+    dateq    = lubridate::quarter(dlr_date, with_year = TRUE),
+    dayofm = lubridate::mday(dlr_date) # dayofm is used later on to filter some questionable records from DE
+    
   )
 
 # -----------------------------------------------------------------------------
-# CAMS match status indicator
-# s2 = 1 if MATCH or DLR_ORPHAN_SPECIES
-# -----------------------------------------------------------------------------
-landings <- landings %>%
-  mutate(
-    s2  = as.integer(status %in% c("MATCH", "DLR_ORPHAN_SPECIES")),
-    day = lubridate::mday(dlr_date)
-  )
-
-# -----------------------------------------------------------------------------
-# Flag and drop suspect VA / DE records
+# Flag suspect records 
+# VA / DE records
 # VA: PZERO + specific dealer license numbers + year >= 2021
 # DE: PZERO + day-of-month == 1 + (price == 0 OR port == 80999)
+
+# Flag observations that have no market_desc. (merge_species_codes==1). This is
+ # VTR_ORPHAN_SPECIES, VTR_NOT_SOLD, VTR_NO_CATCH
 # -----------------------------------------------------------------------------
 landings <- landings %>%
   mutate(
     questionable_status = case_when(
       status == "PZERO" & state == "VA" &
-        dlr_cflic %in% c("2147", "1148") & year >= 2021         ~ 1L,
-      status == "PZERO" & state == "DE" & day == 1 & price == 0  ~ 1L,
-      status == "PZERO" & state == "DE" & day == 1 & port == 80999 ~ 1L,
+        dlr_cflic %in% c("2147", "1148") & year >= 2021            ~ 1L,
+      status == "PZERO" & state == "DE" & dayofm == 1 & price == 0    ~ 1L,
+      status == "PZERO" & state == "DE" & dayofm == 1 & port == 80999 ~ 1L,
+      merge_species_codes==1                                       ~ 1L, 
       TRUE                                                         ~ 0L
     )
   ) %>%
-  filter(questionable_status == 0) %>%
-  select(-questionable_status, -day, -s2)
+  select(-dayofm)
+
+
+
+table(landings$questionable_status)
+# -----------------------------------------------------------------------------
+# Drop unmatched species codes
+# merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
+# These should be only VTR discards, orphan species, novel market/grade codes.
+# -----------------------------------------------------------------------------
+no_codes<-landings %>%
+        filter(merge_species_codes==1)
+
+valid_vals<-c("VTR_DISCARD", "VTR_NO_CATCH", "VTR_NOT_SOLD", "VTR_ORPHAN_SPECIES")
+stopifnot(!anyNA(no_codes$status), all(no_codes$status %in% valid_vals))
+
 
 
 # -----------------------------------------------------------------------------
@@ -244,8 +246,29 @@ landings <- landings %>%
     semester   = if_else(month <= 6L, 1L, 2L)
   )
 
+
+# split dataset
+questionable_status<-landings%>%
+  filter(questionable_status == 1) 
 # -----------------------------------------------------------------------------
-# Save
+# Save questionalbe dataset
+# -----------------------------------------------------------------------------
+saveRDS(
+  landings,
+  file = here("data_folder", "main", "commercial",
+              glue("questionable_status_{vintage_string}.Rds"))
+)
+
+
+
+landings<-landings%>%
+  filter(questionable_status == 0) 
+
+# break if we have any rows with missing value
+stopifnot(!anyNA(landings$value) )
+
+# -----------------------------------------------------------------------------
+# Save cleaned dataset
 # -----------------------------------------------------------------------------
 saveRDS(
   landings,
