@@ -12,7 +12,7 @@
 ###############################################################################  
 
 # assign roles to predictors, outcome, groups, and weights
-BSB.Classification.Recipe <- recipe(train_data) %>%
+BSB.Classification.Recipe <- recipe(mini_df) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(myl_id), new_role = "ID variable") %>%
   update_role(c(mygear,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB, shore, nofederal, catch_share), new_role = "predictor")
@@ -30,7 +30,7 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(MA7_StockareaQJumbo, MA7_StockareaQLarge, MA7_StockareaQMedium, MA7_StockareaQSmall), new_role = "predictor")
 
 # Trailing 7 days landings, by state and market category   
- BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
   update_role(c(MA7_StateQJumbo, MA7_StateQLarge, MA7_StateQMedium, MA7_StateQSmall), new_role = "predictor") 
 
 # Trailing 7 day trips, by state and stock area.   
@@ -45,7 +45,7 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 
 # Dealer share of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.   
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall,first_dlr_year), new_role = "predictor") 
+  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall, first_dlr_year), new_role = "predictor") 
 
 # Dealer transaction count of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%

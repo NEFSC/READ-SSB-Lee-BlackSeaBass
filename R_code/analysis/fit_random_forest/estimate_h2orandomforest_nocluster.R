@@ -138,7 +138,7 @@ keep_cols <- c(
   "MA7_StockareaQJumbo",  "MA7_StockareaQLarge",  "MA7_StockareaQMedium",  "MA7_StockareaQSmall",
   "MA7_StateQJumbo",      "MA7_StateQLarge",      "MA7_StateQMedium",      "MA7_StateQSmall",
   "MA7_gearQJumbo",       "MA7_gearQLarge",       "MA7_gearQMedium",       "MA7_gearQSmall",
-  "MA7_stockarea_trips",  "MA7_state_trips",
+  "MA7_stockarea_trips",  "MA7_state_trips","first_dlr_year",
   "LagSharePoundsJumbo",  "LagSharePoundsLarge",  "LagSharePoundsMedium",  "LagSharePoundsSmall",
   "Price_Diff_J",         "Price_Diff_L",         "Price_Diff_M"
 )
@@ -165,9 +165,24 @@ nrow(validation_data)
 source(here("R_code", "analysis", "fit_random_forest", "BSB.h2o.Classification.Recipe.R"))
 source(here("R_code", "analysis", "fit_random_forest", "BSB.Workflow.h2o.Setup.R"))
 
-train_data %>% 
-  select(where(is.ordered)) %>% 
-  names()
+
+#Troubleshoot with this bit of code.
+#mini_df <- train_data #|>
+#  dplyr::slice_sample(n = 10000)
+#source(here("R_code", "analysis", "fit_random_forest", "BSB.h2o.mini.Recipe.R"))
+mini_spec <- rand_forest(trees = 500, mtry = 10, min_n = 1000) |>
+  set_engine("h2o", seed = 123L) |>
+  set_mode("classification")
+
+mini_wf <- workflow() |>
+  add_recipe(BSB.Classification.Recipe) |>
+  add_model(mini_spec)  |> 
+  add_case_weights(weighting)
+
+
+fit(mini_wf, data = mini_df)
+
+
 
 # ============================================================
 # Section 2: Tuning Grid
@@ -191,7 +206,7 @@ myfolds <- rsample::vfold_cv(train_data, strata = market_desc, v = 10)
 # The parallel_over = "everything" control argument is kept for API consistency
 # with the ranger version, but h2o will handle actual parallelism itself.
 
-rf_control_grid <- control_grid(save_pred = TRUE, parallel_over = "everything")
+rf_control_grid <- control_grid(save_pred = TRUE)
 start_time_tune <- Sys.time()
 set.seed(8675309)
 
@@ -216,7 +231,7 @@ end_time_tune - start_time_tune
 # Bayesian acquisition logic. If tune_bayes() produces errors or hangs, comment
 # out this block and proceed to Section 4 using tune_res instead of tune_res2.
 # In that case, also change 'select_best(tune_res2, ...)' to 'select_best(tune_res, ...)'.
-if(bayes_tune=TRUE){
+if(bayes_tune==TRUE){
 bayes_param <- BSB.H2O.Workflow %>%
   extract_parameter_set_dials() %>%
   update(mtry = finalize(mtry(), train_data))
@@ -249,7 +264,7 @@ write_rds(tune_res2, file = here("results", "h2o", tune_file_name))
 
 autoplot(tune_res2, type = "performance") +
   labs(title = "Did Bayesian optimization converge? (h2o)")
-}else{
+}else if (bayes_tune==FALSE){
   tune_res2<-tune_res
 }
 
