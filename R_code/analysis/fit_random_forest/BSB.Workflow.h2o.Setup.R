@@ -18,7 +18,7 @@
 # Conservative defaults leave headroom for R, the OS, and cross-validation overhead.
 
 h2o.init(
-  nthreads     = 8,    # adjust as needed; using 16 of ~24 available threads
+  nthreads     = 20,    # adjust as needed; using 16 of ~24 available threads
   max_mem_size = "72g"  # adjust as needed; using 72 of ~96 GB RAM
 )
 
