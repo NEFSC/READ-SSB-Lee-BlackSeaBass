@@ -84,7 +84,7 @@ foreach var of varlist valueR_CPI lndlb{
 */
 
 /* compute moving sums of landings and value */
-rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -14 -1) by(market_desc)
+rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -15 -1) by(market_desc)
 
 /* compute the moving average price by market category*/
 gen ma14price=valueR_CPI_sum/lndlb_sum
@@ -115,7 +115,7 @@ bysort myg: fillmissing subregion, with(any)
 
 /* compute moving sums of landings and value */
 
-rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -14 -1) by(myg)
+rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -15 -1) by(myg)
 gen ma14subregionprice=valueR_CPI_sum/lndlb_sum
 
 /* Drop out any moving average prices that have 5 or fewer days of data in 14 */
@@ -162,7 +162,7 @@ bysort myg: fillmissing subregion, with(any)
 
 /* compute moving sums of landings and value */
 
-rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -14 -1) by(myg)
+rangestat (sum) valueR_CPI (sum) lndlb (count) valueR_CPI, interval(dlr_date -15 -1) by(myg)
 gen ma14stateprice=valueR_CPI_sum/lndlb_sum
 
 /* Drop out any moving average prices that have 5 or fewer days of data in 14 */
