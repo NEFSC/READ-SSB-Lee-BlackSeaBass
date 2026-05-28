@@ -415,8 +415,8 @@ combined_dataset<-cleaned_landings %>%
     mutate(year=factor(year, levels=2013:2025, ordered=TRUE),
            month=factor(month, levels=1:12, ordered=FALSE), 
            semester=factor(semester, levels=1:2, ordered=FALSE), 
-           dlrid=factor(dlrid, ordered=FALSE)), 
-           region=factor(region, ordered=FALSE)), 
+           dlrid=factor(dlrid, ordered=FALSE), 
+           region=factor(region, ordered=FALSE), 
           market_desc=fct_drop(market_desc),
         year=fct_drop(year)
     ) 
@@ -496,6 +496,12 @@ combined_dataset<-combined_dataset %>%
 combined_dataset<-combined_dataset %>%
   rename(STOCK_ABBREV=stock_abbrev)
 
+
+# Create an indicator if it is the first year that we see a dealer (and )
+
+combined_dataset <- combined_dataset %>%
+  mutate(first_dlr_year = if_all(c(LagSharePoundsJumbo, LagSharePoundsLarge,
+                                   LagSharePoundsMedium,LagSharePoundsSmall), is.na))
 
 write_rds(combined_dataset, file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.Rds")))
 haven::write_dta(combined_dataset, path=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{out_data_string}.dta")))
