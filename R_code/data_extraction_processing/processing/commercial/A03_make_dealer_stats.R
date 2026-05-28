@@ -130,14 +130,20 @@ lag_stats <- lag_stats %>%
 lag_stats <- lag_stats %>%
   mutate(year = year + 1L)
 
+#there are no missing values. If a firm didn't buy any Medium, the dlrid-year-mymarket combination doesn't show up.
+# If a firm didn't buy anything, there is no row of data
+stopifnot(nrow(filter(lag_stats, if_any(c(LagSharePounds, LagShareTrans, LagPounds, LagTrans), is.na))) == 0)
+
+
+
 # Reshape wide
 lag_wide <- lag_stats %>%
   pivot_wider(
     id_cols     = c(dlrid, year),
     names_from  = mymarket,
     names_sep = "",
-    values_from = c(LagSharePounds, LagShareTrans, LagPounds, LagTrans)
-    # NAs left as NA: dealer did not buy that category that year
+    values_from = c(LagSharePounds, LagShareTrans, LagPounds, LagTrans),
+    values_fill = 0
   )
 
 # tsfill equivalent: complete all dlrid x year combinations within each dealer's
