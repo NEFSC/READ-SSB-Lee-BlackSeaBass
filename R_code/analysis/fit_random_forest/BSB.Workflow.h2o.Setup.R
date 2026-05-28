@@ -19,7 +19,7 @@
 
 h2o.init(
   nthreads     = 8,    # adjust as needed; using 16 of ~24 available threads
-  max_mem_size = "32g"  # adjust as needed; using 72 of ~96 GB RAM
+  max_mem_size = "72g"  # adjust as needed; using 72 of ~96 GB RAM
 )
 
 # ============================================================
@@ -48,10 +48,9 @@ tune_spec_h2o <- rand_forest(
     histogram_type  = "QuantilesGlobal",    # robust binning well-suited to large, skewed datasets
     sample_rate     = 0.632,                # bootstrap-equivalent row-sampling fraction (Breiman 2001)
     nbins           = 32,                   # number of histogram bins per feature; increase for finer splits
-    stopping_rounds = 0,                    # Do not do early stopping
-    varimp_type           = "permutation"   # request permutation importance
- 
+    stopping_rounds = 0                    # Do not do early stopping
  )
+case_weights_allowed(tune_spec_h2o)
 
 # ============================================================
 # Section 3: Workflow
