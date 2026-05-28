@@ -208,7 +208,7 @@ train_data <- training(data_split)
 
 validation_data <- validation(data_split)
 
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+source(here("R_code","analysis","fit_random_forest","BSB.h2o.Classification.Recipe.R"))
 search_type<-"Initial"
 
 
