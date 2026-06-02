@@ -4,21 +4,21 @@ conflicts_prefer(dplyr::filter())
 
 #' @title get_ages
 #' @description This function converts a dataframe of catch by SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, and BLOCK_ID
-#'    and return catch-at-age (CAA) by at the SPECIES_ITIS,STOCK_ABBREV, and YEAR level.  
+#'    and return landings-at-age (LAA) by at the SPECIES_ITIS,STOCK_ABBREV, and YEAR level.  
 #' @param species_itis A single character string specifying the ITIS code. Must match
 #'   SPECIES_ITIS values in out_of_sample_predictions.
 #' @param comm.land.res Data frame. Aggregate landings by block. Could be returned by get_stockeff() or constructed in an analogous way.  
 #' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_stockeff().
 #' @param landings.kg.name The name of the column that will contains landings, in kilograms in the input dataframe. 
-#' @param caa.new.name The name of the new column that will contains the Catch-at-Age returned by this function. 
+#' @param laa.new.name The name of the new column that will contains the Landings-at-Age returned by this function. 
 
 #'
-#' @return A data frame of catch-at-age with columns:
+#' @return A data frame of landings-at-age with columns:
 #' \itemize{
 #'   \item{STOCK_ABBREV}
 #'   \item{YEAR}
 #'   \item{AGE}
-#'   \item{CAA — Catch at age corresponding to comm.land.res}
+#'   \item{LAA — landings-at-age corresponding to comm.land.res}
 #' }
 #'
 #' @examples
@@ -29,19 +29,19 @@ conflicts_prefer(dplyr::filter())
 #'   connection   = connection
 #' )
 #'
-#' land.CAA <- get_ages(
+#' land.AA <- get_ages(
 #'   species_itis             = "167687",
 #'   comm.land.res            = stockeff_data$comm.land.res,
 #'   comm.land.length.age.res = stockeff_data$comm.land.length.age.res,
 #'   landings.kg.name="LANDINGS_KG",
-#'   caa.new.name = "CAA_NEW"
+#'   laa.new.name = "LAA_NEW"
 #' )
 
 get_ages <- function(      species_itis             = NULL,
                            comm.land.res            = NULL,
                            comm.land.length.age.res = NULL,
                            landings.kg.name="LANDINGS_KG",
-                           caa.new.name = "CAA_NEW") {
+                           laa.new.name = "LAA_NEW") {
 
   # --- Input validation -------------------------------------------------
   if (length(species_itis) != 1) stop("Only 1 species_itis code allowed")
@@ -71,8 +71,8 @@ get_ages <- function(      species_itis             = NULL,
   
   
   # --- BEGIN Output name validation -------------------------------------------------
-  if (!is.character(caa.new.name) || length(caa.new.name) != 1) {
-    stop("caa.new.name must be a single character string, e.g., \"CAA_NEW\"")
+  if (!is.character(laa.new.name) || length(laa.new.name) != 1) {
+    stop("laa.new.name must be a single character string, e.g., \"LAA_NEW\"")
   }
   
   
@@ -111,11 +111,11 @@ get_ages <- function(      species_itis             = NULL,
     )
 
   # --- Summarize to catch-at-age ----------------------------------------
-  # caa.new.name: apportioned numbers at age (NO_AT_AGE_LENGTH_NEW).
-  land.CAA <- comm.land.length.age %>%
+  # laa.new.name: apportioned numbers at age (NO_AT_AGE_LENGTH_NEW).
+  land.AA <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(!!sym(caa.new.name) := sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE), .groups = "drop")
+    summarize(!!sym(laa.new.name) := sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE), .groups = "drop")
 
 
-  return(land.CAA)
+  return(land.AA)
 }

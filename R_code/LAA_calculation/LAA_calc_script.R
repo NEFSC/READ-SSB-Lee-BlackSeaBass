@@ -163,49 +163,49 @@ out_of_sample_predictions2<-out_of_sample_predictions2 %>%
 # =============================================================================
 
 
-# Pass in bsb_stockeff$comm.land.res. This should match the stockeff CAA
+# Pass in bsb_stockeff$comm.land.res. This should match the stockeff Landings at age
 
 ages_stockeff<-get_ages(
   species_itis             = "167687",
   landings.kg.name         ="LANDINGS_KG",
   comm.land.res            = bsb_stockeff$comm.land.res,
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-  caa.new.name = "CAA_OLD"
+  laa.new.name = "LAA_OLD"
 )
 
 
-# Pass in aggregated_landings2. This is the CAA corresponding to the minimally processed CAMS data
+# Pass in aggregated_landings2. This is the LAA corresponding to the minimally processed CAMS data
 
 ages_CAMS<-get_ages(
   species_itis             = "167687",
   landings.kg.name         ="LANDINGS_CAMS_KG",
   comm.land.res            = aggregated_landings2,
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-  caa.new.name = "CAA_CAMS"
+  laa.new.name = "LAA_CAMS"
 )
 
-# Pass in aggregated_landings_nounc.  This is the CAA corresponding CAMS, WITHOUT any unclassified fish
+# Pass in aggregated_landings_nounc.  This is the LAA corresponding CAMS, WITHOUT any unclassified fish
 
 ages_CAMS_no_unclass<-get_ages(
   species_itis             = "167687",
   landings.kg.name         ="LANDINGS_CAMS_KG",
   comm.land.res            = aggregated_landings_nounc,
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-  caa.new.name = "CAA_No_Unclass"
+  laa.new.name = "LAA_No_Unclass"
 )
 
-# Pass in aggregated_landings_nounc.  CAA corresponding to the Unclassified fish in CAMS
+# Pass in aggregated_landings_nounc.  LAA corresponding to the Unclassified fish in CAMS
 
 ages_CAMS_only_unclass<-get_ages(
   species_itis             = "167687",
   landings.kg.name         ="LANDINGS_CAMS_KG",
   comm.land.res            = aggregated_landings_only_unc,
   comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-  caa.new.name = "CAA_Only_Unclass"
+  laa.new.name = "LAA_Only_Unclass"
 )
 
 
-# Pass in out_of_sample_predictions1.  CAA corresponding to the conservative predictions from the random forest
+# Pass in out_of_sample_predictions1.  LAA corresponding to the conservative predictions from the random forest
 
 
 ages_reclass <-
@@ -214,9 +214,9 @@ ages_reclass <-
     landings.kg.name         ="LANDINGS_KG_CATEGORY_APPORTION",
     comm.land.res            = out_of_sample_predictions1,
     comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-    caa.new.name = "CAA_reclass1"
+    laa.new.name = "LAA_reclass1"
   )
-# Pass in out_of_sample_predictions1.  CAA corresponding to the ambitious predictions from the random forest
+# Pass in out_of_sample_predictions1.  LAA corresponding to the ambitious predictions from the random forest
 
 ages_reclass_amb <-
   get_ages(
@@ -224,7 +224,7 @@ ages_reclass_amb <-
     landings.kg.name         ="LANDINGS_KG_CATEGORY_APPORTION",
     comm.land.res            = out_of_sample_predictions2,
     comm.land.length.age.res = bsb_stockeff$comm.land.length.age.res,
-    caa.new.name = "CAA_reclass_amb"
+    laa.new.name = "LAA_reclass_amb"
   )
 
 
@@ -237,15 +237,15 @@ ages_combined <-ages_stockeff %>%
   left_join(ages_reclass, by=join_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE)) %>%
   left_join(ages_reclass_amb, by=join_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE))
 
-# Is is reasonable to split apart the CAA calculation?
+# Is is reasonable to split apart the LAA calculation?
 # Do the "classifieds" separately from the "unclassifieds" and then add them together
 ages_combined<-ages_combined%>%
-  mutate(across(starts_with("CAA_"), ~replace_na(.x, 0)))
+  mutate(across(starts_with("LAA_"), ~replace_na(.x, 0)))
 
 check<-ages_combined %>%
-  mutate(caa_re_combine=CAA_No_Unclass + CAA_Only_Unclass) %>%
-  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA_CAMS, caa_re_combine) %>%
-  mutate(diff=CAA_CAMS-caa_re_combine,
+  mutate(laa_re_combine=LAA_No_Unclass + LAA_Only_Unclass) %>%
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, LAA_CAMS, laa_re_combine) %>%
+  mutate(diff=LAA_CAMS-laa_re_combine,
          diff_flag = as.integer(abs(diff) >1e-8)
   ) %>%
   arrange(-diff)
