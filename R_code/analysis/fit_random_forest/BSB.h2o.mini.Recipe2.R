@@ -11,7 +11,7 @@
 # I use this many times when I run different models, so it's good to have it in 1 place 
 ###############################################################################  
 
-# assign roles to predictors, outcome, groups, and weights
+# assign roles to predictors, outcome, and groups, 
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(myl_id), new_role = "ID variable") %>%
@@ -22,7 +22,7 @@ BSB.Classification.Recipe <- recipe(train_data) %>%
 #  update_role(c(StateOtherQJumbo, StateOtherQLarge, StateOtherQMedium, StateOtherQSmall), new_role = "predictor") 
 
 # stockarea-level daily Landings on "other" trips, by market category  
-#BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
+# BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 #  update_role(c(StockareaOtherQJumbo, StockareaOtherQLarge, StockareaOtherQMedium, StockareaOtherQSmall), new_role = "predictor") 
 
 # Trailing 7 days landings, by stockarea and market category   
@@ -35,17 +35,17 @@ BSB.Classification.Recipe <- recipe(train_data) %>%
 
 # Trailing 7 day trips, by state and stock area.   
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-#  update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor") 
+# update_role(c(MA7_stockarea_trips, MA7_state_trips), new_role = "predictor")
 
 # Trailing 7 day landing, by gear and market category    
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-#  update_role(c(MA7_gearQJumbo, MA7_gearQLarge,MA7_gearQMedium, MA7_gearQSmall), new_role = "predictor") 
+# update_role(c(MA7_gearQJumbo, MA7_gearQLarge,MA7_gearQMedium, MA7_gearQSmall), new_role = "predictor")
 
 
 
 # Dealer share of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.   
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-#  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall, first_dlr_year), new_role = "predictor") 
+# update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall, first_dlr_year), new_role = "predictor")
 
 # Dealer transaction count of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
@@ -58,10 +58,10 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 # You can't center the factor variables
 # RF doesn't benefit from normalization, so all I'm going to do is remove any 
 # zero variance predictors that might be hanging around. 
-BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
-  step_zv() %>%
-  step_mutate(state = factor(state, ordered = FALSE)) %>%
-  step_mutate(year = factor(year, ordered = FALSE))
+BSB.Classification.Recipe <- BSB.Classification.Recipe %>%
+  step_novel() %>%
+  step_zv(all_predictors())
+  
 
 
 recipe_summary<-BSB.Classification.Recipe %>%
