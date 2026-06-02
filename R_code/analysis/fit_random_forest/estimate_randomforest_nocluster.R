@@ -283,7 +283,7 @@ tune_res2 <- tune_bayes(
     extract = NULL,              # Don't extract additional info
     parallel_over = "everything" # Parallelize over resamples to save memory
     ),
-    metrics=metric_set(mn_log_loss)
+    metrics=metric_set(brier_class)
 )
 end_time_bt<-Sys.time()
 end_time_bt-start_time_bt
@@ -299,7 +299,7 @@ autoplot(tune_res2, type = "performance") +
 # Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
 best_tree <- tune_res2 %>%
-  select_best(metric = "mn_log_loss")
+  select_best(metric = "brier_class")
 
 best_tree
 
