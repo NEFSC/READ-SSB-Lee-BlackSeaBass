@@ -45,7 +45,7 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 
 # Dealer share of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.   
 BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
-  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall,first_dlr_year), new_role = "predictor") 
+  update_role(c(LagSharePoundsJumbo, LagSharePoundsLarge, LagSharePoundsMedium,LagSharePoundsSmall), new_role = "predictor") 
 
 # Dealer transaction count of landings by market category from previous year. Missing is the dealer did not purchase any BSB in previous year.
 #BSB.Classification.Recipe <-BSB.Classification.Recipe %>%

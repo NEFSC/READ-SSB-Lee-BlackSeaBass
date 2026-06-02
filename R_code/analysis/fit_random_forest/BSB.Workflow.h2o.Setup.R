@@ -13,13 +13,20 @@
 # Section 1: H2O Initialization
 # ============================================================
 
+# Shut down any existing h2o instance cleanly before starting fresh
+system("pkill -f 'h2o.jar'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+Sys.sleep(10)
+
+
 # Initialize h2o. Adjust nthreads and max_mem_size to match your hardware.
 # This container has approximately 24 threads and 96 GB RAM available.
 # Conservative defaults leave headroom for R, the OS, and cross-validation overhead.
 
 h2o.init(
-  nthreads     = 20,    # adjust as needed; using 16 of ~24 available threads
-  max_mem_size = "72g"  # adjust as needed; using 72 of ~96 GB RAM
+  nthreads     = 12,    # adjust as needed; using 16 of ~24 available threads
+  max_mem_size = "60g",  # adjust as needed; using 72 of ~96 GB RAM
+  log_dir      = here("results","h2o"),
+  log_level= "INFO"
 )
 
 # ============================================================
@@ -49,7 +56,7 @@ tune_spec_h2o <- rand_forest(
     sample_rate     = 0.632,                # bootstrap-equivalent row-sampling fraction (Breiman 2001)
     nbins           = 32,                   # number of histogram bins per feature; increase for finer splits
     stopping_rounds = 0                    # Do not do early stopping
- )
+  )
 case_weights_allowed(tune_spec_h2o)
 
 # ============================================================
@@ -65,6 +72,10 @@ BSB.H2O.Workflow <-
 
 hardhat::extract_parameter_set_dials(BSB.H2O.Workflow)
 
+finalized_params <- BSB.H2O.Workflow %>%
+  extract_parameter_set_dials() %>%
+  finalize(train_data) 
+  
 # ============================================================
 # Section 4: Metrics
 # ============================================================
@@ -84,25 +95,41 @@ class_and_probs_metrics <- metric_set(brier_class, mn_log_loss, roc_auc)
 # h20's min_n is the sum of frequency weights
 
 if (search_type == "Initial") {
+  
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(500L, 200000L))  # minimum weight (sum of frequency weights) required in a leaf node
+    )
+  
   h2o_grid <- grid_space_filling(
-    mtry(range  = c(5L, 35L)),   # number of candidate predictors sampled per split
-    min_n(range = c(500L, 200000L)),  # minimum weight (sum of frequency weights) required in a leaf node
+    finalized_params,   
     size = 24                    # number of grid points for initial exploration
   )
 }
 
 if (search_type == "Advanced") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(500L, 200000L))  # minimum weight (sum of frequency weights) required in a leaf node
+    )
+  
   h2o_grid <- grid_space_filling(
-    mtry(range  = c(10L, 35L)),  # tightened after initial search; upper bound near ~40 predictors
-    min_n(range = c(500L, 200000L)),  # minimum weight (sum of frequency weights)  required in a leaf node
-    size = 120                   # larger grid for refined hyperparameter search
+    finalized_params,   
+    size = 120                    # number of grid points for initial exploration
   )
 }
 
 if (search_type == "Prototype") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
+      min_n=min_n(range = c(500L, 2000L))  # minimum weight (sum of frequency weights) required in a leaf node
+    )
+  
   h2o_grid <- grid_space_filling(
-    mtry(range  = c(2L, npredict)), # full range; npredict comes from BSB.Classification.Recipe.R
-    min_n(range = c(1000L, 5000L)),  # minimum weight (sum of frequency weights)  required in a leaf node
-    size = 4                        # minimal grid; use only for quick code testing
-  )
+    finalized_params,   
+    size = 4                    # number of grid points for initial exploration
+  )    
 }
