@@ -59,8 +59,9 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 # RF doesn't benefit from normalization, so all I'm going to do is remove any 
 # zero variance predictors that might be hanging around. 
 BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
-  step_zv() 
-  
+  step_novel() %>%
+  step_zv(all_predictors())
+
 
 recipe_summary<-BSB.Classification.Recipe %>%
   summary() %>%
