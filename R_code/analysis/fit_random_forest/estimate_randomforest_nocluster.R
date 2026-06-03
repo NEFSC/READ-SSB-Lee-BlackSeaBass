@@ -30,7 +30,7 @@
 
 bayes_tune<-"FALSE"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -79,6 +79,14 @@ conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 
 here::i_am("R_code/analysis/fit_random_forest/estimate_randomforest_nocluster.R")
+
+# Kill background logger if it is on
+system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+message("CPU logger stopped")
+
+# start background logger
+source(here("R_code","analysis","helpers","background_logger.R"))
+
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -196,7 +204,7 @@ keep_cols<-c(keep_cols,"MA7_gearQJumbo", "MA7_gearQLarge","MA7_gearQMedium", "MA
 keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
 # keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
 # keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
-keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall")
+keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall", "first_dlr_year")
 #keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
 keep_cols<-c(keep_cols, "Price_Diff_J","Price_Diff_L", "Price_Diff_M") 
 
@@ -231,7 +239,7 @@ nrow(validation_data)
 # and predictor variables.
 source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
-
+# Set up the tuning workflow
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 set.seed(123)
@@ -245,7 +253,7 @@ rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
 
 tune_res <- tune_grid(
-  BSB.Ranger.Workflow,
+  BSB.Ranger.tuning.Workflow,
   resamples = myfolds,
   grid = rf_grid,
   control=rf_control_grid,
@@ -258,7 +266,7 @@ write_rds(tune_res, file=here("results","ranger", tune_file_name))
 end_time_tune<-Sys.time()
 end_time_tune-start_time_tune
 
-bayes_param <- BSB.Ranger.Workflow %>% 
+bayes_param <- BSB.Ranger.tuning.Workflow %>% 
   extract_parameter_set_dials() %>% 
   update(mtry = finalize(mtry(), train_data))
 
@@ -271,7 +279,7 @@ if(bayes_tune==TRUE){
   start_time_bt<-Sys.time()
   
   tune_res2 <- tune_bayes(
-    object=BSB.Ranger.Workflow,
+    object=BSB.Ranger.tuning.Workflow,
     resamples = myfolds,
     initial = tune_res,
     param_info=bayes_param,
@@ -307,16 +315,27 @@ tune_res2 %>%
 
 # Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
 
-best_tree <- tune_res2 %>%
+best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
-best_tree
+best_params
+
+
+final_spec <- tune_spec %>%
+  finalize_model(best_params) %>%
+  set_engine("ranger",
+             num.threads = !!my.ranger.threads, 
+             na.action = "na.learn", 
+             respect.unordered.factors = "order",
+             importance = "permutation", # Turned ON for final variable importance
+             oob.error = FALSE,          # Kept OFF 
+             keep.inbag = FALSE,         # Kept OFF to save memory
+             probability = TRUE, 
+             write.forest = TRUE)
 
 # finalize model by picking the best model hyperparameters
-final_wf <- 
-  BSB.Ranger.Workflow %>% 
-  finalize_workflow(best_tree)
-
+final_wf  <- BSB.Ranger.tuning.Workflow %>%
+  update_model(final_spec)
 
 # Final model fitting on the full training dataset 
 final_fit <- 
@@ -337,5 +356,9 @@ end_time
 
 end_time-start_time
 sessionInfo()
+
+
+system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+message("CPU logger stopped")
 
 cat("All done")
