@@ -28,7 +28,7 @@
 # works.
 
 
-bayes_tune<-"FALSE"
+bayes_tune<-"TRUE"
 
 search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
@@ -65,7 +65,7 @@ library("knitr")
 library("kableExtra")
 library("viridis")
 library("future")
-		   
+library("vip")		   
 library("conflicted")
 
 #deal with conflicts
@@ -77,7 +77,7 @@ conflicts_prefer(yardstick::spec())
 conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
-
+conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/estimate_randomforest_nocluster.R")
 
 # Kill background logger if it is on
@@ -253,6 +253,7 @@ set.seed(8675309)
 
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
+
 
 tune_res <- tune_grid(
   BSB.Ranger.tuning.Workflow,
