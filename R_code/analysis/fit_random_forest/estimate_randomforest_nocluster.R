@@ -28,12 +28,13 @@
 # works.
 
 
+bayes_tune<-"FALSE"
 
-search_type<-"Advanced"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-#testing_fraction<-1					  
+testing_fraction<-0.3					  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -261,39 +262,47 @@ bayes_param <- BSB.Ranger.Workflow %>%
   extract_parameter_set_dials() %>% 
   update(mtry = finalize(mtry(), train_data))
 
+if(bayes_tune==TRUE){
+  
+  # Do a tune_bayes
+  plan("multisession", workers=my.parallel.threads)
+  set.seed(9035768)
+  
+  start_time_bt<-Sys.time()
+  
+  tune_res2 <- tune_bayes(
+    object=BSB.Ranger.Workflow,
+    resamples = myfolds,
+    initial = tune_res,
+    param_info=bayes_param,
+    iter = 30,                     # 
+    control = control_bayes(
+      verbose = TRUE,
+      no_improve=10,
+      save_pred = TRUE,             # Save predictions for analysis
+      save_workflow = FALSE,        # Save memory
+      extract = NULL,              # Don't extract additional info
+      parallel_over = "everything" # Parallelize over resamples to save memory
+      ),
+      metrics=metric_set(brier_class)
+  )
+  end_time_bt<-Sys.time()
+  end_time_bt-start_time_bt
+  
+  plan(sequential)
+  write_rds(tune_res2, file=here("results","ranger", tune_file_name))
+  
+  autoplot(tune_res2, type = "performance") +
+    labs(title = "Did Bayesian optimization converge?")
+}else if (bayes_tune==FALSE){
+  tune_res2<-tune_res
+}
 
-
-# Do a tune_bayes
-plan("multisession", workers=my.parallel.threads)
-set.seed(9035768)
-
-start_time_bt<-Sys.time()
-
-tune_res2 <- tune_bayes(
-  object=BSB.Ranger.Workflow,
-  resamples = myfolds,
-  initial = tune_res,
-  param_info=bayes_param,
-  iter = 30,                     # 
-  control = control_bayes(
-    verbose = TRUE,
-    no_improve=10,
-    save_pred = TRUE,             # Save predictions for analysis
-    save_workflow = FALSE,        # Save memory
-    extract = NULL,              # Don't extract additional info
-    parallel_over = "everything" # Parallelize over resamples to save memory
-    ),
-    metrics=metric_set(brier_class)
-)
-end_time_bt<-Sys.time()
-end_time_bt-start_time_bt
-
-plan(sequential)
-write_rds(tune_res2, file=here("results","ranger", tune_file_name))
-
-autoplot(tune_res2, type = "performance") +
-  labs(title = "Did Bayesian optimization converge?")
-
+tune_res2 %>%
+  tune::collect_notes() %>%
+  dplyr::filter(type == "error") %>%
+  dplyr::select(location, note) %>%
+  print(width = 200)
 
 
 # Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
