@@ -134,11 +134,13 @@ estimation_vintage<-as.character(Sys.Date())
 data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
 tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
 final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-
+vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
 if  (search_type=="Prototype"){
   data_save_name<-glue("nocluster_data_split_TEST{estimation_vintage}.Rds")
   tune_file_name<-glue("BSB_ranger_nocluster_tune_TEST{estimation_vintage}.Rds")
   final_fit_file_name<-glue("BSB_ranger_nocluster_results_TEST{estimation_vintage}.Rds")
+  vi_file_name<-glue("BSB_ranger_nocluster_VI_TEST{estimation_vintage}.Rds")
+  
   
 }
 
@@ -320,18 +322,52 @@ best_params <- tune_res2 %>%
 
 best_params
 
+# variable importance spec
+vi_spec <- tune_spec %>%
+  finalize_model(best_params) %>%
+  set_engine("ranger",
+             num.threads = !!my.ranger.threads, 
+             na.action = "na.learn", 
+             respect.unordered.factors = "order",
+             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
+             oob.error = FALSE,          # Kept OFF 
+             keep.inbag = FALSE,         # Kept OFF to save memory
+             probability = TRUE, 
+             write.forest = TRUE)
 
+# finalize model by picking the best model hyperparameters
+vi_wf  <- BSB.Ranger.tuning.Workflow %>%
+  update_model(vi_spec)
+
+# Final model fitting on the full training dataset 
+vi_fit <- 
+  vi_wf %>%
+  last_fit(data_split, metrics=class_and_probs_metrics) 
+
+
+
+
+vi_data<-vi_fit%>%
+  extract_fit_parsnip() %>%
+  vi(method = "model") 
+
+write_rds(final_fit, file=here("results","ranger",vi_file_name))
+
+############################################
+# variable importance spec
 final_spec <- tune_spec %>%
   finalize_model(best_params) %>%
   set_engine("ranger",
              num.threads = !!my.ranger.threads, 
              na.action = "na.learn", 
              respect.unordered.factors = "order",
-             importance = "permutation", # Turned ON for final variable importance
+             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
              oob.error = FALSE,          # Kept OFF 
              keep.inbag = FALSE,         # Kept OFF to save memory
              probability = TRUE, 
              write.forest = TRUE)
+
+
 
 # finalize model by picking the best model hyperparameters
 final_wf  <- BSB.Ranger.tuning.Workflow %>%
