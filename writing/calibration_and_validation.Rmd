@@ -14,10 +14,10 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: nocluster
+    value: noclusterTEST
     choices:
     - nocluster
-    - TS_nocluster
+    - noclusterTEST
 ---
 
 # Summary and Housekeeping
@@ -134,10 +134,10 @@ if (modeltype=="standard"){
   data_pattern<-"nocluster_data_split"
   tuning_pattern<-"BSB_ranger_nocluster_tune"
   final_pattern<-"BSB_ranger_nocluster_results"
-} else if (modeltype=="TS_nocluster"){
-  data_pattern<-"nocluster_TS_data_split"
-  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
-  final_pattern<-"BSB_ranger_TS_nocluster_results"
+} else if (modeltype=="noclusterTEST"){
+  data_pattern<-"nocluster_data_split_TEST"
+  tuning_pattern<-"BSB_ranger_nocluster_tune_TEST"
+  final_pattern<-"BSB_ranger_nocluster_results_TEST"
 }else {
   stop("Unknown modeltype")
 }
