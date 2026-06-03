@@ -39,11 +39,11 @@ tune_spec <- rand_forest(
              num.threads=!!my.ranger.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="permutation",
-             oob.error = TRUE,
-             keep.inbag=TRUE,
-             probability = TRUE,
-             write.forest=TRUE)
+             importance="none", # default, but I don't need importance for tuning.
+             oob.error = FALSE, # not used.
+             keep.inbag=FALSE, # default, but explicit 
+             probability = TRUE, # set to a probability model
+             write.forest=TRUE) # default, but explicity
 case_weights_allowed(tune_spec)
 
 
