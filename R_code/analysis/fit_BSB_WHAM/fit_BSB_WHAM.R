@@ -36,6 +36,7 @@ library(here)
 library(glue)
 # Source all the functions in LAA_calculation file:
 r_files <- list.files(path = "R_code/LAA_calculation/", pattern = "\\.[rR]$", full.names = TRUE)
+r_files <- r_files[!grepl("script", r_files, ignore.case = TRUE)]
 lapply(r_files, source)
 
 # Read in the true BSB data:
@@ -102,8 +103,9 @@ CAA.prop <- CAA.wide %>% select(REGION,YEAR,c(as.character(1:8))) %>%
 # saveRDS(fit,file="data_folder/assessment/BSB_2025MT_Fit.rds")
 
 # Replace the catch proportions data:
-BSB_2025MT_Input$data$catch_paa[1,,] <- CAA1.prop %>% filter(REGION=='NORTH') %>% select(3:last_col()) %>% as.matrix()
-BSB_2025MT_Input$data$catch_paa[3,,] <- CAA1.prop %>% filter(REGION=='SOUTH') %>% select(3:last_col()) %>% as.matrix()
+BSB_2025MT_Input$data$catch_paa[1,,] <- CAA.prop %>% filter(REGION=='NORTH') %>% select(3:last_col()) %>% as.matrix()
+BSB_2025MT_Input$data$catch_paa[3,,] <- CAA.prop %>% filter(REGION=='SOUTH') %>% select(3:last_col()) %>% as.matrix()
+
 
 # Try to fit without any bells and whistles:
 # tfit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = F, do.retro = T, do.brps = FALSE)
@@ -118,7 +120,7 @@ saveRDS(fit,file="data_folder/assessment/BSB_Apportion_Fit.rds")
 ############################################################################### 
 
 BSB_2025MT <- readRDS("data_folder/assessment/BSB_2025MT_Fit.rds")
-BSB_Reapportio1 <- readRDS("data_folder/assessment/BSB_Apportion_Fit.rds")
+BSB_Reapportion <- readRDS("data_folder/assessment/BSB_Apportion_Fit.rds")
 
 mods <- list(BSB_2025MT=BSB_2025MT,BSB_Reapportion = BSB_Reapportion)
 compare_wham_models(mods,fdir = file.path("R_code/analysis/fit_BSB_WHAM"),calc.aic = FALSE, do.table=F)
