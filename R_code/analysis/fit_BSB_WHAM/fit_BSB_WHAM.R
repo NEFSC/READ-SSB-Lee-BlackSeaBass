@@ -106,6 +106,7 @@ CAA.prop <- CAA.wide %>% select(REGION,YEAR,c(as.character(1:8))) %>%
 BSB_2025MT_Input$data$catch_paa[1,,] <- CAA.prop %>% filter(REGION=='NORTH') %>% select(3:last_col()) %>% as.matrix()
 BSB_2025MT_Input$data$catch_paa[3,,] <- CAA.prop %>% filter(REGION=='SOUTH') %>% select(3:last_col()) %>% as.matrix()
 
+
 # Try to fit without any bells and whistles:
 # tfit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = F, do.retro = T, do.brps = FALSE)
 
