@@ -111,9 +111,9 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 	  
 	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
-  # Because the dataset is big, you are much better off doing 2 and 10 (or 1 and 22)
+  # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
   my.parallel.threads<-2
-  my.ranger.multi.threads<-10
+  my.ranger.multi.threads<-11
   my.ranger.sequential.threads<-20
   
   
