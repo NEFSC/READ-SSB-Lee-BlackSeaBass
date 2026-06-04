@@ -322,7 +322,11 @@ best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
 best_params
-
+########################################################################################################
+# Final fit with impurity_correction.  Permutation is better, but an uncount() handling of weighted observations makes the 
+# OOB not truly "out of the bag".  Impurity corrected is the next best alternative, however it is not appropriate for predictions.
+# Therefore, we fit the model once to get the proper variable importance, then we refit to get the true 'last model' for predictions.
+########################################################################################################
 # variable importance spec
 vi_spec <- tune_spec %>%
   finalize_model(best_params) %>%
@@ -354,9 +358,11 @@ vi_data<-vi_fit%>%
   vi(method = "model") 
 
 write_rds(vi_data, file=here("results","ranger",vi_file_name))
+########################################################################################################
+########################################################################################################
 
 ############################################
-# variable importance spec
+# Final fit spec
 final_spec <- tune_spec %>%
   finalize_model(best_params) %>%
   set_engine("ranger",
