@@ -340,6 +340,7 @@ vi_spec <- tune_spec %>%
 vi_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(vi_spec)
 
+set.seed(132564)
 # Final model fitting on the full training dataset 
 vi_fit <- 
   vi_wf %>%
@@ -352,7 +353,7 @@ vi_data<-vi_fit%>%
   extract_fit_parsnip() %>%
   vi(method = "model") 
 
-write_rds(final_fit, file=here("results","ranger",vi_file_name))
+write_rds(vi_data, file=here("results","ranger",vi_file_name))
 
 ############################################
 # variable importance spec
@@ -373,6 +374,7 @@ final_spec <- tune_spec %>%
 # finalize model by picking the best model hyperparameters
 final_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(final_spec)
+set.seed(132564)
 
 # Final model fitting on the full training dataset 
 final_fit <- 
