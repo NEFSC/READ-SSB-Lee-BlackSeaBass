@@ -14,10 +14,10 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: nocluster
+    value: noclusterTEST
     choices:
     - nocluster
-    - TS_nocluster
+    - noclusterTEST
 ---
 
 # Summary and Housekeeping
@@ -124,24 +124,8 @@ my.ranger.threads<-7
 
 here::i_am("writing/calibration_and_validation.Rmd")
 
-
-# You've estimated a few difference models, this sets the 
-if (modeltype=="standard"){
-  data_pattern<-"data_split"
-  tuning_pattern<-"BSB_ranger_tune"
-  final_pattern<-"BSB_ranger_results"
-} else if (modeltype=="nocluster"){
-  data_pattern<-"nocluster_data_split"
-  tuning_pattern<-"BSB_ranger_nocluster_tune"
-  final_pattern<-"BSB_ranger_nocluster_results"
-} else if (modeltype=="TS_nocluster"){
-  data_pattern<-"nocluster_TS_data_split"
-  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
-  final_pattern<-"BSB_ranger_TS_nocluster_results"
-}else {
-  stop("Unknown modeltype")
-}
-
+#handle model patterns
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
 
 
 
@@ -247,9 +231,11 @@ Look at the VIP, ROC, and PR curves
 ```{r VIP}
 # Look at variable importance. I want to see all the predictors.
 # The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Permutation"
-vi_data <- final_fit %>%
-  extract_fit_parsnip() %>%
-  vi(method = "model") %>%          # pulls ranger's permutation importance
+
+vi_data<-read_rds(file=here("results","ranger",glue("{vi_pattern}{finalfit_vintage}.Rds")))
+
+
+vi_data <- vi_data %>%
   #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
   mutate(
     Variable = forcats::fct_reorder(Variable, Importance),

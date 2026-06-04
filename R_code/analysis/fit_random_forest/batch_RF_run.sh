@@ -7,8 +7,8 @@
 
 #Run from the project root
 Rscript --no-save --no-restore --verbose \
-  ./R_code/analysis/fit_random_forest/estimate_orandomforest_nocluster.R \
-  2>&1 | stdbuf -oL -eL tee ./results/h2o/estimate_orandomforest_nocluster.log
+  ./R_code/analysis/fit_random_forest/estimate_randomforest_nocluster.R \
+  2>&1 | stdbuf -oL -eL tee ./results/ranger/estimate_randomforest_nocluster.log
 
 
 # Rscript --no-save --no-restore --verbose ./estimate_5class_randomforest.R > estimate_5class_randomforest.log 2>&1

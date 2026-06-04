@@ -36,26 +36,30 @@ tune_spec <- rand_forest(
 ) %>%
   set_mode("classification") %>%
   set_engine("ranger",
-             num.threads=!!my.ranger.threads, 
+             num.threads=!!my.ranger.multi.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="permutation",
-             oob.error = TRUE,
-             keep.inbag=TRUE,
-             probability = TRUE,
-             write.forest=TRUE)
+             importance="none", # default, but I don't need importance for tuning.
+             oob.error = FALSE, # not used.
+             keep.inbag=FALSE, # default, but explicit 
+             probability = TRUE, # set to a probability model
+             write.forest=TRUE) # default, but explicit
 case_weights_allowed(tune_spec)
 
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
-BSB.Ranger.Workflow <-
+BSB.Ranger.tuning.Workflow <-
   workflow() %>%
   add_model(tune_spec) %>% 
   add_recipe(BSB.Classification.Recipe) %>%
   add_case_weights(weighting)
 
 
-hardhat::extract_parameter_set_dials(BSB.Ranger.Workflow)
+hardhat::extract_parameter_set_dials(BSB.Ranger.tuning.Workflow)
+
+finalized_params <- BSB.Ranger.tuning.Workflow %>%
+  extract_parameter_set_dials() %>%
+  finalize(train_data) 
 
 # pass in a bunch of metrics
 # if the recipe/workflow is case_weight aware, the metrics are also case-weight aware
@@ -67,34 +71,49 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 # Set up a set of mtry to search over. 
 
 # I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
-if  (search_type=="Initial"){
-  rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(5L, 35)),           # Number of variables per split
-    min_n(range = c(5L, 100L)),         # Minimum observations per node
-    size = 24                          # Grid size for initial exploration
+if (search_type == "Initial") {
+  
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(5L, 100))  # minimum points in a leaf node
+    )
+  
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 24                    # number of grid points for initial exploration
   )
 }
 
 # The initial grid search found an optimal min_n parameter on the boundary of my grid (min_n=100). 
 # Very small mtry and min_n did poorly, so did mtry approaching the number of factors, so I've tightened up the boundaries of the grid a bit.
 # And I've added 
-if  (search_type=="Advanced"){
-  rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(10L, 35)),           # Number of variables per split
-    min_n(range = c(10L, 300)),         # Minimum observations per node
-    size = 120                          # Grid size for initial exploration
-  )
+if (search_type == "Advanced") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(10L, 300L))  # minimum points in a leaf nodee
+    )
   
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 120                    # number of grid points for initial exploration
+  )
 }
-
 
 
 # Overwite mtry rf_grid for testing=true to speed prototyping
-if  (search_type=="Prototype"){
-  rf_grid<-  param_grid <- grid_space_filling(
-    mtry(range = c(2L, npredict)),           # Number of variables per split
-    min_n(range = c(5L, 50L)),         # Minimum observations per node
-    size = 4                          # Grid size for initial exploration
-  )
-}
 
+
+if (search_type == "Prototype") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
+      min_n=min_n(range = c(5L, 50L))  # minimum points in a leaf node
+    )
+  
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 4                    # number of grid points for initial exploration
+  )    
+}

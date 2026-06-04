@@ -18,10 +18,10 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: nocluster
+    value: noclusterTEST
     choices:
     - nocluster
-    - TS_nocluster
+    - noclusterTEST
 ---
 
 # Summary and Housekeeping
@@ -130,23 +130,7 @@ my.ranger.threads<-7
 
 here::i_am("writing/final_fit.Rmd")
 
-
-# You've estimated a few difference models, this sets the 
-if (modeltype=="standard"){
-  data_pattern<-"data_split"
-  tuning_pattern<-"BSB_ranger_tune"
-  final_pattern<-"BSB_ranger_results"
-} else if (modeltype=="nocluster"){
-  data_pattern<-"nocluster_data_split"
-  tuning_pattern<-"BSB_ranger_nocluster_tune"
-  final_pattern<-"BSB_ranger_nocluster_results"
-} else if (modeltype=="TS_nocluster"){
-  data_pattern<-"nocluster_TS_data_split"
-  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
-  final_pattern<-"BSB_ranger_TS_nocluster_results"
-}else {
-  stop("Unknown modeltype")
-}
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
 
 
 
