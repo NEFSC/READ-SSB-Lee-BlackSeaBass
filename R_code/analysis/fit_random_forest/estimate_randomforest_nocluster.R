@@ -28,13 +28,13 @@
 # works.
 
 
-bayes_tune<-"TRUE"
+bayes_tune<-"FALSE"
 
 search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-0.3					  
+testing_fraction<-0.5					  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -106,16 +106,20 @@ if(platform == 'Windows'){
 }
 
 if (runClass %in% c('Local', 'Windows')){
-  my.parallel.threads<-parallel::detectCores() -2 
+  my.parallel.threads<-1
+  my.ranger.multi.threads<-5
 } else if (runClass %in% c('Container','DynamicContainer')){ 
-					  
-												
+	  
+	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)										
   my.parallel.threads<-4
+  my.ranger.multi.threads<-5
+  my.ranger.sequential.threads<-20
+  
   
 }
 my.ranger.threads<-5
 lbs_per_mt<-2204.62
-# a parallel instance here seems to use around 12-15gb of ram.  So 2 parallel and 7 threads uses about half of my ram, there's a little creep up.
+# my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
 
 options(future.globals.maxSize = 2 * 1024^3)
 
@@ -254,6 +258,7 @@ set.seed(8675309)
 rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
 start_time_tune<-Sys.time()
 
+message("Tuning model hyperparameters", Sys.time())
 
 tune_res <- tune_grid(
   BSB.Ranger.tuning.Workflow,
@@ -262,7 +267,8 @@ tune_res <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-plan(sequential)
+plan("sequential")
+message("Grid Tuning Finished", Sys.time())
 
 
 write_rds(tune_res, file=here("results","ranger", tune_file_name))
@@ -274,6 +280,7 @@ bayes_param <- BSB.Ranger.tuning.Workflow %>%
   update(mtry = finalize(mtry(), train_data))
 
 if(bayes_tune==TRUE){
+message("Performing Bayesian Tuning", Sys.time())
   
   # Do a tune_bayes
   plan("multisession", workers=my.parallel.threads)
@@ -300,12 +307,15 @@ if(bayes_tune==TRUE){
   end_time_bt<-Sys.time()
   end_time_bt-start_time_bt
   
-  plan(sequential)
+  plan("sequential")
   write_rds(tune_res2, file=here("results","ranger", tune_file_name))
+  message("Bayesian Tuning Finished", Sys.time())
   
   autoplot(tune_res2, type = "performance") +
     labs(title = "Did Bayesian optimization converge?")
 }else if (bayes_tune==FALSE){
+  message("Bayesian Tuning Skipped")
+  
   tune_res2<-tune_res
 }
 
@@ -328,10 +338,14 @@ best_params
 # Therefore, we fit the model once to get the proper variable importance, then we refit to get the true 'last model' for predictions.
 ########################################################################################################
 # variable importance spec
+
+# A threading note 
+# here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
+
 vi_spec <- tune_spec %>%
   finalize_model(best_params) %>%
   set_engine("ranger",
-             num.threads = !!my.ranger.threads, 
+             num.threads = !!my.ranger.sequential.threads, 
              na.action = "na.learn", 
              respect.unordered.factors = "order",
              importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
@@ -345,7 +359,9 @@ vi_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(vi_spec)
 
 set.seed(132564)
+
 # Final model fitting on the full training dataset 
+message("Fitting model to estimate variable importance.", Sys.time())
 vi_fit <- 
   vi_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
@@ -356,6 +372,7 @@ vi_fit <-
 vi_data<-vi_fit%>%
   extract_fit_parsnip() %>%
   vi(method = "model") 
+message("Variable Importance Model fit finished", Sys.time())
 
 write_rds(vi_data, file=here("results","ranger",vi_file_name))
 ########################################################################################################
@@ -366,7 +383,7 @@ write_rds(vi_data, file=here("results","ranger",vi_file_name))
 final_spec <- tune_spec %>%
   finalize_model(best_params) %>%
   set_engine("ranger",
-             num.threads = !!my.ranger.threads, 
+             num.threads = !!my.ranger.sequential.threads, 
              na.action = "na.learn", 
              respect.unordered.factors = "order",
              importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
@@ -383,10 +400,12 @@ final_wf  <- BSB.Ranger.tuning.Workflow %>%
 set.seed(132564)
 
 # Final model fitting on the full training dataset 
+message("Fitting final model:...")
 final_fit <- 
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
 
+message("Final model fit finished.", Sys.time())
 
 
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
