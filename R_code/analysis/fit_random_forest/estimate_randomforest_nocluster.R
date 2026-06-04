@@ -30,11 +30,11 @@
 
 bayes_tune<-"FALSE"
 
-search_type<-"Prototype"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-0.5					  
+testing_fraction<-1			  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -110,9 +110,10 @@ if (runClass %in% c('Local', 'Windows')){
   my.ranger.multi.threads<-5
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 	  
-	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)										
-  my.parallel.threads<-4
-  my.ranger.multi.threads<-5
+	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
+  # Because the dataset is big, you are much better off doing 2 and 10 (or 1 and 22)
+  my.parallel.threads<-2
+  my.ranger.multi.threads<-10
   my.ranger.sequential.threads<-20
   
   
