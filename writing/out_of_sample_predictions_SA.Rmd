@@ -127,10 +127,25 @@ if (runClass %in% c('Local', 'Windows')){
 }
 my.ranger.threads<-7
 
-here::i_am("writing/out_of_sample_predictions.Rmd")
+here::i_am("writing/out_of_sample_predictions_SA.Rmd")
 
-#handle model patterns
-source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+
+# You've estimated a few difference models, this sets the 
+if (modeltype=="standard"){
+  data_pattern<-"data_split"
+  tuning_pattern<-"BSB_ranger_tune"
+  final_pattern<-"BSB_ranger_results"
+} else if (modeltype=="nocluster"){
+  data_pattern<-"nocluster_data_split"
+  tuning_pattern<-"BSB_ranger_nocluster_tune"
+  final_pattern<-"BSB_ranger_nocluster_results"
+} else if (modeltype=="TS_nocluster"){
+  data_pattern<-"nocluster_TS_data_split"
+  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
+  final_pattern<-"BSB_ranger_TS_nocluster_results"
+}else {
+  stop("Unknown modeltype")
+}
 
 
 
@@ -152,24 +167,19 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
-data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
-data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
-data_vintage_string<-gsub(".Rds","",data_vintage_string)
-data_vintage_string<-max(data_vintage_string)
-
-
 tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
 tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
-# My "final fit" bombed out because I didn't have drive space.  
-# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
-# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
-# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
-# finalfit_vintage<-max(finalfit_vintage)
-
 finalfit_vintage<-tuning_vintage
+
+
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("PRED_BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("PRED_BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
+
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
@@ -177,13 +187,8 @@ vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
 
-
-raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
-raw_oos_data_vintage_string<-gsub("BSB_unclassified_dataset","",raw_oos_data_vintage_string)
-raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
-raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
-
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
+#have to read in the combined dataset to get the state levels properly done.
+combined_dataset<-read_rds(file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{vintage_string}.Rds")))
 
 
 ```
@@ -214,11 +219,21 @@ num_preds<-nrow(preds)
 # Read in the out-of-sample data
 # from data_prep.ml.R
 # this contains ALL unclassifieds, however, only unclassifieds with mark_in==1 should get a prediction
-oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("PRED_BSB_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
 #tack on original market_category and SPECIES_ITIS
 oos_data<-oos_data %>%
   mutate(original_market_category=market_desc,
          SPECIES_ITIS="167687")
+
+
+# Apply levels from main dataset 
+oos_data<-oos_data %>%
+mutate(
+    state = factor(state, 
+                   levels = levels(combined_dataset$state), 
+                   ordered = TRUE)
+  )
+
 
 
 oos_predictable<-oos_data %>%
@@ -226,6 +241,9 @@ oos_predictable<-oos_data %>%
 
 oos_unpredictable<-oos_data %>%
   filter(mark_in!=1) 
+
+
+
 
 
 
@@ -347,7 +365,7 @@ YRS_predictions<-YRS_predictions %>%
     select(YEAR,SEMESTER, STOCK_ABBREV,MARKET_DESC_ORIG, SPECIES_ITIS,MARKET_DESC,LANDINGS_KG_CATEGORY_APPORTION) 
 
 
-write_rds(YRS_predictions, file=here("data_folder","predictions",glue("out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(YRS_predictions, file=here("data_folder","predictions",glue("SA_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 
 # Column Names
@@ -459,7 +477,7 @@ padded<-padded %>%
 stopifnot(nrow(padded)==nrow(YRS_predictions))
 #YRS -- year, region, SEMESTER
 
-write_rds(padded, file=here("data_folder","predictions",glue("ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
+write_rds(padded, file=here("data_folder","predictions",glue("SA_ambitious_out_of_sample_predictions_YRS_{modeltype}{finalfit_vintage}.Rds")))
 
 # Column Names
 # This gets consumed by the LAA_calculation function, so don't change the variable names or things will break downstream.
@@ -553,7 +571,7 @@ p_conserv_predictions <- ggplot(
 
 ggsave(
   here("results", "ranger", "final",
-       glue("YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
+       glue("YRS_SA_predictions_{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_conserv_predictions,
   width  = 174,
   height = 120,
@@ -619,7 +637,7 @@ p_predictions <- ggplot(
 
 ggsave(
   here("results", "ranger", "final",
-       glue("ambitious_YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
+       glue("ambitious_SA_YRS_predictions_{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_predictions,
   width  = 174,
   height = 120,    # adjust in 5mm increments if strip labels or legend crowd
