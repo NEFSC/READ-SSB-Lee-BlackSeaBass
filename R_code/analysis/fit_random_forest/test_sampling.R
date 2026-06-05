@@ -2,7 +2,7 @@
 # Purpose: 	Experiment with subsampling
 # I need to subsample the Training dataset to do the initial tuning. I'm experimenting with 
 # how much data ends up in a small 5% tune and whether I feel like it's representative.
-# the initial splits are non-stratified. 
+# the initial splits are non-stratified.  I seem to get pretty good coverage without stratifiying.
 # Inputs:
 #  - BSB_estimation_dataset (from data_prep_ml.Rmd)
 #  - BSB.Classification.Recipe.R
