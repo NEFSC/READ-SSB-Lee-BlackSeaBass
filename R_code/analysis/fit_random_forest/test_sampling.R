@@ -5,8 +5,6 @@
 # the initial splits are non-stratified.  I seem to get pretty good coverage without stratifiying.
 # Inputs:
 #  - BSB_estimation_dataset (from data_prep_ml.Rmd)
-#  - BSB.Classification.Recipe.R
-#  - BSB.Workflow.Setup.R
 
 # Outputs:
 ###############################################################################  
