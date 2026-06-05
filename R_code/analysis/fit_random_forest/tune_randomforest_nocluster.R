@@ -30,11 +30,11 @@
 
 bayes_tune<-"FALSE"
 
-search_type<-"Prototype"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-.2			  
+# testing_fraction<-.05			  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -215,7 +215,8 @@ train_data <- initial_split(
 
 #expand by landed pounds 
 train_data<-training(train_data) %>%
-  uncount(lndlb)
+  mutate(lndlb2=lndlb) %>%
+  uncount(lndlb2)
 
 
 # # Recipe definition
