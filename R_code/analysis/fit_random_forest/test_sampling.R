@@ -1,28 +1,14 @@
 ###############################################################################
-# Purpose: 	Estimate a Random Forest classification model on 4 classes WITHOUT Clustering
-# on DLRID for the validation. Unclassified are excluded.
-
-# I'm using the tidymodels framework to train and test the classification trees and
-# random forest.  The main advantage is that switching models or estimation packages
-# (partykit::ctree vs ranger vs randomForest for example) is easier. Writing the model 
-# uses tidy syntax.  Tuning the model is made easier by using tune and yardstick.
-# Fitting ranger requires bonsai.
-# 
-# The canonical way to do this is to declare a recipe and a workflow.  Ideally,
-# everything would be part of the workflow, but my data processing skills in R are
-# note good enough to want to do this.  Therefore, I'm basically passing the
-# recipe into the workflow. C'est la guerre.
-
+# Purpose: 	Experiment with subsampling
+# I need to subsample the Training dataset to do the initial tuning. I'm experimenting with 
+# how much data ends up in a small 5% tune and whether I feel like it's representative.
+# the initial splits are non-stratified. 
 # Inputs:
 #  - BSB_estimation_dataset (from data_prep_ml.Rmd)
-#  - BSB_unclassified_dataset (from data_prep_ml.Rmd)
 #  - BSB.Classification.Recipe.R
 #  - BSB.Workflow.Setup.R
 
 # Outputs:
-#  - estimating dataset 
-#  - tuning results 
-#  - final_fit results
 ###############################################################################  
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
@@ -66,7 +52,6 @@ library("kableExtra")
 library("viridis")
 library("future")
 library("vip")
-library("gtsummary")
 library("conflicted")
 
 
@@ -132,49 +117,6 @@ vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
-data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
-tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-if  (search_type=="Prototype"){
-  data_save_name<-glue("nocluster_data_split_TEST{estimation_vintage}.Rds")
-  tune_file_name<-glue("BSB_ranger_nocluster_tune_TEST{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("BSB_ranger_nocluster_results_TEST{estimation_vintage}.Rds")
-  vi_file_name<-glue("BSB_ranger_nocluster_VI_TEST{estimation_vintage}.Rds")
-  
-  
-}
-
-# 
-# Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
-# 
-# 1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
-# 2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
-# 3. I do some tidying-up (converting datetime variables to date variables)
-# 4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
-# 
-# 5. There is a little data dropping
-#   1. landed pounds=0
-#   2. Some landings from VA and DE that look like aggregates. 
-# 6. I do some binning of gears, loosely into
-#   1. Line or Hand gear
-#   2. Trawls
-#   3. Gillnets
-#   4. Pot and Trap
-#   5. Misc=Dredge, Seine, and Unknown.
-#   
-# 7.  I do some binning of market categories
-#   1. Unclassified and "Mixed or Unsized" are combined
-#   2. Small, Extra Small, and Pee Wee (Rats) are combined
-#   3. Medium and "Medium or Select" are combined.
-# 8.  Ungraded is combined with Round
-# 9. I construct a stockunit indicator
-#   1. south is 621 and greater, plus 614 and 615 
-#   2. North is 613 and smaller, plus 616
-# 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-# 11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
-# are in both real and nominal dollars per landed pound. 
-# 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
 
 # Load data from data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
@@ -321,10 +263,6 @@ print(cont_summary)
 
 
 # look at pounds
-
-
-
-
 ggplot(data = df_combined %>% filter(lndlb<=1000), aes(x = lndlb)) + 
        geom_histogram(aes(y = after_stat(density),fill=split_group))
 
@@ -337,8 +275,6 @@ uncounted<-df_combined %>%
 ggplot(data = uncounted %>% filter(lndlb<=1000), aes(x = lndlb)) + 
   geom_histogram(aes(y = after_stat(density),fill=split_group))
 
-
-
 ks_result <- ks.test(
   x = df_tune1$lndlb,
   y = df_held_out$lndlb
@@ -347,19 +283,14 @@ print(ks_result)
 
 
 
-# 1. Construct the Adversarial Dataset
+# 1. Construct the Adversarial Dataset dropping market_desc
 uncounted<-uncounted%>%
-  # CRITICAL: drop your original target variable
   select(-market_desc)
 
 # Create 5-fold cross-validation specifically for the adversarial test
 adv_folds <- vfold_cv(uncounted, v = 5)
 
-# 2. Define the Models (Logistic and Default Ranger RF)
-# log_spec <- logistic_reg() %>%
-#   set_engine("glm") %>%
-#   set_mode("classification")
-
+# this RF will take a long time to run. It's on ~35-40M rows of data.
 rf_spec <- rand_forest() %>% # Default trees, mtry, and min_n
   set_engine("ranger",
              num.threads=20, 
@@ -373,8 +304,6 @@ rf_spec <- rand_forest() %>% # Default trees, mtry, and min_n
 set_mode("classification")
 
 # 3. Create the Processing Recipe
-# Logistic regression requires dummy variables; trees technically don't, 
-# but it's easier to use one recipe for both here.
 adv_rec <- recipe(split_group ~ ., data = uncounted) %>%
   step_unknown() %>%
   step_novel() %>%
@@ -389,7 +318,6 @@ adv_rec <- recipe(split_group ~ ., data = uncounted) %>%
  )
 # 
 # # 6. Check the Results
-# #log_auc <- collect_metrics(log_res)$mean
 # rf_auc <- collect_metrics(rf_res)$mean
 # 
 # #cat("Adversarial Logistic Regression AUC: ", log_auc, "\n")
