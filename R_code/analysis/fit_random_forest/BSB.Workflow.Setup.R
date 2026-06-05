@@ -44,15 +44,13 @@ tune_spec <- rand_forest(
              keep.inbag=FALSE, # default, but explicit 
              probability = TRUE, # set to a probability model
              write.forest=TRUE) # default, but explicit
-case_weights_allowed(tune_spec)
 
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
 BSB.Ranger.tuning.Workflow <-
   workflow() %>%
   add_model(tune_spec) %>% 
-  add_recipe(BSB.Classification.Recipe) %>%
-  add_case_weights(weighting)
+  add_recipe(BSB.Classification.Recipe) 
 
 
 hardhat::extract_parameter_set_dials(BSB.Ranger.tuning.Workflow)
@@ -67,16 +65,16 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
 ## Tuning
-# 
+# With uncounted() data, the min_n becomes "pounds" allocated to a grid. This is because  
+# the replicated data will always end up in the same leaf/node.
 # Set up a set of mtry to search over. 
 
-# I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
 if (search_type == "Initial") {
   
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(5L, 100))  # minimum points in a leaf node
+    #  mtry = mtry(range = c(2L, 35L)),   # For the Initial, we can leave the upper bound as is.
+      min_n=min_n(range = c(500L, 50000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
@@ -92,7 +90,7 @@ if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(10L, 300L))  # minimum points in a leaf nodee
+      min_n=min_n(range = c(500L, 50000L))  # minimum points in a leaf nodee
     )
   
   rf_grid <- grid_space_filling(
@@ -109,7 +107,7 @@ if (search_type == "Prototype") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
-      min_n=min_n(range = c(5L, 50L))  # minimum points in a leaf node
+      min_n=min_n(range = c(500L, 10000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(

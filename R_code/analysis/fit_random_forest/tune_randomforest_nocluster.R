@@ -155,10 +155,10 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 set.seed(4587315)
 
 
-# construct the "case weights" variable here and trim out the extra factor levels from market_desc.
+# trim out the extra factor levels from market_desc.
 estimation_dataset<-estimation_dataset %>%
-     mutate(weighting = frequency_weights(weighting),
-            market_desc=fct_drop(market_desc))
+     mutate(market_desc=fct_drop(market_desc))%>%
+  select(-weighting)
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if  (search_type=="Prototype"){
@@ -168,7 +168,7 @@ if  (search_type=="Prototype"){
 }
 
 
-keep_cols<-c("market_desc","myl_id","dlrid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
+keep_cols<-c("market_desc","myl_id","dlrid","mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
 keep_cols<-c(keep_cols,"shore","nofederal")
 keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
 keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
@@ -193,18 +193,29 @@ data_split <- initial_validation_split(
   data=estimation_dataset,
   prop = c(0.7, 0.15)
 )
-train_data <- training(data_split)
+train_dataR <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
 readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
-nrow(train_data)
+nrow(train_dataR)
 nrow(test_data)
 nrow(validation_data)
 
+# Pick a subset of my training data to do my tuning.
 
+set.seed(95976)
+# 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
+# consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
+train_data <- initial_split(
+  data=train_dataR,
+  prop = c(0.05)
+)
 
+#expand by landed pounds 
+train_data<-training(train_data) %>%
+  uncount(lndlb)
 
 
 # # Recipe definition
@@ -304,8 +315,5 @@ best_params <- tune_res2 %>%
 best_params
 
 
-
-system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
-message("CPU logger stopped")
 
 cat("Tuning done done")
