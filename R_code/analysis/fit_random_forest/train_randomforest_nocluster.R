@@ -66,6 +66,8 @@ message("CPU logger stopped")
 # start background logger
 source(here("R_code","analysis","helpers","background_logger.R"))
 
+search_type<-"Prototype"
+# search_type in "Initial", "Prototype","Advanced")
 
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -127,7 +129,10 @@ if  (search_type=="Prototype"){
   
 }
 
-data_split<-readr::write_rds(data_split, file=here("results","ranger",data_save_name))
+data_split<-readr::read_rds(, file=here("results","ranger",data_save_name))
+train_data <- training(data_split)
+test_data <- testing(data_split)
+validation_data <- validation(data_split)
 
 nrow(train_data)
 nrow(test_data)
@@ -174,7 +179,7 @@ final_spec <- tune_spec %>%
              num.threads = !!my.ranger.sequential.threads, 
              na.action = "na.learn", 
              respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
+             importance = "none", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
              oob.error = FALSE,          # Kept OFF 
              keep.inbag = FALSE,         # Kept OFF to save memory
              probability = TRUE, 
@@ -192,6 +197,7 @@ message("Fitting final model:...")
 final_fit <- 
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics) 
+
 
 message("Final model fit finished.", Sys.time())
 
