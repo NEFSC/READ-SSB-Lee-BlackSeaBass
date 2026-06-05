@@ -163,6 +163,47 @@ best_params <- tune_res %>%
   select_best(metric = "brier_class")
 
 best_params
+
+
+
+############################################
+# Final fit spec
+final_spec <- tune_spec %>%
+  finalize_model(best_params) %>%
+  set_engine("ranger",
+             num.threads = !!my.ranger.sequential.threads, 
+             na.action = "na.learn", 
+             respect.unordered.factors = "order",
+             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
+             oob.error = FALSE,          # Kept OFF 
+             keep.inbag = FALSE,         # Kept OFF to save memory
+             probability = TRUE, 
+             write.forest = TRUE)
+
+
+
+# finalize model by picking the best model hyperparameters
+final_wf  <- BSB.Ranger.tuning.Workflow %>%
+  update_model(final_spec)
+set.seed(132564)
+
+# Final model fitting on the full training dataset 
+message("Fitting final model:...")
+final_fit <- 
+  final_wf %>%
+  last_fit(data_split, metrics=class_and_probs_metrics) 
+
+message("Final model fit finished.", Sys.time())
+
+
+write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
+
+
+# print out the metrics
+final_fit %>%
+  collect_metrics()
+
+
 ########################################################################################################
 # Final fit with impurity_correction.  Permutation is better, but an uncount() handling of weighted observations makes the 
 # OOB not truly "out of the bag".  Impurity corrected is the next best alternative, however it is not appropriate for predictions.
@@ -209,51 +250,16 @@ write_rds(vi_data, file=here("results","ranger",vi_file_name))
 ########################################################################################################
 ########################################################################################################
 
-############################################
-# Final fit spec
-final_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
-
-
-
-# finalize model by picking the best model hyperparameters
-final_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(final_spec)
-set.seed(132564)
-
-# Final model fitting on the full training dataset 
-message("Fitting final model:...")
-final_fit <- 
-  final_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
-message("Final model fit finished.", Sys.time())
-
-
-write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
-
-
-# print out the metrics
-final_fit %>%
-  collect_metrics()
-
-end_time<-Sys.time()
-end_time
-
-end_time-start_time
-sessionInfo()
 
 
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
 cat("All done")
+
+
+end_time<-Sys.time()
+end_time
+
+end_time-start_time
+sessionInfo()
