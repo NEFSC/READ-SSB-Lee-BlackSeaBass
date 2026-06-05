@@ -23,7 +23,6 @@
 # Outputs:
 #  - estimating dataset 
 #  - tuning results 
-#  - final_fit results
 ###############################################################################  
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
