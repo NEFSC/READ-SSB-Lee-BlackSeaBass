@@ -1,5 +1,6 @@
 ###############################################################################
-# Purpose: 	Estimate a Random Forest classification model on 4 classes WITHOUT Clustering
+# Purpose: 	Tune the mtry and min_n parameters in a  Random Forest classification model
+# on 4 classes WITHOUT Clustering
 # on DLRID for the validation. Unclassified are excluded.
 
 # I'm using the tidymodels framework to train and test the classification trees and
@@ -30,11 +31,11 @@
 
 bayes_tune<-"FALSE"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-1			  
+testing_fraction<-.2			  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -65,7 +66,6 @@ library("knitr")
 library("kableExtra")
 library("viridis")
 library("future")
-library("vip")		   
 library("conflicted")
 
 #deal with conflicts
@@ -78,7 +78,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
-here::i_am("R_code/analysis/fit_random_forest/estimate_randomforest_nocluster.R")
+here::i_am("R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R")
 
 # Kill background logger if it is on
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
@@ -118,7 +118,6 @@ if (runClass %in% c('Local', 'Windows')){
   
   
 }
-my.ranger.threads<-5
 lbs_per_mt<-2204.62
 # my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
 
@@ -295,104 +294,19 @@ tune_res2 %>%
   dplyr::select(location, note) %>%
   print(width = 200)
 
+system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+message("CPU logger stopped")
 
-# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
+# Select the best Rforest based on log loss from the 10 folds. Just print them for now.
 
 best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
 best_params
-########################################################################################################
-# Final fit with impurity_correction.  Permutation is better, but an uncount() handling of weighted observations makes the 
-# OOB not truly "out of the bag".  Impurity corrected is the next best alternative, however it is not appropriate for predictions.
-# Therefore, we fit the model once to get the proper variable importance, then we refit to get the true 'last model' for predictions.
-########################################################################################################
-# variable importance spec
 
-# A threading note 
-# here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
-
-vi_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
-
-# finalize model by picking the best model hyperparameters
-vi_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(vi_spec)
-
-set.seed(132564)
-
-# Final model fitting on the full training dataset 
-message("Fitting model to estimate variable importance.", Sys.time())
-vi_fit <- 
-  vi_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
-
-
-
-vi_data<-vi_fit%>%
-  extract_fit_parsnip() %>%
-  vi(method = "model") 
-message("Variable Importance Model fit finished", Sys.time())
-
-write_rds(vi_data, file=here("results","ranger",vi_file_name))
-########################################################################################################
-########################################################################################################
-
-############################################
-# Final fit spec
-final_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
-
-
-
-# finalize model by picking the best model hyperparameters
-final_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(final_spec)
-set.seed(132564)
-
-# Final model fitting on the full training dataset 
-message("Fitting final model:...")
-final_fit <- 
-  final_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
-message("Final model fit finished.", Sys.time())
-
-
-write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
-
-
-# print out the metrics
-final_fit %>%
-  collect_metrics()
-
-end_time<-Sys.time()
-end_time
-
-end_time-start_time
-sessionInfo()
 
 
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
-cat("All done")
+cat("Tuning done done")
