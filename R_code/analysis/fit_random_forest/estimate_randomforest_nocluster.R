@@ -149,37 +149,6 @@ if  (search_type=="Prototype"){
   
 }
 
-# 
-# Most of my data cleaning code is in stata. There's no reason to port it to R and risk mistakes now.  In brief, I:
-# 
-# 1. Extract transaction level commercial landings of black sea bass at the camisd+subtrip level (cams_land.rec=0). Any column in CAMS_LAND is available, but sales transactions are tied to a "trip", not a "subtrip". This means there is some uncomfortableness for any transactions corresponding to multi-area (and multi-gear) trips. 
-# 2. I do some "joins" to keyfiles (market category, market grade, gear, and economic deflators).
-# 3. I do some tidying-up (converting datetime variables to date variables)
-# 4. I rebin status=DLR_ORPHAN_SPECIES into status=MATCH
-# 
-# 5. There is a little data dropping
-#   1. landed pounds=0
-#   2. Some landings from VA and DE that look like aggregates. 
-# 6. I do some binning of gears, loosely into
-#   1. Line or Hand gear
-#   2. Trawls
-#   3. Gillnets
-#   4. Pot and Trap
-#   5. Misc=Dredge, Seine, and Unknown.
-#   
-# 7.  I do some binning of market categories
-#   1. Unclassified and "Mixed or Unsized" are combined
-#   2. Small, Extra Small, and Pee Wee (Rats) are combined
-#   3. Medium and "Medium or Select" are combined.
-# 8.  Ungraded is combined with Round
-# 9. I construct a stockunit indicator
-#   1. south is 621 and greater, plus 614 and 615 
-#   2. North is 613 and smaller, plus 616
-# 10. I create a semester indicator (=1 if Jan to June and =2 if July to Dec)
-# 11. I SHOULD scale landed pounds, nominal value, and deflated value to "thousands". Prices
-# are in both real and nominal dollars per landed pound. 
-# 12. I have day-marketcategory landings (pounds) by "other vessels". I also have day-state-marketcategory and day-stockarea-marketcategory. 
-
 # Load data from data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
 
