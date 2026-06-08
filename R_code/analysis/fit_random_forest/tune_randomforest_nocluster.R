@@ -30,11 +30,11 @@
 
 bayes_tune<-"FALSE"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-# testing_fraction<-.05			  
+testing_fraction<-1			  
 #  
 start_time<-Sys.time()
 modeltype<-"nocluster"
@@ -107,7 +107,7 @@ if (runClass %in% c('Local', 'Windows')){
   # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
   my.parallel.threads<-2
   my.ranger.multi.threads<-11
-  my.ranger.sequential.threads<-20
+  my.ranger.sequential.threads<-23
   
   
   # Kill background logger if it is on
@@ -218,11 +218,21 @@ train_data <- initial_split(
   prop = c(0.05)
 )
 
+
+train_full_rows<-nrow(train_full_data)
+tune_raw_rows<-nrow(training(train_data))
+
+
 #expand by landed pounds 
 train_data<-training(train_data) %>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
+tune_expand_rows<-nrow(train_data)
+
+message("Original training dataset :", train_full_rows )
+message("Tuning dataset rows (raw):", tune_raw_rows )
+message("Tuning dataset rows (expanded):", tune_expand_rows )
 
 # # Recipe definition
 # 
@@ -241,10 +251,11 @@ myfolds<-group_vfold_cv(train_data,
                         strata=market_desc, 
                         v = 10)
 
-plan("multisession", workers=my.parallel.threads)
 set.seed(8675309)					  
 
-rf_control_grid<-control_grid(save_pred = TRUE, parallel_over="everything")
+rf_control_grid<-control_grid(save_pred = TRUE, 
+                              verbose = TRUE, 
+                              allow_par=FALSE)
 start_time_tune<-Sys.time()
 
 message("Tuning model hyperparameters", Sys.time())
@@ -272,7 +283,6 @@ if(bayes_tune==TRUE){
 message("Performing Bayesian Tuning", Sys.time())
   
   # Do a tune_bayes
-  plan("multisession", workers=my.parallel.threads)
   set.seed(9035768)
   
   start_time_bt<-Sys.time()
@@ -289,14 +299,13 @@ message("Performing Bayesian Tuning", Sys.time())
       save_pred = TRUE,             # Save predictions for analysis
       save_workflow = FALSE,        # Save memory
       extract = NULL,              # Don't extract additional info
-      parallel_over = "everything" # Parallelize over resamples to save memory
+      allow_par = FALSE # Parallelize over nothing
       ),
       metrics=metric_set(brier_class)
   )
   end_time_bt<-Sys.time()
   end_time_bt-start_time_bt
   
-  plan("sequential")
   write_rds(tune_res2, file=here("results","ranger", tune_file_name))
   message("Bayesian Tuning Finished", Sys.time())
   

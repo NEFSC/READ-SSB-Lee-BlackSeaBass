@@ -31,13 +31,13 @@
 
 # configure the tuning part of the model.
 tune_spec <- rand_forest(
-  trees = 300,
+  trees = 200,
   mtry = tune(),
   min_n = tune(),
 ) %>%
   set_mode("classification") %>%
   set_engine("ranger",
-             num.threads=!!my.ranger.multi.threads, 
+             num.threads=!!my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
              importance="none", # default, but I don't need importance for tuning.
