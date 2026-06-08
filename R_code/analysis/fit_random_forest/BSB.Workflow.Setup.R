@@ -24,13 +24,14 @@
 #' 
 #' Geurts et al(2006)'s extremely random trees can be set with splitrule="extratrees".
 #' 
-#' trees=500. I don't have a good rationale for choose this.
+#' trees=300. For tuning, it's fine to tune fewer trees.  The "rank order" of parameter combinations
+#' stabiliizes pretty quickly, so cutting this down saves computation time.
 #' 
 #  respect.unordered.factors="order",
 
 # configure the tuning part of the model.
 tune_spec <- rand_forest(
-  trees = 500,
+  trees = 300,
   mtry = tune(),
   min_n = tune(),
 ) %>%
@@ -83,8 +84,8 @@ if (search_type == "Initial") {
   )
 }
 
-# The initial grid search found an optimal min_n parameter on the boundary of my grid (min_n=100). 
-# Very small mtry and min_n did poorly, so did mtry approaching the number of factors, so I've tightened up the boundaries of the grid a bit.
+# If the optimal is near the boundary, you need to expand the bounds (of mtry or min_n).   
+# If some sections of the initial grid are clearly worse, you can tighten it up here.
 # And I've added 
 if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
@@ -95,7 +96,7 @@ if (search_type == "Advanced") {
   
   rf_grid <- grid_space_filling(
     finalized_params,   
-    size = 120                    # number of grid points for initial exploration
+    size = 60                    # number of grid points for initial exploration
   )
 }
 
