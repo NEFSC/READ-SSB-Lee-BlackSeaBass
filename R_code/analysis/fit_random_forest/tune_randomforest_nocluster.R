@@ -79,12 +79,6 @@ conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R")
 
-# Kill background logger if it is on
-system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
-message("CPU logger stopped")
-
-# start background logger
-source(here("R_code","analysis","helpers","background_logger.R"))
 
 
 
@@ -116,11 +110,19 @@ if (runClass %in% c('Local', 'Windows')){
   my.ranger.sequential.threads<-20
   
   
+  # Kill background logger if it is on
+  system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  message("CPU logger stopped")
+  
+  # start background logger
+  source(here("R_code","analysis","helpers","background_logger.R"))
+  
+  
 }
 lbs_per_mt<-2204.62
 # my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
 
-options(future.globals.maxSize = 2 * 1024^3)
+options(future.globals.maxSize = 8 * 1024^3)
 
 lbs_per_mt<-2204.62
 #############################################################################
@@ -317,4 +319,4 @@ best_params
 
 
 
-cat("Tuning done done")
+cat("Tuning done")

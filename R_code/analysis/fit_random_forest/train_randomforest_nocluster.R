@@ -59,12 +59,6 @@ conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/train_randomforest_nocluster.R")
 
-# Kill background logger if it is on
-system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
-message("CPU logger stopped")
-
-# start background logger
-source(here("R_code","analysis","helpers","background_logger.R"))
 
 search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
@@ -97,6 +91,12 @@ if (runClass %in% c('Local', 'Windows')){
   my.ranger.multi.threads<-11
   my.ranger.sequential.threads<-22
   
+  # Kill background logger if it is on
+  system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  message("CPU logger stopped")
+  
+  # start background logger
+  source(here("R_code","analysis","helpers","background_logger.R"))
   
 }
 lbs_per_mt<-2204.62
