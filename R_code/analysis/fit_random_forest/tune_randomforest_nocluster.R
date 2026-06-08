@@ -140,11 +140,14 @@ data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
 tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
 final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
 vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
+best_param_file_name<-glue("BSB_ranger_nocluster_best_params{estimation_vintage}.Rds")
+
 if  (search_type=="Prototype"){
   data_save_name<-glue("TEST_nocluster_data_split_{estimation_vintage}.Rds")
   tune_file_name<-glue("TEST_BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
   final_fit_file_name<-glue("TEST_BSB_ranger_nocluster_results{estimation_vintage}.Rds")
   vi_file_name<-glue("TEST_BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
+  best_param_file_name<-glue("TEST_BSB_ranger_nocluster_best_params{estimation_vintage}.Rds")
   
   
 }
@@ -195,13 +198,13 @@ data_split <- initial_validation_split(
   data=estimation_dataset,
   prop = c(0.7, 0.15)
 )
-train_dataR <- training(data_split)
+train_full_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
 readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
-nrow(train_dataR)
+nrow(train_full_data)
 nrow(test_data)
 nrow(validation_data)
 
@@ -211,7 +214,7 @@ set.seed(95976)
 # 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
 train_data <- initial_split(
-  data=train_dataR,
+  data=train_full_data,
   prop = c(0.05)
 )
 
@@ -231,8 +234,12 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 set.seed(123)
-# split the training data group wise into 10 folds with the same number of observations, but grouped by dlrid, so that each dlrid is wholly contained in a single fold.
-myfolds<-rsample::vfold_cv(train_data, strata=market_desc, v = 10)
+# split the training data group wise into 10 folds with the same number of observations, 
+# grouped by myl_id (original observation), so that that each original records is wholly contained in a single fold.
+myfolds<-group_vfold_cv(train_data, 
+                        group=myl_id,
+                        strata=market_desc, 
+                        v = 10)
 
 plan("multisession", workers=my.parallel.threads)
 set.seed(8675309)					  
@@ -250,7 +257,7 @@ tune_res <- tune_grid(
   metrics=class_and_probs_metrics
 )
 plan("sequential")
-message("Grid Tuning Finished", Sys.time())
+message("Grid Tuning Finished. Saving tuning results", Sys.time())
 
 
 write_rds(tune_res, file=here("results","ranger", tune_file_name))
@@ -300,7 +307,7 @@ message("Performing Bayesian Tuning", Sys.time())
   
   tune_res2<-tune_res
 }
-
+message ("errors")
 tune_res2 %>%
   tune::collect_notes() %>%
   dplyr::filter(type == "error") %>%
@@ -315,7 +322,7 @@ message("CPU logger stopped")
 best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
-best_params
+write_rds(best_params, file=here("results","ranger", best_param_file_name))
 
 
 
