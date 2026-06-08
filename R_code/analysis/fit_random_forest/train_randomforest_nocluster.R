@@ -121,10 +121,10 @@ tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
 final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
 vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
 if  (search_type=="Prototype"){
-  data_save_name<-glue("nocluster_data_split_TEST{estimation_vintage}.Rds")
-  tune_file_name<-glue("BSB_ranger_nocluster_tune_TEST{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("BSB_ranger_nocluster_results_TEST{estimation_vintage}.Rds")
-  vi_file_name<-glue("BSB_ranger_nocluster_VI_TEST{estimation_vintage}.Rds")
+  data_save_name<-glue("TEST_nocluster_data_split{estimation_vintage}.Rds")
+  tune_file_name<-glue("TEST_BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
+  final_fit_file_name<-glue("TEST_BSB_ranger_nocluster_results{estimation_vintage}.Rds")
+  vi_file_name<-glue("TEST_BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
   
   
 }
