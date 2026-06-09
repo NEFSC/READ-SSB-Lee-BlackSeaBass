@@ -24,22 +24,6 @@
 #  - estimating dataset 
 #  - tuning results 
 ###############################################################################  
-# Set these two to control the size of the dataset. Useful for making sure code 
-# works.
-
-
-bayes_tune<-"FALSE"
-
-search_type<-"Prototype"
-# search_type in "Initial", "Prototype","Advanced")
-
-# Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-1			  
-#  
-start_time<-Sys.time()
-modeltype<-"nocluster"
-# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
-
 
 library("here")
 
@@ -64,7 +48,6 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
-library("future")
 library("conflicted")
 
 #deal with conflicts
@@ -78,6 +61,24 @@ conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R")
+
+# Set these two to control the size of the dataset. Useful for making sure code 
+# works.
+#Set up model type
+modeltype<-"nocluster"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
+
+search_type<-"Advanced"
+# search_type in "Initial", "Prototype","Advanced")
+
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+
+# Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
+testing_fraction<-1			  
+start_time<-Sys.time()
+
+#Turn bayesian tuning on or off.
+bayes_tune<-"FALSE"
 
 
 
@@ -122,7 +123,6 @@ if (runClass %in% c('Local', 'Windows')){
 lbs_per_mt<-2204.62
 # my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
 
-options(future.globals.maxSize = 8 * 1024^3)
 
 lbs_per_mt<-2204.62
 #############################################################################
@@ -133,24 +133,16 @@ vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob
 vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
-estimation_vintage<-as.character(Sys.Date())
 
+#Tuning vintage is purposely set as "today"
+tuning_vintage<-as.character(Sys.Date())
 
-data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
-tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-best_param_file_name<-glue("BSB_ranger_nocluster_best_params{estimation_vintage}.Rds")
+data_save_name<-glue("{data_pattern}{tuning_vintage}.Rds")
+tune_file_name<-glue("{tuning_pattern}{tuning_vintage}.Rds")
+best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 
-if  (search_type=="Prototype"){
-  data_save_name<-glue("TEST_nocluster_data_split_{estimation_vintage}.Rds")
-  tune_file_name<-glue("TEST_BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("TEST_BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-  vi_file_name<-glue("TEST_BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-  best_param_file_name<-glue("TEST_BSB_ranger_nocluster_best_params{estimation_vintage}.Rds")
-  
-  
-}
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
 
 # Load data from data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{vintage_string}.Rds")))
@@ -267,7 +259,6 @@ tune_res <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-plan("sequential")
 message("Grid Tuning Finished. Saving tuning results", Sys.time())
 
 
@@ -316,7 +307,7 @@ message("Performing Bayesian Tuning", Sys.time())
   
   tune_res2<-tune_res
 }
-message ("errors")
+message ("Any Errors?")
 tune_res2 %>%
   tune::collect_notes() %>%
   dplyr::filter(type == "error") %>%
@@ -334,5 +325,6 @@ best_params <- tune_res2 %>%
 write_rds(best_params, file=here("results","ranger", best_param_file_name))
 
 
+best_params
 
 cat("Tuning done")
