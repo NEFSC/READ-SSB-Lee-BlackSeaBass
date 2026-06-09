@@ -9,11 +9,6 @@
 # uses tidy syntax.  Tuning the model is made easier by using tune and yardstick.
 # Fitting ranger requires bonsai.
 # 
-# The canonical way to do this is to declare a recipe and a workflow.  Ideally,
-# everything would be part of the workflow, but my data processing skills in R are
-# note good enough to want to do this.  Therefore, I'm basically passing the
-# recipe into the workflow. C'est la guerre.
-
 # Inputs:
 #  - BSB_estimation_dataset (from data_prep_ml.Rmd)
 #  - BSB_unclassified_dataset (from data_prep_ml.Rmd)
@@ -273,7 +268,7 @@ message("Best Parameters from First tune" )
 best_params <- tune_res %>%
   select_best(metric = "brier_class")
 
-write_rds(tune_res, file=here("results","ranger", glue("T1_{tune_file_name}")))
+write_rds(tune_res, file=here("results","ranger", tune_file_name))
 
 
 # Tune again
