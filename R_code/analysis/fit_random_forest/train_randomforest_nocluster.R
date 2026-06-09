@@ -37,6 +37,7 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
+library("vip")
 library("conflicted")
 
 #deal with conflicts
@@ -94,7 +95,7 @@ if (runClass %in% c('Local', 'Windows')){
 	  
 	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
   # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
-  my.ranger.sequential.threads<-22
+  my.ranger.sequential.threads<-23
   
   # Kill background logger if it is on
   system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
@@ -150,18 +151,32 @@ best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
 vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
 
-
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
+rm(data_split)
 
 nrow(train_data)
 nrow(test_data)
 nrow(validation_data)
 
+train_raw_rows<-nrow(train_data)
 
 
+#expand by landed pounds 
+#replacing "in place" so that there's no chance the recipe fits to the wrong data.
+train_data<-train_data %>%
+  select(-c(price,priceR_CPI, dlrid, myl_id)) %>%
+  mutate(lndlb2=lndlb) %>%
+  uncount(lndlb2)
+
+train_expand_rows<-nrow(train_data)
+
+
+
+message("Original training dataset :", train_raw_rows )
+message("Training dataset rows (expanded):", train_expand_rows )
 
 
 # # Recipe definition
@@ -175,7 +190,7 @@ source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 # Read in best parameters.  Do a training on the full training dataset, predict on the validation dataset. Save the data
 
-tune_res<-read_rds(file=here("results","ranger", tune_file_name))
+#tune_res<-read_rds(file=here("results","ranger", tune_file_name))
 best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 
 
