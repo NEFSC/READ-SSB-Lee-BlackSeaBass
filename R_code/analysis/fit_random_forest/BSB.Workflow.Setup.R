@@ -86,12 +86,16 @@ if (search_type == "Initial") {
 
 # If the optimal is near the boundary, you need to expand the bounds (of mtry or min_n).   
 # If some sections of the initial grid are clearly worse, you can tighten it up here.
-# And I've added 
+# Note: The original grid was mtry (10-35) and min_n 500-50,000.
+#    Both Brier class and mn_log_loss are not too sensitive to over a large portion of that mtry range
+#      the bottom is probably in the 12-30 range.
+# However, the optimal min_n was 500, suggesting that that was a bad grid.
+# I will tighted up the grid
 if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(500L, 50000L))  # minimum points in a leaf nodee
+      min_n=min_n(range = c(50, 2000L))  # minimum points in a leaf/node
     )
   
   rf_grid <- grid_space_filling(
