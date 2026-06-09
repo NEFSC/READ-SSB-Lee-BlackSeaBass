@@ -225,7 +225,6 @@ final_fit <-
 
 message("Final model fit finished.", Sys.time())
 
-
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 #prediction using the validation data 
