@@ -14,12 +14,6 @@
 #  - variable importance
 ###############################################################################  
 
-
-start_time<-Sys.time()
-modeltype<-"nocluster"
-# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
-
-
 library("here")
 
 # load tidyverse and related
@@ -43,8 +37,6 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
-library("future")
-library("vip")		   
 library("conflicted")
 
 #deal with conflicts
@@ -59,10 +51,25 @@ conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/train_randomforest_nocluster.R")
 
+# Set these two to control the size of the dataset. Useful for making sure code 
+# works.
+#Set up model type
+modeltype<-"nocluster"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Prototype"
+search_type<-"Advanced"
 # search_type in "Initial", "Prototype","Advanced")
 
+
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+
+
+# Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
+testing_fraction<-1			  
+start_time<-Sys.time()
+
+#Turn bayesian tuning on or off.
+bayes_tune<-"FALSE"
 
 # Determine what platform the code is running on and set the number of threads for ranger
 platform <- Sys.info()['sysname']
@@ -87,8 +94,6 @@ if (runClass %in% c('Local', 'Windows')){
 	  
 	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
   # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
-  my.parallel.threads<-2
-  my.ranger.multi.threads<-11
   my.ranger.sequential.threads<-22
   
   # Kill background logger if it is on
@@ -100,36 +105,53 @@ if (runClass %in% c('Local', 'Windows')){
   
 }
 lbs_per_mt<-2204.62
-# my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
-
-options(future.globals.maxSize = 2 * 1024^3)
 
 lbs_per_mt<-2204.62
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
+
+#############################################################################
+# Read in data and tuning results.
+#############################################################################
+
+# data vintage
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
-estimation_vintage<-as.character(Sys.Date())
+data_vintage<-max(vintage_string)
 
 
-data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
-tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-if  (search_type=="Prototype"){
-  data_save_name<-glue("TEST_nocluster_data_split{estimation_vintage}.Rds")
-  tune_file_name<-glue("TEST_BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("TEST_BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-  vi_file_name<-glue("TEST_BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-  
-  
-}
 
-data_split<-readr::read_rds(, file=here("results","ranger",data_save_name))
+
+
+#data_vintage<-as.character(Sys.Date())
+################################################################################
+# Read in data and tuning results.
+################################################################################
+
+
+# Pick up the most recent tuning
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*.Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# Assemble file names to read in data, tuning results, and best_params.
+# Although the source data has a different vintage, I'm loading in "data_split" which has the same vintage as the tuning
+# The tuning and best_param already exist.
+# the final fit and vi files will be created by this file. I'm choosing to use 
+# the tuning date here, since the final fit and tuning go together.
+data_save_name<-glue("{data_pattern}{tuning_vintage}.Rds")
+tune_file_name<-glue("{tuning_pattern}{tuning_vintage}.Rds")
+best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+
+
+data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
@@ -151,43 +173,24 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 # Set up the tuning workflow
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
+# Read in best parameters.  Do a training on the full training dataset, predict on the validation dataset. Save the data
 
 tune_res<-read_rds(file=here("results","ranger", tune_file_name))
+best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 
 
-tune_res %>%
-  tune::collect_notes() %>%
-  dplyr::filter(type == "error") %>%
-  dplyr::select(location, note) %>%
-  print(width = 200)
-
-
-# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
-
-best_params <- tune_res %>%
-  select_best(metric = "brier_class")
-
-best_params
 
 
 
 ############################################
 # Final fit spec
+# I could use update to change trees, but I also need to change the engine options
+# and that's a little dicey.
 final_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "none", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
-
-
-
-# finalize model by picking the best model hyperparameters
+  update(trees=500)
+  
+  
+# finalize model by setting best model hyperparameters
 final_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(final_spec)
 set.seed(132564)
@@ -220,8 +223,13 @@ final_fit %>%
 # A threading note 
 # here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
 
-vi_spec <- tune_spec %>%
+vi_spec <-  rand_forest(
+  trees = 500,
+  mtry = tune(),
+  min_n = tune()
+) %>%
   finalize_model(best_params) %>%
+  set_mode("classification") %>%
   set_engine("ranger",
              num.threads = !!my.ranger.sequential.threads, 
              na.action = "na.learn", 
