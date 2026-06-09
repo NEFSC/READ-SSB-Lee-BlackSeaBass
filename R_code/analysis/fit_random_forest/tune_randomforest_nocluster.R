@@ -184,11 +184,11 @@ estimation_dataset<- estimation_dataset %>%
   select(all_of(keep_cols))
 
 set.seed(2824)
-# 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
+# 80% of the data in the training, 5% in the calibration sample, 15% in the validation sample
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
 data_split <- initial_validation_split(
   data=estimation_dataset,
-  prop = c(0.7, 0.15)
+  prop = c(0.8, 0.05)
 )
 train_full_data <- training(data_split)
 test_data <- testing(data_split)
@@ -203,11 +203,12 @@ nrow(validation_data)
 # Pick a subset of my training data to do my tuning.
 
 set.seed(95976)
-# 70% of the data in the training, 15% in the calibration sample, 15% in the validation sample
-# consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
+# 6.25% sample of the training data (6.25% of 80% or 5% of the entire data.)
+# This is chosen moderately purposefully. I want a small bit of data for tuning. 
+# 5% of the original sample is still a pretty big dataset when expanded out by pounds landed.
 train_data <- initial_split(
   data=train_full_data,
-  prop = c(0.05)
+  prop = c(0.0625)
 )
 
 
