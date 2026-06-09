@@ -184,33 +184,60 @@ best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 
 ############################################
 # Final fit spec
-# I could use update to change trees, but I also need to change the engine options
-# and that's a little dicey.
+# Use update to change trees, 
+# finalize the model with best_params
 final_spec <- tune_spec %>%
-  update(trees=500)
-  
-  
+  update(trees=500)%>%
+  finalize_model(best_params)
+
+# Verbose=TRUE to monitor what is going on.
+# save.memory slows it way down, but writes trees to disk to save on memory.
+final_spec$eng_args$verbose<-rlang::quo(TRUE)
+final_spec$eng_args$save.memory<-rlang::quo(TRUE)
+
 # finalize model by setting best model hyperparameters
 final_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(final_spec)
 set.seed(132564)
 
+fit_control<-control_parsnip(verbosity = 2L, catch = FALSE)
+
 # Final model fitting on the full training dataset 
 message("Fitting final model:...")
 final_fit <- 
   final_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
+  fit(train_data)
 
 message("Final model fit finished.", Sys.time())
 
 
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
+#prediction using the validation data 
+test_preds <- augment(final_fit, new_data = test_data)
 
 # print out the metrics
-final_fit %>%
-  collect_metrics()
+
+test_preds <- test_preds %>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) %>%
+  select(-.pred_class)
+
+test_metrics <- bind_rows(
+  roc_auc(test_preds, truth = market_desc, 
+          starts_with(".pred_"),
+          case_weights = weighting),
+  mn_log_loss(test_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting),
+  brier_class(test_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting)
+  
+)
+
+message("Fit metrics")
+test_metrics
+message("End Fit metrics")
 
 
 ########################################################################################################
@@ -223,44 +250,34 @@ final_fit %>%
 # A threading note 
 # here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
 
-vi_spec <-  rand_forest(
-  trees = 500,
-  mtry = tune(),
-  min_n = tune()
-) %>%
-  finalize_model(best_params) %>%
-  set_mode("classification") %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
+vi_spec <- final_spec
+# patch in impurity corrected
+vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
 
-# finalize model by picking the best model hyperparameters
+  
+# Update the workflow
 vi_wf  <- BSB.Ranger.tuning.Workflow %>%
   update_model(vi_spec)
 
 set.seed(132564)
 
-# Final model fitting on the full training dataset 
+# Final model fitting on the full training dataset to estimate importance
 message("Fitting model to estimate variable importance.", Sys.time())
 vi_fit <- 
   vi_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
+  fit(train_data) 
+
+message("Variable Importance Model fit finished", Sys.time())
 
 
-
-
+# Pull the variable importance
 vi_data<-vi_fit%>%
   extract_fit_parsnip() %>%
   vi(method = "model") 
-message("Variable Importance Model fit finished", Sys.time())
 
 write_rds(vi_data, file=here("results","ranger",vi_file_name))
+message("Variable Importance metrics saved", Sys.time())
+
 ########################################################################################################
 ########################################################################################################
 
