@@ -75,7 +75,7 @@ if (search_type == "Initial") {
   finalized_params<-finalized_params %>%
     update(
     #  mtry = mtry(range = c(2L, 35L)),   # For the Initial, we can leave the upper bound as is.
-      min_n=min_n(range = c(500L, 50000L))  # minimum points in a leaf node
+      min_n=min_n(range = c(50L, 50000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
@@ -95,7 +95,7 @@ if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(50, 2000L))  # minimum points in a leaf/node
+      min_n=min_n(range = c(50L, 2000L))  # minimum points in a leaf/node
     )
   
   rf_grid <- grid_space_filling(
@@ -112,7 +112,7 @@ if (search_type == "Prototype") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
-      min_n=min_n(range = c(500L, 10000L))  # minimum points in a leaf node
+      min_n=min_n(range = c(50L, 5000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
