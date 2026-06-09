@@ -44,7 +44,8 @@ tune_spec <- rand_forest(
              oob.error = FALSE, # not used.
              keep.inbag=FALSE, # default, but explicit 
              probability = TRUE, # set to a probability model
-             write.forest=TRUE) # default, but explicit
+             write.forest=TRUE,
+             verbose=TRUE) # default, but explicit
 
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
