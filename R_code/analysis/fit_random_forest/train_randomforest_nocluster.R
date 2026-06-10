@@ -263,34 +263,34 @@ message("End Fit metrics")
 
 # A threading note 
 # here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
-
-vi_spec <- final_spec
-# patch in impurity corrected
-vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
-
-  
-# Update the workflow
-vi_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(vi_spec)
-
-set.seed(132564)
-
-# Final model fitting on the full training dataset to estimate importance
-message("Fitting model to estimate variable importance.", Sys.time())
-vi_fit <- 
-  vi_wf %>%
-  fit(train_data) 
-
-message("Variable Importance Model fit finished", Sys.time())
-
-
-# Pull the variable importance
-vi_data<-vi_fit%>%
-  extract_fit_parsnip() %>%
-  vi(method = "model") 
-
-write_rds(vi_data, file=here("results","ranger",vi_file_name))
-message("Variable Importance metrics saved", Sys.time())
+# 
+# vi_spec <- final_spec
+# # patch in impurity corrected
+# vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
+# 
+#   
+# # Update the workflow
+# vi_wf  <- BSB.Ranger.tuning.Workflow %>%
+#   update_model(vi_spec)
+# 
+# set.seed(132564)
+# 
+# # Final model fitting on the full training dataset to estimate importance
+# message("Fitting model to estimate variable importance.", Sys.time())
+# vi_fit <- 
+#   vi_wf %>%
+#   fit(train_data) 
+# 
+# message("Variable Importance Model fit finished", Sys.time())
+# 
+# 
+# # Pull the variable importance
+# vi_data<-vi_fit%>%
+#   extract_fit_parsnip() %>%
+#   vi(method = "model") 
+# 
+# write_rds(vi_data, file=here("results","ranger",vi_file_name))
+# message("Variable Importance metrics saved", Sys.time())
 
 ########################################################################################################
 ########################################################################################################
