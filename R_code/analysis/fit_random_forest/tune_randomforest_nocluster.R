@@ -47,6 +47,7 @@ library("conflicted")
 
 #deal with conflicts
 conflicts_prefer(dplyr::filter())
+conflicts_prefer(dplyr::summary())
 conflicts_prefer(dplyr::lag())
 conflicts_prefer(purrr::discard())
 conflicts_prefer(dplyr::group_rows())
@@ -69,7 +70,7 @@ search_type<-"Advanced"
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-1			  
+testing_fraction<-0.5		  
 start_time<-Sys.time()
 
 #Turn bayesian tuning on or off.
@@ -202,17 +203,21 @@ set.seed(95976)
 # This is chosen moderately purposefully. I want a small bit of data for tuning. 
 # 5% of the original sample is still a pretty big dataset when expanded out by pounds landed.
 # I'm going to tune it twice and see what we get.
-train_data <- initial_validation_split(
+splitA <- initial_validation_split(
   data=train_full_data,
   prop = c(0.0625,0.0625)
 )
 
-tuning_data1 <- training(train_data)
-tuning_data2 <- testing(train_data)
+train_full_rows<-nrow(train_full_data)
 
+tuning_data1 <- training(splitA)
+tuning_data2 <- validation(splitA)
 
-tune1_full_rows<-nrow(tuning_data1)
-tune2_full_rows<-nrow(tuning_data2)
+rm(splitA)
+
+tune1_raw_rows<-nrow(tuning_data1)
+tune2_raw_rows<-nrow(tuning_data2)
+
 
 
 #expand by landed pounds 
@@ -220,11 +225,25 @@ train_data<- tuning_data1%>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
+
+tr1<- tuning_data1%>%
+  summarise(total=sum(lndlb)) %>%
+  pull(total)
+
+tr2<- tuning_data2%>%
+  summarise(total=sum(lndlb)) %>%
+  pull(total)
+
+
 tune_expand_rows<-nrow(train_data)
 
 message("Original training dataset :", train_full_rows )
-message("Tuning dataset rows (raw):", tune_raw_rows )
-message("Tuning dataset rows (expanded):", tune_expand_rows )
+message("Tuning dataset 1 rows (raw):", tune1_raw_rows )
+message("Tuning dataset 1 rows (expanded):", tune_expand_rows )
+
+message("Tuning dataset 2 rows (raw):", tune2_raw_rows )
+message("Tuning dataset 2 rows (expanded):", tr2 )
+
 
 # # Recipe definition
 # 
@@ -252,23 +271,26 @@ start_time_tune<-Sys.time()
 
 message("Tuning model hyperparameters", Sys.time())
 
-tune_res <- tune_grid(
+tune_resA <- tune_grid(
   BSB.Ranger.tuning.Workflow,
   resamples = myfolds,
   grid = rf_grid,
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-message("Grid Tuning Finished. Saving tuning results", Sys.time())
+message("Grid Tuning Finished at", Sys.time())
 
 
 # Select the best Rforest based on log loss from the 10 folds. Just print them for now.
-message("Best Parameters from First tune" )
+message("Best Parameters from Tune A:" )
 
-best_params <- tune_res %>%
+best_paramsA <- tune_resA %>%
   select_best(metric = "brier_class")
 
-write_rds(tune_res, file=here("results","ranger", tune_file_name))
+best_paramsA
+
+
+write_rds(tune_resA, file=here("results","ranger", tune_file_name))
 
 
 # Tune again
@@ -276,7 +298,7 @@ train_data<- tuning_data2%>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
-myfolds<-group_vfold_cv(train_data2, 
+myfolds<-group_vfold_cv(train_data, 
                         group=myl_id,
                         strata=market_desc, 
                         v = 10)
@@ -296,11 +318,11 @@ message("Grid Tuning 2 Finished. Saving tuning results", Sys.time())
 write_rds(tune_resB, file=here("results","ranger", glue("T1_{tune_file_name}")))
 
 # Select the best Rforest based on log loss from the 10 folds. Just print them for now.
-message("Best Parameters from First tune" )
+message("Best Parameters from Tune B" )
 
-best_params2 <- tune_resB %>%
+best_paramsB <- tune_resB %>%
   select_best(metric = "brier_class")
-best_params2
+best_paramsB
 
 
 end_time_tune<-Sys.time()
@@ -321,7 +343,7 @@ if(bayes_tune==TRUE){
   tune_res2 <- tune_bayes(
     object=BSB.Ranger.tuning.Workflow,
     resamples = myfolds,
-    initial = tune_res,
+    initial = tune_resA,
     param_info=bayes_param,
     iter = 30,                     # 
     control = control_bayes(
@@ -345,7 +367,7 @@ if(bayes_tune==TRUE){
 }else if (bayes_tune==FALSE){
   message("Bayesian Tuning Skipped")
   
-  tune_res2<-tune_res
+  tune_res2<-tune_resA
 }
 message ("Any Errors?")
 tune_res2 %>%
@@ -358,13 +380,62 @@ system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
 # Select the best Rforest based on log loss from the 10 folds. Just print them for now.
-
+# this is either from the 1st tune OR from the Bayesian tune
 best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
 write_rds(best_params, file=here("results","ranger", best_param_file_name))
-
-
 best_params
+
+# Save results from Tune B.
+best_paramsB <- tune_resB %>%
+  select_best(metric = "brier_class")
+best_paramsB
+write_rds(best_params, file=here("results","ranger", glue("T1_{best_param_file_name}")))
+
+
+
+# use the code from final_fit to pull metrics from tune and create an interactive plot with plotly
+#better to do this now, because it's a pain to read in all the data
+
+
+tuneA_metrics<-tune_resA  %>%
+  collect_metrics() %>%
+  filter(.metric == "brier_class") %>%
+  #  filter(mtry <=10) %>%
+  select(mean, mtry, min_n) %>%
+  rename(brier_class=mean)
+
+p<- plot_ly(tuneA_metrics, 
+            x = ~mtry, 
+            y = ~min_n, 
+            z = ~brier_class,
+            type = "mesh3d", 
+            intensity=~brier_class,
+            colorscale="Hot",
+            reversescale=TRUE
+)
+saveWidget(p, here("results","ranger","tune",glue("brier_tuneA_{tuning_pattern}{tuning_vintage}.html")), selfcontained = TRUE)
+rm(p)
+
+
+tuneB_metrics<-tune_resB  %>%
+  collect_metrics() %>%
+  filter(.metric == "brier_class") %>%
+  #  filter(mtry <=10) %>%
+  select(mean, mtry, min_n) %>%
+  rename(brier_class=mean)
+
+p<- plot_ly(tuneB_metrics, 
+            x = ~mtry, 
+            y = ~min_n, 
+            z = ~brier_class,
+            type = "mesh3d", 
+            intensity=~brier_class,
+            colorscale="Hot",
+            reversescale=TRUE
+)
+saveWidget(p, here("results","ranger","tune",glue("brier_tuneB_{tuning_pattern}{tuning_vintage}.html")), selfcontained = TRUE)
+
 
 cat("Tuning done")
