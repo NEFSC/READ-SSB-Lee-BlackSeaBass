@@ -44,6 +44,8 @@ library("knitr")
 library("kableExtra")
 library("viridis")
 library("conflicted")
+library("plotly")
+library("htmlwidgets")
 
 #deal with conflicts
 conflicts_prefer(dplyr::filter())
