@@ -58,7 +58,7 @@ here::i_am("R_code/analysis/fit_random_forest/train_randomforest_nocluster.R")
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Advanced"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 
