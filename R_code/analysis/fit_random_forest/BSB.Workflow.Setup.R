@@ -67,9 +67,13 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
 ## Tuning
-# With uncounted() data, the min_n becomes "pounds" allocated to a grid. This is because  
-# the replicated data will always end up in the same leaf/node.
-# Set up a set of mtry to search over. 
+# With uncounted() data, the min_n becomes "pounds" allocated to a grid. All replicates  
+# in a particula bag will always end up in the same leaf/node.
+
+# Note: The first  grid was default mtry and min_n 50-50,000.
+#   Brier definitely shows a best model in the mtry 5-30 range (pretty flat there)
+#   and min_n is probably pretty small. 
+
 
 if (search_type == "Initial") {
   
@@ -87,16 +91,11 @@ if (search_type == "Initial") {
 
 # If the optimal is near the boundary, you need to expand the bounds (of mtry or min_n).   
 # If some sections of the initial grid are clearly worse, you can tighten it up here.
-# Note: The original grid was mtry (10-35) and min_n 500-50,000.
-#    Both Brier class and mn_log_loss are not too sensitive to over a large portion of that mtry range
-#      the bottom is probably in the 12-30 range.
-# However, the optimal min_n was 500, suggesting that that was a bad grid.
-# I will tighted up the grid
 if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(50L, 2000L))  # minimum points in a leaf/node
+      mtry = mtry(range = c(8L, 32L)),   # override upper bound after finalization
+      min_n=min_n(range = c(10L, 2500L))  # minimum points in a leaf/node
     )
   
   rf_grid <- grid_space_filling(
