@@ -66,7 +66,7 @@ here::i_am("R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R")
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Initial"
+search_type<-"Advanced"
 # search_type in "Initial", "Prototype","Advanced")
 
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
@@ -201,50 +201,54 @@ nrow(validation_data)
 # Pick a subset of my training data to do my tuning.
 
 set.seed(95976)
+# Take 2 subsamples for tuning.  I'm going to try tuning twice. Ideally, the surface is similar.
+# And the optimal parameters are identical. 
 # 6.25% sample of the training data (6.25% of 80% or 5% of the entire data.)
 # This is chosen moderately purposefully. I want a small bit of data for tuning. 
 # 5% of the original sample is still a pretty big dataset when expanded out by pounds landed.
-# I'm going to tune it twice and see what we get.
-splitA <- initial_validation_split(
+# I use initial_validation_split() here to make 3 samples (training, validation, and testing). 
+# I don't use testing for anything.
+split_temp <- initial_validation_split(
   data=train_full_data,
   prop = c(0.0625,0.0625)
 )
 
+
+tuning_data1 <- training(split_temp)
+tuning_data2 <- validation(split_temp)
+
+rm(split_temp)
+
+# Do some checks. How big are these datasets?
 train_full_rows<-nrow(train_full_data)
-
-tuning_data1 <- training(splitA)
-tuning_data2 <- validation(splitA)
-
-rm(splitA)
-
-tune1_raw_rows<-nrow(tuning_data1)
-tune2_raw_rows<-nrow(tuning_data2)
+tuneA_raw_rows<-nrow(tuning_dataA)
+tuneB_raw_rows<-nrow(tuning_dataB)
 
 
 
 #expand by landed pounds 
-train_data<- tuning_data1%>%
+train_dataA_expanded<- tuning_datA%>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
 
-tr1<- tuning_data1%>%
+trA<- tuning_dataA%>%
   summarise(total=sum(lndlb)) %>%
   pull(total)
 
-tr2<- tuning_data2%>%
+trB<- tuning_dataB%>%
   summarise(total=sum(lndlb)) %>%
   pull(total)
 
 
-tune_expand_rows<-nrow(train_data)
+tune_expand_rows<-nrow(train_dataA_expanded)
 
 message("Original training dataset :", train_full_rows )
-message("Tuning dataset 1 rows (raw):", tune1_raw_rows )
+message("Tuning dataset 1 rows (raw):", tuneA_raw_rows )
 message("Tuning dataset 1 rows (expanded):", tune_expand_rows )
 
-message("Tuning dataset 2 rows (raw):", tune2_raw_rows )
-message("Tuning dataset 2 rows (expanded):", tr2 )
+message("Tuning dataset 2 rows (raw):", tuneB_raw_rows )
+message("Tuning dataset 2 rows (expanded):", trB )
 
 
 # # Recipe definition
@@ -259,7 +263,9 @@ source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, 
 # grouped by myl_id (original observation), so that that each original records is wholly contained in a single fold.
-myfolds<-group_vfold_cv(train_data, 
+# Pass in the expanded version of train_dataA.
+
+myfolds<-group_vfold_cv(train_dataA_expanded, 
                         group=myl_id,
                         strata=market_desc, 
                         v = 10)
@@ -294,13 +300,14 @@ best_paramsA
 
 write_rds(tune_resA, file=here("results","ranger", tune_file_name))
 
-
-# Tune again
-train_data<- tuning_data2%>%
+###############################################################################
+# Tune again on a different subsample B
+###############################################################################
+train_dataB_expanded<- tuning_dataB%>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
-myfolds<-group_vfold_cv(train_data, 
+myfolds<-group_vfold_cv(train_dataB_expanded, 
                         group=myl_id,
                         strata=market_desc, 
                         v = 10)
@@ -314,7 +321,7 @@ tune_resB <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-message("Grid Tuning 2 Finished. Saving tuning results", Sys.time())
+message("Grid Tuning B Finished. Saving tuning results", Sys.time())
 
 
 write_rds(tune_resB, file=here("results","ranger", glue("T1_{tune_file_name}")))
@@ -324,6 +331,7 @@ message("Best Parameters from Tune B" )
 
 best_paramsB <- tune_resB %>%
   select_best(metric = "brier_class")
+message("Best Parameters from Tune B:" )
 best_paramsB
 
 
@@ -368,9 +376,11 @@ if(bayes_tune==TRUE){
     labs(title = "Did Bayesian optimization converge?")
 }else if (bayes_tune==FALSE){
   message("Bayesian Tuning Skipped")
-  
+  # If I skip bayesian tuning, I just put tune_resA into tune_res2.
   tune_res2<-tune_resA
 }
+
+# Print any errors
 message ("Any Errors?")
 tune_res2 %>%
   tune::collect_notes() %>%
@@ -378,11 +388,12 @@ tune_res2 %>%
   dplyr::select(location, note) %>%
   print(width = 200)
 
+#Kill the logger, I'm done with the heavy lifting.
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
 # Select the best Rforest based on log loss from the 10 folds. Just print them for now.
-# this is either from the 1st tune OR from the Bayesian tune
+# this is either from the tune A OR from the Bayesian tune
 best_params <- tune_res2 %>%
   select_best(metric = "brier_class")
 
@@ -396,15 +407,16 @@ best_paramsB
 write_rds(best_params, file=here("results","ranger", glue("T1_{best_param_file_name}")))
 
 
+#################################################################################
+# create an interactive html plot with plotly
+# better to do this now, because it's a pain to read in the giant tuning dataset
+#################################################################################
 
-# use the code from final_fit to pull metrics from tune and create an interactive plot with plotly
-#better to do this now, because it's a pain to read in all the data
 
 
 tuneA_metrics<-tune_resA  %>%
   collect_metrics() %>%
   filter(.metric == "brier_class") %>%
-  #  filter(mtry <=10) %>%
   select(mean, mtry, min_n) %>%
   rename(brier_class=mean)
 
@@ -424,7 +436,6 @@ rm(p)
 tuneB_metrics<-tune_resB  %>%
   collect_metrics() %>%
   filter(.metric == "brier_class") %>%
-  #  filter(mtry <=10) %>%
   select(mean, mtry, min_n) %>%
   rename(brier_class=mean)
 
