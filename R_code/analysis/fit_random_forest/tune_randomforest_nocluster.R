@@ -188,13 +188,13 @@ data_split <- initial_validation_split(
   data=estimation_dataset,
   prop = c(0.8, 0.05)
 )
-train_full_data <- training(data_split)
+train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
 readr::write_rds(data_split, file=here("results","ranger",data_save_name))
 
-nrow(train_full_data)
+nrow(train_data)
 nrow(test_data)
 nrow(validation_data)
 
@@ -209,25 +209,25 @@ set.seed(95976)
 # I use initial_validation_split() here to make 3 samples (training, validation, and testing). 
 # I don't use testing for anything.
 split_temp <- initial_validation_split(
-  data=train_full_data,
+  data=train_data,
   prop = c(0.0625,0.0625)
 )
 
 
-tuning_data1 <- training(split_temp)
-tuning_data2 <- validation(split_temp)
+tuning_dataA <- training(split_temp)
+tuning_dataB <- validation(split_temp)
 
 rm(split_temp)
 
 # Do some checks. How big are these datasets?
-train_full_rows<-nrow(train_full_data)
+train_full_rows<-nrow(train_data)
 tuneA_raw_rows<-nrow(tuning_dataA)
 tuneB_raw_rows<-nrow(tuning_dataB)
 
 
 
 #expand by landed pounds 
-train_dataA_expanded<- tuning_datA%>%
+train_dataA_expanded<- tuning_dataA%>%
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
 
@@ -262,7 +262,8 @@ source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, 
-# grouped by myl_id (original observation), so that that each original records is wholly contained in a single fold.
+# grouped by myl_id (original observation), so original records are wholly contained in a single fold.
+# This ensures that the cross validation is valid.  Note, that for individual forests, the OOB is still invalid
 # Pass in the expanded version of train_dataA.
 
 myfolds<-group_vfold_cv(train_dataA_expanded, 
@@ -272,8 +273,9 @@ myfolds<-group_vfold_cv(train_dataA_expanded,
 
 set.seed(8675309)					  
 
+# for subsample tuning, it's fine to just assigne alot of cores and run in sequence.
 rf_control_grid<-control_grid(save_pred = TRUE, 
-                              verbose = TRUE, 
+                              #verbose = TRUE, 
                               allow_par=FALSE)
 start_time_tune<-Sys.time()
 
@@ -321,11 +323,13 @@ tune_resB <- tune_grid(
   control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
-message("Grid Tuning B Finished. Saving tuning results", Sys.time())
+message("Grid Tuning B Finished. Saving summary results from B", Sys.time())
 
+metrics_by_fold <- collect_metrics(tune_resB, summarize = FALSE)  # fold-level
+saveRDS(metrics_by_fold,  "tuning_metrics_by_fold.rds")
+write_rds(metrics_by_fold, file=here("results","ranger", glue("TB_tuning_metrics_by_fold{tuning_vintage}.Rds")))
 
-write_rds(tune_resB, file=here("results","ranger", glue("T1_{tune_file_name}")))
-
+rm(metrics_by_fold)
 # Select the best Rforest based on log loss from the 10 folds. Just print them for now.
 message("Best Parameters from Tune B" )
 
@@ -368,7 +372,8 @@ if(bayes_tune==TRUE){
   )
   end_time_bt<-Sys.time()
   end_time_bt-start_time_bt
-  
+
+# If you do Bayesian tuning, overwrite the results. If you didn't, then there's nothing to do here.  
   write_rds(tune_res2, file=here("results","ranger", tune_file_name))
   message("Bayesian Tuning Finished", Sys.time())
   
@@ -380,6 +385,7 @@ if(bayes_tune==TRUE){
   tune_res2<-tune_resA
 }
 
+
 # Print any errors
 message ("Any Errors?")
 tune_res2 %>%
@@ -387,6 +393,12 @@ tune_res2 %>%
   dplyr::filter(type == "error") %>%
   dplyr::select(location, note) %>%
   print(width = 200)
+
+metrics_by_fold <- collect_metrics(tune_res2, summarize = FALSE)  # fold-level
+saveRDS(metrics_by_fold,  "tuning_metrics_by_fold.rds")
+write_rds(metrics_by_fold, file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
+
+
 
 #Kill the logger, I'm done with the heavy lifting.
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
@@ -449,6 +461,7 @@ p<- plot_ly(tuneB_metrics,
             reversescale=TRUE
 )
 saveWidget(p, here("results","ranger","tune",glue("brier_tuneB_{tuning_pattern}{tuning_vintage}.html")), selfcontained = TRUE)
+
 
 
 cat("Tuning done")
