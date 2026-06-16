@@ -193,7 +193,16 @@ source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 #tune_res<-read_rds(file=here("results","ranger", tune_file_name))
 best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 
+fold_results<-read_rds(file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
+tm<-fold_results  %>%
+  filter(.metric == "brier_class") %>%
+  group_by(mtry, min_n, .config) %>%
+  summarise(mt=mean(.estimate), .groups="drop_last")%>%
+  arrange(mt)
 
+selected_params<-tm[2,] %>%
+  select(-mt)
+  
 
 
 
@@ -203,7 +212,7 @@ best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 # finalize the model with best_params
 final_spec <- tune_spec %>%
   update(trees=500)%>%
-  finalize_model(best_params)
+  finalize_model(selected_params)
 
 # Verbose=TRUE to monitor what is going on.
 # save.memory slows it way down, but writes trees to disk to save on memory.
@@ -211,20 +220,25 @@ final_spec$eng_args$verbose<-rlang::quo(TRUE)
 final_spec$eng_args$save.memory<-rlang::quo(TRUE)
 
 # finalize model by setting best model hyperparameters
-final_wf  <- BSB.Ranger.tuning.Workflow %>%
+final_wf_spec  <- BSB.Ranger.tuning.Workflow %>%
   update_model(final_spec)
 set.seed(132564)
+
+# clean up
+rm(BSB.Ranger.tuning.Workflow)
+gc()
 
 fit_control<-control_parsnip(verbosity = 2L, catch = FALSE)
 
 # Final model fitting on the full training dataset 
 message("Fitting final model:...")
 final_fit <- 
-  final_wf %>%
+  final_wf_spec %>%
   fit(train_data)
 
 message("Final model fit finished.", Sys.time())
-
+#rm(final_model_spec)
+gc()
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
 #prediction using the validation data 
