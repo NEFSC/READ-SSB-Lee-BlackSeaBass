@@ -77,12 +77,12 @@ platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
   if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-      runClass<-'DynamicContainer'
-    } else{ 
-      runClass <- 'Container'
-    }
+    runClass<-'DynamicContainer'
+  } else{ 
+    runClass <- 'Container'
   }
- 
+}
+
 
 if(platform == 'Windows'){
   runClass<-'Windows'
@@ -92,8 +92,8 @@ if (runClass %in% c('Local', 'Windows')){
   my.parallel.threads<-1
   my.ranger.multi.threads<-5
 } else if (runClass %in% c('Container','DynamicContainer')){ 
-	  
-	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
+  
+  # on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
   # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
   my.ranger.sequential.threads<-23
   
@@ -202,7 +202,7 @@ tm<-fold_results  %>%
 
 selected_params<-tm[2,] %>%
   select(-mt)
-  
+
 
 
 
@@ -214,6 +214,7 @@ final_spec <- tune_spec %>%
   update(trees=500)%>%
   finalize_model(selected_params)
 
+# I have to adjust the arguments this way or I have to rewrite the entire workflow
 # Verbose=TRUE to monitor what is going on.
 # save.memory slows it way down, but writes trees to disk to save on memory.
 final_spec$eng_args$verbose<-rlang::quo(TRUE)
