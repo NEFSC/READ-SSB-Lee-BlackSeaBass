@@ -6,7 +6,7 @@ system(
     "bash -c 'while true; do ",
     "CPU=$(top -bn2 -d0.5 | grep Cpu | tail -1 | awk \"{print \\$2+\\$4}\"); ",
     "MEM=$(ps -u ", r_user, " --no-headers -o rss | awk \"{sum+=\\$1} END {print sum/1024}\"); ",
-    "echo \"$(date +%H:%M:%S) CPU: ${CPU}% MEM: ${MEM}MB\"; ",
+    "echo \"$(date) CPU: ${CPU}% MEM: ${MEM}MB\"; ",
     "sleep 30; done' > ", perf_log_file, " 2>&1 &"
   )
 )

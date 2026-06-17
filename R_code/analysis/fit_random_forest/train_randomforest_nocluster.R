@@ -14,12 +14,6 @@
 #  - variable importance
 ###############################################################################  
 
-
-start_time<-Sys.time()
-modeltype<-"nocluster"
-# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
-
-
 library("here")
 
 # load tidyverse and related
@@ -43,8 +37,7 @@ library("bonsai")
 library("knitr")
 library("kableExtra")
 library("viridis")
-library("future")
-library("vip")		   
+library("vip")
 library("conflicted")
 
 #deal with conflicts
@@ -59,28 +52,37 @@ conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_random_forest/train_randomforest_nocluster.R")
 
-# Kill background logger if it is on
-system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
-message("CPU logger stopped")
+# Set these two to control the size of the dataset. Useful for making sure code 
+# works.
+#Set up model type
+modeltype<-"nocluster"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-# start background logger
-source(here("R_code","analysis","helpers","background_logger.R"))
-
-search_type<-"Prototype"
+search_type<-"Advanced"
 # search_type in "Initial", "Prototype","Advanced")
 
+
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+
+
+# Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
+testing_fraction<-1			  
+start_time<-Sys.time()
+
+#Turn bayesian tuning on or off.
+bayes_tune<-"FALSE"
 
 # Determine what platform the code is running on and set the number of threads for ranger
 platform <- Sys.info()['sysname']
 # check the name of the effective_user
 if(platform == 'Linux'){
   if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-      runClass<-'DynamicContainer'
-    } else{ 
-      runClass <- 'Container'
-    }
+    runClass<-'DynamicContainer'
+  } else{ 
+    runClass <- 'Container'
   }
- 
+}
+
 
 if(platform == 'Windows'){
   runClass<-'Windows'
@@ -90,56 +92,91 @@ if (runClass %in% c('Local', 'Windows')){
   my.parallel.threads<-1
   my.ranger.multi.threads<-5
 } else if (runClass %in% c('Container','DynamicContainer')){ 
-	  
-	# on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
-  # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
-  my.parallel.threads<-2
-  my.ranger.multi.threads<-11
-  my.ranger.sequential.threads<-22
   
+  # on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
+  # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
+  my.ranger.sequential.threads<-24
+  
+  # Kill background logger if it is on
+  system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  message("CPU logger stopped")
+  
+  # start background logger
+  source(here("R_code","analysis","helpers","background_logger.R"))
   
 }
 lbs_per_mt<-2204.62
-# my.parallel.threads =4 and my.ranger.multi.threads=5  about 30 GB of RAM on the "full" dataset (~381,542 in the training set).
-
-options(future.globals.maxSize = 2 * 1024^3)
 
 lbs_per_mt<-2204.62
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
+
+#############################################################################
+# Read in data and tuning results.
+#############################################################################
+
+# data vintage
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
-estimation_vintage<-as.character(Sys.Date())
+data_vintage<-max(vintage_string)
 
 
-data_save_name<-glue("nocluster_data_split{estimation_vintage}.Rds")
-tune_file_name<-glue("BSB_ranger_nocluster_tune{estimation_vintage}.Rds")
-final_fit_file_name<-glue("BSB_ranger_nocluster_results{estimation_vintage}.Rds")
-vi_file_name<-glue("BSB_ranger_nocluster_VI{estimation_vintage}.Rds")
-if  (search_type=="Prototype"){
-  data_save_name<-glue("nocluster_data_split_TEST{estimation_vintage}.Rds")
-  tune_file_name<-glue("BSB_ranger_nocluster_tune_TEST{estimation_vintage}.Rds")
-  final_fit_file_name<-glue("BSB_ranger_nocluster_results_TEST{estimation_vintage}.Rds")
-  vi_file_name<-glue("BSB_ranger_nocluster_VI_TEST{estimation_vintage}.Rds")
-  
-  
-}
 
-data_split<-readr::read_rds(, file=here("results","ranger",data_save_name))
+
+
+#data_vintage<-as.character(Sys.Date())
+################################################################################
+# Read in data and tuning results.
+################################################################################
+
+
+# Pick up the most recent tuning
+tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*.Rds")))
+tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
+tuning_vintage<-gsub(".Rds","",tuning_vintage)
+tuning_vintage<-max(tuning_vintage)
+
+# Assemble file names to read in data, tuning results, and best_params.
+# Although the source data has a different vintage, I'm loading in "data_split" which has the same vintage as the tuning
+# The tuning and best_param already exist.
+# the final fit and vi files will be created by this file. I'm choosing to use 
+# the tuning date here, since the final fit and tuning go together.
+data_save_name<-glue("{data_pattern}{tuning_vintage}.Rds")
+tune_file_name<-glue("{tuning_pattern}{tuning_vintage}.Rds")
+best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+
+data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
+rm(data_split)
 
 nrow(train_data)
 nrow(test_data)
 nrow(validation_data)
 
+train_raw_rows<-nrow(train_data)
 
 
+#expand by landed pounds 
+#replacing "in place" so that there's no chance the recipe fits to the wrong data.
+train_data<-train_data %>%
+  select(-c(price,priceR_CPI, dlrid, myl_id)) %>%
+  mutate(lndlb2=lndlb) %>%
+  uncount(lndlb2)
+
+train_expand_rows<-nrow(train_data)
+
+
+
+message("Original training dataset :", train_raw_rows )
+message("Training dataset rows (expanded):", train_expand_rows )
 
 
 # # Recipe definition
@@ -151,63 +188,85 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 # Set up the tuning workflow
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
+# Read in best parameters.  Do a training on the full training dataset, predict on the validation dataset. Save the data
 
-tune_res<-read_rds(file=here("results","ranger", tune_file_name))
+#tune_res<-read_rds(file=here("results","ranger", tune_file_name))
+best_params<-read_rds(file=here("results","ranger", best_param_file_name))
 
+fold_results<-read_rds(file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
+tm<-fold_results  %>%
+  filter(.metric == "brier_class") %>%
+  group_by(mtry, min_n, .config) %>%
+  summarise(mt=mean(.estimate), .groups="drop_last")%>%
+  arrange(mt)
 
-tune_res %>%
-  tune::collect_notes() %>%
-  dplyr::filter(type == "error") %>%
-  dplyr::select(location, note) %>%
-  print(width = 200)
+selected_params<-tm[2,] %>%
+  select(-mt)
 
-
-# Select the best Rforest based on log loss from the 10 folds.  Do a final fit on the full training dataset, predict on the validation dataset. Save the data
-
-best_params <- tune_res %>%
-  select_best(metric = "brier_class")
-
-best_params
 
 
 
 ############################################
 # Final fit spec
+# Use update to change trees, 
+# finalize the model with best_params
 final_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "none", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
+  update(trees=500)%>%
+  finalize_model(selected_params)
 
+# I have to adjust the arguments this way or I have to rewrite the entire workflow
+# Verbose=TRUE to monitor what is going on.
+# save.memory slows it way down, but writes trees to disk to save on memory.
+final_spec$eng_args$verbose<-rlang::quo(TRUE)
+final_spec$eng_args$save.memory<-rlang::quo(TRUE)
 
-
-# finalize model by picking the best model hyperparameters
-final_wf  <- BSB.Ranger.tuning.Workflow %>%
+# finalize model by setting best model hyperparameters
+final_wf_spec  <- BSB.Ranger.tuning.Workflow %>%
   update_model(final_spec)
 set.seed(132564)
+
+# clean up
+rm(BSB.Ranger.tuning.Workflow)
+gc()
+
+fit_control<-control_parsnip(verbosity = 2L, catch = FALSE)
 
 # Final model fitting on the full training dataset 
 message("Fitting final model:...")
 final_fit <- 
-  final_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
+  final_wf_spec %>%
+  fit(train_data)
 
 message("Final model fit finished.", Sys.time())
-
-
+#rm(final_model_spec)
+gc()
 write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
+#prediction using the validation data 
+test_preds <- augment(final_fit, new_data = test_data)
 
 # print out the metrics
-final_fit %>%
-  collect_metrics()
+
+test_preds <- test_preds %>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) %>%
+  select(-.pred_class)
+
+test_metrics <- bind_rows(
+  roc_auc(test_preds, truth = market_desc, 
+          starts_with(".pred_"),
+          case_weights = weighting),
+  mn_log_loss(test_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting),
+  brier_class(test_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting)
+  
+)
+
+message("Fit metrics")
+test_metrics
+message("End Fit metrics")
 
 
 ########################################################################################################
@@ -219,40 +278,35 @@ final_fit %>%
 
 # A threading note 
 # here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
+# 
+# vi_spec <- final_spec
+# # patch in impurity corrected
+# vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
+# 
+#   
+# # Update the workflow
+# vi_wf  <- BSB.Ranger.tuning.Workflow %>%
+#   update_model(vi_spec)
+# 
+# set.seed(132564)
+# 
+# # Final model fitting on the full training dataset to estimate importance
+# message("Fitting model to estimate variable importance.", Sys.time())
+# vi_fit <- 
+#   vi_wf %>%
+#   fit(train_data) 
+# 
+# message("Variable Importance Model fit finished", Sys.time())
+# 
+# 
+# # Pull the variable importance
+# vi_data<-vi_fit%>%
+#   extract_fit_parsnip() %>%
+#   vi(method = "model") 
+# 
+# write_rds(vi_data, file=here("results","ranger",vi_file_name))
+# message("Variable Importance metrics saved", Sys.time())
 
-vi_spec <- tune_spec %>%
-  finalize_model(best_params) %>%
-  set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
-
-# finalize model by picking the best model hyperparameters
-vi_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(vi_spec)
-
-set.seed(132564)
-
-# Final model fitting on the full training dataset 
-message("Fitting model to estimate variable importance.", Sys.time())
-vi_fit <- 
-  vi_wf %>%
-  last_fit(data_split, metrics=class_and_probs_metrics) 
-
-
-
-
-vi_data<-vi_fit%>%
-  extract_fit_parsnip() %>%
-  vi(method = "model") 
-message("Variable Importance Model fit finished", Sys.time())
-
-write_rds(vi_data, file=here("results","ranger",vi_file_name))
 ########################################################################################################
 ########################################################################################################
 
