@@ -95,7 +95,7 @@ if (runClass %in% c('Local', 'Windows')){
   
   # on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
   # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
-  my.ranger.sequential.threads<-23
+  my.ranger.sequential.threads<-24
   
   # Kill background logger if it is on
   system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
