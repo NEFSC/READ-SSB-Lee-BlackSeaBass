@@ -1,3 +1,54 @@
+---
+title: "TilefishProject"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r Set up working space and data}
+library(here)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(conflicted)
+
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(lubridate::year)
+conflicts_prefer(lubridate::month)
+conflicts_prefer(lubridate::week)
+conflicts_prefer(dplyr::summarise)
+conflicts_prefer(dplyr::arrange)
+
+here::i_am("R_code/data_extraction_processing/processing/tilefish/TilefishProject.Rmd")
+
+tile <- readRDS(here("data_folder", "main", "commercial", "tile_landings_all_2026-06-09.Rds"))
+
+
+my_datapull<-dirname(here())
+my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
+
+    
+in_string      <- "2026-06-09"  
+vintage_string <- Sys.Date()   
+lbs_to_kg<-2.20462
+
+
+# need to change this- maybe need to add the rest.
+source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
+
+#final data prep, missing source
+
+
+```
+
+```{r}
+
+
 # =============================================================================
 # Script:  gear_market_helpers.R
 # Purpose: Shared helper functions used across multiple BSB analysis scripts:
@@ -104,46 +155,9 @@ apply_bsb_market_rebinning <- function(df) {
     )
 }
 
+
 # -----------------------------------------------------------------------------
-# apply_tilefish_market_rebinning()
-# Standard rebinning for bsb_exploratory and prices_by_category.
-# Returns df with cleaned market_code and market_desc (ordered factor).
-# Rules: Tiny and Round unclass should be lumped into
-# -----------------------------------------------------------------------------
-apply_tilefish_market_rebinning <- function(df) {
-    market_levels <- c("Xl", "Large", "Large/Medium", "Medium", "Kittens", "Extra Small", "Unclassified")
-    
-    df %>% mutate(
-      # UN (Unclassified)
-      market_desc = if_else(market_desc == "UNCLASSIFIEDS", "UNCLASSIFIEDS", market_desc),
-      
-      # TINY + ROUND UNCLASS + EX SMALL → EXTRA SMALL
-      market_desc = if_else(market_desc == "KITTENS", "KITTENS", market_desc),
-      market_desc = if_else(market_desc %in% c("EXTRA SMALL", "TINY", "ROUND UNCLASS"), "EXTRA SMALL", market_desc),
-      # Might change to unclassified- only round unclass.
-      
-      
-      # XG (Extra Large) 
-      market_desc = if_else(market_desc == "XL", "XL", market_desc),
-      
-  
-      market_desc = if_else(market_desc == "LARGE", "LARGE", market_desc),
-      market_desc = if_else(market_desc == "LARGE/MEDIUM", "LARGE/MEDIUM", market_desc),
-      market_desc = if_else(market_desc == "MEDIUM", "MEDIUM", market_desc),
-      
-      # fix "Medium Or Select"
-      market_desc = str_to_title(market_desc),
-      market_desc = if_else(market_desc == "Medium Or Select", "Medium", market_desc),
-      market_desc = factor(market_desc, levels = market_levels)
-    )
-  }
-  
-  
-  
-  
-  
-# -----------------------------------------------------------------------------
-# apply_bsb_market_rebinning_dealers() # Do I delete this ?? Do i need it.
+# apply_bsb_market_rebinning_dealers()
 # Dealers-analysis variant: PW stays as ES (Extra Small), not merged into Small.
 # NOTE: intentionally differs from apply_market_rebinning() — Pee Wee is kept
 # as a separate Extra Small record to preserve finer size detail for
@@ -165,7 +179,6 @@ apply_bsb_market_rebinning_dealers <- function(df) {
     )
 }
 
-
 # -----------------------------------------------------------------------------
 # apply_bsb_grade_cleaning()
 # Standardizes grade_desc values and returns an ordered factor.
@@ -182,4 +195,9 @@ apply_bsb_grade_cleaning <- function(df) {
       grade_desc = factor(grade_desc, levels = c("Round", "Live", "Ungraded"))
     )
 }
+
+
+
+
+```
 
