@@ -24,35 +24,35 @@
 #' 
 #' Geurts et al(2006)'s extremely random trees can be set with splitrule="extratrees".
 #' 
-#' trees=500. I don't have a good rationale for choose this.
+#' trees=300. For tuning, it's fine to tune fewer trees.  The "rank order" of parameter combinations
+#' stabiliizes pretty quickly, so cutting this down saves computation time.
 #' 
 #  respect.unordered.factors="order",
 
 # configure the tuning part of the model.
 tune_spec <- rand_forest(
-  trees = 500,
+  trees = 200,
   mtry = tune(),
   min_n = tune(),
 ) %>%
   set_mode("classification") %>%
   set_engine("ranger",
-             num.threads=!!my.ranger.multi.threads, 
+             num.threads=!!my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
              importance="none", # default, but I don't need importance for tuning.
              oob.error = FALSE, # not used.
              keep.inbag=FALSE, # default, but explicit 
              probability = TRUE, # set to a probability model
-             write.forest=TRUE) # default, but explicit
-case_weights_allowed(tune_spec)
+             write.forest=TRUE,
+             verbose=TRUE) # default, but explicit
 
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
 BSB.Ranger.tuning.Workflow <-
   workflow() %>%
   add_model(tune_spec) %>% 
-  add_recipe(BSB.Classification.Recipe) %>%
-  add_case_weights(weighting)
+  add_recipe(BSB.Classification.Recipe) 
 
 
 hardhat::extract_parameter_set_dials(BSB.Ranger.tuning.Workflow)
@@ -67,16 +67,20 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
 ## Tuning
-# 
-# Set up a set of mtry to search over. 
+# With uncounted() data, the min_n becomes "pounds" allocated to a grid. All replicates  
+# in a particula bag will always end up in the same leaf/node.
 
-# I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
+# Note: The first  grid was default mtry and min_n 50-50,000.
+#   Brier definitely shows a best model in the mtry 5-30 range (pretty flat there)
+#   and min_n is probably pretty small. 
+
+
 if (search_type == "Initial") {
   
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(5L, 100))  # minimum points in a leaf node
+    #  mtry = mtry(range = c(2L, 35L)),   # For the Initial, we can leave the upper bound as is.
+      min_n=min_n(range = c(50L, 50000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
@@ -85,19 +89,18 @@ if (search_type == "Initial") {
   )
 }
 
-# The initial grid search found an optimal min_n parameter on the boundary of my grid (min_n=100). 
-# Very small mtry and min_n did poorly, so did mtry approaching the number of factors, so I've tightened up the boundaries of the grid a bit.
-# And I've added 
+# If the optimal is near the boundary, you need to expand the bounds (of mtry or min_n).   
+# If some sections of the initial grid are clearly worse, you can tighten it up here.
 if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
-      min_n=min_n(range = c(10L, 300L))  # minimum points in a leaf nodee
+      mtry = mtry(range = c(8L, 32L)),   # override upper bound after finalization
+      min_n=min_n(range = c(10L, 2500L))  # minimum points in a leaf/node
     )
   
   rf_grid <- grid_space_filling(
     finalized_params,   
-    size = 120                    # number of grid points for initial exploration
+    size = 60                    # number of grid points for initial exploration
   )
 }
 
@@ -109,7 +112,7 @@ if (search_type == "Prototype") {
   finalized_params<-finalized_params %>%
     update(
       mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
-      min_n=min_n(range = c(5L, 50L))  # minimum points in a leaf node
+      min_n=min_n(range = c(50L, 5000L))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
