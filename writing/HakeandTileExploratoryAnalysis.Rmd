@@ -1,0 +1,1565 @@
+---
+title: " Hake and Tile Exploratory Analysis"
+output: html_document
+date: "2026-06-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+
+```
+
+# HAKE Exploratory Practice (1)
+
+
+```{r}
+library(here)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(conflicted)
+
+
+here::i_am("writing/HakeExploratoryAnalysis.Rmd")
+
+hake <- readRDS(here("data_folder", "main", "commercial", "hake_landings_all_2026-06-08.Rds"))
+tile <- readRDS(here("data_folder", "main", "commercial", "tile_landings_all_2026-06-09.Rds"))
+
+
+```
+
+
+```{r Analysis for Hake}
+
+str(hake)
+colnames(hake)
+
+# Delete's 2026 data
+hake <- subset(hake, year != 2026)
+
+
+# columns with most NA's
+colSums(is.na(hake))
+na_counts <- colSums(is.na(hake))
+sort(na_counts, decreasing = TRUE) #dlr_stid, ves_len, dlr_cflic, lon_dd, lat_dd, docid, record_sail/land, market/grade_desc-- signifcant NA values.
+
+
+# Most common state and port
+sort(table(hake$state), decreasing = TRUE) #RI, MA, NY, NH, NJ, CT have the largest counts.
+sort(table(hake$port), decreasing = TRUE)
+
+#By Category
+sort(table(hake$market_desc), decreasing = TRUE) # 209911 UN, 98340 KING, 75241 SMALL, 67017 Large, 24729 Medium or Select, 4372 Juvenile.
+
+#All categories per year #separated by market category
+
+year_table <- table(hake$year, hake$market_desc)
+print(year_table)
+
+
+ggplot(as.data.frame.table(year_table), aes(x = Var1, y = Freq, fill = Var2)) +
+  geom_col() +
+  labs(title = "Hake Categories per Year", x = "Year", y = "Counts", fill = "Category") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+#Unclassified per year
+
+unclassified_per_year <- year_table[, "UNCLASSIFIED"]
+print(unclassified_per_year)
+
+
+ggplot(stack(unclassified_per_year), aes(x = ind, y = values)) +
+  geom_col(fill = "purple", color = "black") +
+  labs(title = "Number of Unclassified Hake per Year", x = "Year", y = "Counts") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+#Landings (lb) by year
+
+annual_landings <- aggregate(lndlb ~ year, hake, sum, na.rm = TRUE)
+
+ggplot(annual_landings, aes(x = year, y = lndlb)) + 
+  geom_line(color = "black", linewidth = 0.8) + 
+  geom_point(size = 2) + 
+  scale_x_continuous(breaks = unique(annual_landings$year)) + 
+  # breaks the scientific notation
+  scale_y_continuous(labels = scales::comma) + 
+  labs(
+    x = "Year", 
+    y = "Total Landings (lbs)"
+  ) + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# Monthly Landings
+monthly_landings <- aggregate(lndlb ~ month, hake, sum, na.rm = TRUE)
+
+ggplot(monthly_landings, aes(x = month, y = lndlb)) + 
+  geom_line(color = "black", linewidth = 0.8) + 
+  geom_point(size = 2) + 
+  scale_x_continuous(breaks = 1:12) + 
+  scale_y_continuous(labels = scales::comma) + 
+  labs(
+    x = "Month", 
+    y = "Total Landings (lbs)"
+  ) + 
+  theme_classic() # peak at months 4-8, starts decreasing around month 9.
+```
+
+# GEAR
+
+```{r Hake Gear}
+
+#Gear from code(github) to naming the function
+apply_gear_categories <- function(df) {
+  df %>% mutate(
+    mygear = case_when(
+      # LineHand
+      negear %in% c(10, 20, 21, 22, 30, 34, 40, 60, 62, 65, 66, 90, 250, 251, 330, 340, 380, 410, 414, 420) ~ "LineHand",
+      negear >= 220 & negear <= 230 ~ "LineHand",
+      
+      # Seine -> Misc
+      negear %in% c(70, 71, 160, 360) ~ "Misc",
+      negear >= 120 & negear <= 124 ~ "Misc",
+      
+      # Trawl
+      negear >= 50 & negear <= 59 ~ "Trawl",
+      negear %in% c(150, 170, 350, 351, 353, 370, 450) ~ "Trawl",
+      
+      # Gillnet
+      negear >= 100 & negear <= 117 ~ "Gillnet",
+      negear %in% c(500, 520) ~ "Gillnet",
+      
+      # PotTrap
+      negear >= 180 & negear <= 217 ~ "PotTrap",
+      negear >= 300 & negear <= 301 ~ "PotTrap",
+      negear %in% c(80, 140, 141, 142, 143, 240, 260, 270, 320, 321, 322, 323) ~ "PotTrap",
+      
+      # Dredge + Unknown -> Misc
+      negear >= 381 & negear <= 383 ~ "Misc",
+      negear %in% c(132, 400) ~ "Misc",
+      negear == 999 ~ "Misc",
+      
+      TRUE ~ NA_character_
+    )
+  )
+}
+
+hake_updated <- apply_gear_categories(hake)
+
+sort(table(hake_updated$mygear), decreasing = TRUE) # Mostly done with Trawl and Gillnet. Small portion was done by Linehand, PotTrap, and Misc.
+
+# Size
+sort(table(hake_updated$mesh_cat), decreasing = TRUE) #Mesh size was mostly small and Large. Very few with XL.
+
+
+#price by gear
+price_gear <- hake_updated %>%
+  group_by(mygear) %>%
+  summarize(median_price = median(price, na.rm = TRUE))
+
+print(price_gear)
+
+
+# Comparison between gear vs total landings
+
+gear_market_table <- table(hake_updated$mygear, hake_updated$market_desc)
+
+ggplot(as.data.frame.table(gear_market_table), aes(x = Var1, y = Freq, fill = Var2)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Hake Market Categories by Gear Type", x = "Gear Type", y = "Percentage", fill = "Market Category") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+# PRICE
+
+```{r Price for Hake}
+
+summary(hake$price)
+
+sum(is.na(hake$price)) #28541 missing prices
+
+price_year <- aggregate(price ~ year, hake, mean, na.rm = TRUE)
+
+# Why missing prices?
+
+missing_table <- table(hake$year, is.na(hake$price))
+
+missing_per_year <- missing_table[, "TRUE"]
+
+#missing prices per year
+ggplot(stack(missing_per_year), aes(x = ind, y = values)) +
+  geom_col(fill = "blue") +
+  labs(title = "Missing Prices per Year", x = "Year", y = "Count of Missing Prices") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+# Median price by market category
+
+price_market <- aggregate(price ~ market_desc, hake, median, na.rm = TRUE)# Used median
+
+# Median Price by year
+ggplot(price_year, aes(x = factor(year), y = price)) +
+  geom_col(fill = "brown") +
+  labs(title = " Median Price per Year", x = "Year", y = "Price") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# MISSING PRICES VS TOTAL LANDINGS
+ggplot(data.frame(Landings = annual_landings$lndlb, Missing = as.vector(missing_per_year)), aes(x = Landings, y = Missing)) +
+  geom_point(size = 3, color = "darkred") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Total Landings vs. Missing Prices",
+    x = "Total Landings (lbs)",
+    y = "Count of Missing Prices"
+  ) +
+  theme_minimal()
+
+
+# Yearly?
+
+ggplot(data.frame(
+    Year = annual_landings$year, 
+    Landings = annual_landings$lndlb, 
+    Missing = as.vector(missing_per_year)
+  ), aes(x = Landings, y = Missing, color = Year)) +
+  geom_point(size = 4) +
+  scale_color_viridis_c(option = "plasma") + # Creates my gradient
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Total Landings vs. Missing Prices Over Time",
+    x = "Total Landings (lbs)",
+    y = "Count of Missing Prices",
+    color = "Year"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r Median Price for Hake}
+
+# How does season influence landings and median price?
+
+hake_clean <- apply_gear_categories(hake)
+
+# I added total landing pounds by month then divided by 1m to read it easier.
+seasonality_analysis <- hake_clean %>% 
+  dplyr::filter(!is.na(price), !is.na(lndlb)) %>% 
+  group_by(month) %>% 
+  summarize(
+    total_landings_m_lb = sum(lndlb, na.rm = TRUE) / 1e6,
+    median_price_per_lb = median(price, na.rm = TRUE)
+  )
+
+print(seasonality_analysis)
+
+
+```
+```{r Running wrapper script to source and set data for Hake}
+library("glue")
+library("tidyverse")
+library("here")
+library("lubridate")
+library("pals")
+library("conflicted")
+library("comlandr")
+
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::summarise)
+conflicts_prefer(lubridate::year)
+conflicts_prefer(lubridate::quarter)
+
+img_dir <- here("images", "exploratory","Rported")
+if (!dir.exists(img_dir)) dir.create(img_dir, recursive = TRUE)
+
+
+message("=== All exploratory analysis scripts complete ===")
+
+```
+
+
+
+```{r Sets the string with my current date}
+here::i_am("writing/HakeExploratoryAnalysis.rmd")
+in_string <- "2026-06-09"
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(dplyr::summarise)
+conflicts_prefer(lubridate::year)
+conflicts_prefer(lubridate::quarter)
+
+img_dir <- here("images", "exploratory","Rported")
+if (!dir.exists(img_dir)) dir.create(img_dir, recursive = TRUE)
+
+
+message("=== All exploratory analysis scripts complete ===")
+```
+
+
+```{r bsb_vessel_explorations.R for Hake}
+# =============================================================================
+# Script:  bsb_vessel_explorations.R
+# Purpose: Stacked bar charts of BSB landings by hullid and by permit,
+#          showing the top-25 vessels by all-time total for each state
+#          and coastwide. Excludes placeholder/unknown hullids.
+# Inputs:  data_folder/main/commercial/landings_all_{in_string}.Rds
+# Outputs: images/exploratory/hullid_{state}.png    (one per state)
+#          images/exploratory/permit_{state}.png     (one per state)
+#          images/exploratory/hullid_coastwide.png
+#          images/exploratory/permit_coastwide.png
+# Notes:   Ported from stata_code/analysis/bsb_vessel_explorations.do
+#          in_string must be set before sourcing (via wrapper or manually).
+#          Stata uses tsfill + reshape wide + graph bar for stacked bars;
+#          R uses tidyr::complete() + ggplot2::geom_col(position="stack").
+#          Top-25 selected by all-time vessel total (matching Stata bysort-tl logic).
+# =============================================================================
+
+
+# Placeholder hullids to exclude (Stata: multiple drop if inlist(hullid, ...))
+bad_hullids <- c(
+  "PA9999", "NY0000", "MD9999", "NJ9999", "NC9999", "NH9999", "MS9999",
+  "VA9999", "NY9999", "CTD9999", "RI9999",
+  "000", "0000", "00000", "000000", "0000000", "00000000",
+  "999999", "Unknown", "UNREGISTER", "FROM_SHORE"
+)
+
+atlantic_states <- c("CT", "DE", "MA", "MD", "NC", "NJ", "NY", "RI", "VA")
+
+
+# =============================================================================
+# Load and prepare
+# =============================================================================
+
+landings_raw <- readRDS(
+  here("data_folder", "main", "commercial", glue("hake_landings_all_2026-06-08.Rds"))
+)
+
+landings <- landings_raw %>%
+  filter(merge_species_codes != 1) %>%
+  mutate(dlr_date = as.Date(dlr_date)) %>%
+  # Collapse to permit-hullid-state-year and convert to 000s lbs
+  group_by(year, state, permit, hullid) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  mutate(lndlb = lndlb / 1000) %>%
+  # Keep Atlantic states; drop vessel size class placeholders and pure-state records
+  filter(
+    state %in% atlantic_states,
+    !permit %in% c("190998", "290998", "390998", "490998"),
+    !(hullid %in% c("0000000", "000000") & permit == "000000"),
+    hullid != "FROM_SHORE"
+  )
+
+
+# =============================================================================
+# Helper: select top-25 vessels by all-time total, fill zeros for missing years
+# Mirrors Stata: encode; tsset; tsfill, full; bysort id: egen tl=total(lndlb);
+#                bysort year (tl): gen r=_N-_n+1; keep if r<=25
+# =============================================================================
+
+top25_by_id <- function(df, id_col) {
+  id_sym <- sym(id_col)
+
+  df %>%
+    # complete() = tsfill, full: fill all id × year combos with lndlb = 0
+    complete(!!id_sym, year, fill = list(lndlb = 0)) %>%
+    # all-time total per id (bysort id: egen tl=total(lndlb))
+    group_by(!!id_sym) %>%
+    mutate(tl = sum(lndlb)) %>%
+    ungroup() %>%
+    # rank within each year by all-time total, descending (r=1 = largest)
+    group_by(year) %>%
+    mutate(r = rank(-tl, ties.method = "first")) %>%
+    ungroup() %>%
+    filter(r <= 25) %>%
+    select(-tl, -r)
+}
+
+# =============================================================================
+# Helper: stacked bar chart of landings by vessel id
+# =============================================================================
+
+stacked_bar <- function(df, id_col, title_str) {
+  n_ids <- n_distinct(df[[id_col]])
+  pal   <- unname(pals::polychrome(max(n_ids, 2)))  # polychrome min is 2
+  
+  ggplot(df, aes(x = factor(year), y = lndlb, fill = .data[[id_col]])) +
+    geom_col() +
+    scale_fill_manual(values = pal) +
+    labs(
+      x     = "Year",
+      y     = "Landings (000s lbs)",
+      title = title_str
+    ) +
+    theme_bw() +
+    theme(
+      legend.position  = "none",
+      axis.text.x      = element_text(angle = 45, hjust = 1)
+    )
+}
+
+# =============================================================================
+# Per-state plots: hullid and permit
+# Stata: levelsof state; foreach st { preserve; keep if state=="`st'"; ... }
+# =============================================================================
+
+walk(sort(unique(landings$state)), function(st) {
+
+  # --- Hullid stacked bar ---
+  hull_data <- landings %>%
+    filter(state == st) %>%
+    group_by(hullid, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(!hullid %in% bad_hullids) %>%
+    top25_by_id("hullid")
+
+  p_hull <- stacked_bar(hull_data, "hullid",
+                        glue("{st} landings by hullid (top 25)"))
+  ggsave(file.path(img_dir, glue("hullid_{st}.png")),
+         plot = p_hull, width = 10, height = 6, dpi = 150)
+  message(glue("Saved: hullid_{st}.png"))
+
+  # --- Permit stacked bar ---
+  permit_data <- landings %>%
+    filter(state == st) %>%
+    group_by(permit, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(permit != "000000") %>%   # Stata: drop if inlist(permit,0)
+    top25_by_id("permit")
+
+  p_permit <- stacked_bar(permit_data, "permit",
+                          glue("{st} landings by permit (top 25)"))
+  ggsave(file.path(img_dir, glue("permit_{st}.png")),
+         plot = p_permit, width = 10, height = 6, dpi = 150)
+  message(glue("Saved: permit_{st}.png"))
+})
+
+# =============================================================================
+# Coastwide plots
+# =============================================================================
+
+# Coastwide hullid
+hull_cw <- landings %>%
+  group_by(hullid, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(!hullid %in% bad_hullids) %>%
+  top25_by_id("hullid")
+
+p_hull_cw <- stacked_bar(hull_cw, "hullid", "Top 25 landings by hullid — coastwide")
+ggsave(file.path(img_dir, "hullid_coastwide.png"),
+       plot = p_hull_cw, width = 10, height = 6, dpi = 150)
+message("Saved: hullid_coastwide.png")
+
+# Coastwide permit
+permit_cw <- landings %>%
+  group_by(permit, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(permit != "000000") %>%
+  top25_by_id("permit")
+
+p_permit_cw <- stacked_bar(permit_cw, "permit", "Top 25 landings by permit — coastwide")
+ggsave(file.path(img_dir, "permit_coastwide.png"),
+       plot = p_permit_cw, width = 10, height = 6, dpi = 150)
+message("Saved: permit_coastwide.png")
+
+
+
+```
+
+
+```{r, results='asis'}
+# (Changed to map and print) So I can see them here, not saved in my folder.
+
+plots_list <- map(sort(unique(landings$state)), function(st) {
+  
+  # Hullid stacked bar
+  hull_data <- landings %>%
+    filter(state == st) %>%
+    group_by(hullid, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(!hullid %in% bad_hullids) %>%
+    top25_by_id("hullid")
+  
+  p_hull<- stacked_bar(hull_data, "hullid", glue("{st} landings by hullid (top 25)"))
+  ggsave(file.path(img_dir, glue("hullid_{st}.png")), plot = p_hull, width = 10, height = 6, dpi = 150)
+  
+  # Permit stacked bar
+  permit_data <- landings %>%
+    filter(state == st) %>%
+    group_by(permit, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(permit != "000000") %>%
+    top25_by_id("permit")
+  
+  p_permit <- stacked_bar(permit_data, "permit", glue("{st} landings by permit (top 25)"))
+  ggsave(file.path(img_dir, glue("permit_{st}.png")), plot = p_permit, width = 10, height = 6, dpi = 150)
+  
+  # Prints them
+  print(p_hull)
+  print(p_permit)
+})
+
+# =============================================================================
+# Coastwide plots 
+# =============================================================================
+# Coastwide hullid
+hull_cw <- landings %>%
+  group_by(hullid, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(!hullid %in% bad_hullids) %>%
+  top25_by_id("hullid")
+
+p_hull_cw <- stacked_bar(hull_cw, "hullid", "Top 25 landings by hullid — coastwide")
+ggsave(file.path(img_dir, "hullid_coastwide.png"), plot = p_hull_cw, width = 10, height = 6, dpi = 150)
+print(p_hull_cw)
+
+# Coastwide permit
+permit_cw <- landings %>%
+  group_by(permit, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(permit != "000000") %>%
+  top25_by_id("permit")
+
+p_permit_cw <- stacked_bar(permit_cw, "permit", "Top 25 landings by permit — coastwide")
+ggsave(file.path(img_dir, "permit_coastwide.png"), plot = p_permit_cw, width = 10, height = 6, dpi = 150)
+print(p_permit_cw)
+
+
+
+```
+
+```{r Incomplete match dealer to trip report for Hake}
+summary_counts <- landings_raw %>%
+  group_by(status, year) %>%
+  summarise(obs = n(), .groups = "drop")
+
+# Print the summary table to the document
+print(summary_counts)
+
+p_trends <- ggplot(summary_counts, aes(x = year, y = obs, color = status, group = status)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    x = "Year",
+    y = "Number of Observations",
+    title = "Data Observations Over Time by Status",
+    color = "Status Type"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p_trends)
+
+
+```
+```{r}
+
+apply_market_rebinning_dealers <- function(df) {
+  df %>% dplyr::mutate(
+    market_desc = dplyr::if_else(market_desc == "MIXED OR UNSIZED", "UNCLASSIFIED", market_desc),
+    market_code = dplyr::if_else(market_code == "MX", "UN", market_code),
+    market_desc = dplyr::if_else(market_desc == "MEDIUM OR SELECT", "MEDIUM", market_desc),
+    market_desc = dplyr::if_else(market_desc == "PEE WEE (RATS)", "EXTRA SMALL", market_desc),
+    market_code = dplyr::if_else(market_code == "PW", "ES", market_code)
+  )
+}
+```
+
+
+
+```{r hake_exploratory_dealers}
+
+# =============================================================================
+# Section 1: Load, clean, merge gears, apply dealers market rebinning. I did this before exploring vessel analysis.
+# =============================================================================
+
+landings_raw <- readRDS(
+  here("data_folder", "main", "commercial", glue("hake_landings_all_2026-06-08.Rds"))
+)
+cams_gears <- readRDS(
+  here("data_folder", "main", "commercial", glue("cams_gears_2026-06-09.Rds"))
+)
+
+dealers_annual <- readRDS(
+  here("data_folder", "main", "commercial", glue("dealers_annual_2026-06-09.Rds"))
+)
+
+
+
+colnames(landings_raw)
+colnames(cams_gears)
+
+
+
+landings <- landings_raw %>% 
+  dplyr::filter(merge_species_codes != 1) %>% # Fixed the filter conflict error here
+  mutate( 
+    dlr_date = as.Date(dlr_date), 
+    dateq = paste0(lubridate::year(dlr_date), "Q", lubridate::quarter(dlr_date)) 
+  ) %>% 
+  left_join(cams_gears, by = "negear") %>% 
+  apply_gear_categories() %>% # Custom function loaded from source()
+  apply_market_rebinning_dealers() %>% # Custom function loaded from source()
+  mutate( 
+    mym = factor(market_desc, levels = c("JUMBO", "LARGE", "MEDIUM", "SMALL", "EXTRA SMALL", "UNCLASSIFIED")) 
+  )
+
+
+
+# =============================================================================
+# Section 2: Collapse to dealer × year × market category; merge dealer names
+# Stata: collapse (sum) lndlb, by(dlrid year market_desc)
+#        merge m:1 dnum year using dealers_annual
+# =============================================================================
+
+dealer_mkt <- landings %>%
+  group_by(dlrid, year, mym) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop")
+
+dealer_mkt<-dealer_mkt %>%
+  mutate(dlrid=as.numeric(dlrid))
+
+# Stata: rename dlrid dnum; merge; rename dnum dlrid
+dealer_mkt <- dealer_mkt %>%
+  left_join(dealers_annual %>% rename(dlrid = dnum), by = c("dlrid", "year"))
+
+# dealers_annual has some 'gaps' in it, sometimes a dealer has a permit in year 1 and 3, but not year 3. 
+# this causes the dealer's demographics to be missing, including dlr_name 
+
+# Pivot wide: one lndlb column per market category (reshape wide lndlb, j(mym))
+dealer_wide <- dealer_mkt %>%
+  pivot_wider(
+    names_from  = mym,
+    values_from = lndlb,
+    values_fill = 0
+  )
+
+# Stata: foreach var of varlist lndlb*: replace var=0 if var==.
+# (pivot_wider values_fill handles this)
+
+# Stata: egen total=rowtotal(lndlb1-lndlb6)
+dealer_wide <- dealer_wide %>%
+  mutate(
+    total = rowSums(
+      select(., any_of(c("JUMBO", "LARGE", "MEDIUM", "SMALL",
+                         "EXTRA SMALL", "UNCLASSIFIED"))),
+      na.rm = TRUE
+    ),
+    unclassified_frac = if_else(total > 0, UNCLASSIFIED / total, NA_real_)
+  )
+
+# Yearly totals for comparison
+yearly_unc <- dealer_wide %>%
+  group_by(year) %>%
+  summarise(
+    t6 = sum(UNCLASSIFIED, na.rm = TRUE),
+    tt = sum(total,        na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(yearly_unc = t6 / tt)
+
+dealer_wide <- dealer_wide %>%
+  left_join(yearly_unc %>% select(year, yearly_unc), by = "year")
+
+# Stata: gen f6 = lndlb6/t6 (share of total yearly unclassified from this dealer)
+dealer_wide <- dealer_wide %>%
+  left_join(yearly_unc %>% select(year, t6), by = "year") %>%
+  mutate(f6 = if_else(t6 > 0, UNCLASSIFIED / t6, NA_real_))
+
+# Rank dealers by share of unclassified (frank: highest f6 = rank 1)
+dealer_ranked <- dealer_wide %>%
+  group_by(year) %>%
+  mutate(frank = rank(-f6, ties.method = "first")) %>%
+  ungroup()
+
+# Stata: browse if year>=2010 & frank<=5  → print top dealers by unclassified share
+cat("\n=== Top 5 dealers by share of yearly unclassified landings (2010+) ===\n")
+print(
+  dealer_ranked %>%
+    filter(year >= 2010, frank <= 5) %>%
+    arrange(year, frank) %>%
+    select(year, dlrid, any_of(c("dlr_name")), yearly_unc, unclassified_frac,
+           UNCLASSIFIED, f6, t6, frank)
+)
+
+# Stata: browse if unclassified_frac > yearly_unc & year>=2010
+cat("\n=== Dealers with above-average unclassified fraction (2010+) ===\n")
+print(
+  dealer_wide %>%
+    filter(year >= 2010, unclassified_frac > yearly_unc) %>%
+    arrange(year, desc(unclassified_frac)) %>%
+    select(year, dlrid, any_of(c("dlr_name")), yearly_unc, unclassified_frac)
+)
+
+
+# =============================================================================
+# Section 3: Simpler analysis — unclassified landings by status and market code
+# (Second use of landings_all in the Stata script)
+# =============================================================================
+
+landings1.5 <- landings_raw %>%
+  filter(merge_species_codes != 1) %>%
+  mutate(
+    dlr_date = as.Date(dlr_date),
+    dateq    = paste0(lubridate::year(dlr_date), "Q", lubridate::quarter(dlr_date)),
+    # Simpler market rebinning used in second section of the Stata script
+    market_desc = if_else(market_desc == "MIXED OR UNSIZED", "UNCLASSIFIED", market_desc),
+    market_code = if_else(market_code == "MX", "UN", market_code),
+    market_desc = if_else(market_desc == "MEDIUM OR SELECT", "MEDIUM", market_desc),
+    market_desc = if_else(market_desc == "PEE WEE (RATS)", "EXTRA SMALL", market_desc),
+    market_code = if_else(market_code == "PW", "ES", market_code),
+    mym = factor(market_desc,
+                 levels = c("JUMBO", "LARGE", "MEDIUM", "SMALL",
+                            "EXTRA SMALL", "UNCLASSIFIED"))
+  )
+
+# Stata: collapse (sum) lndlb, by(year mym status)
+unclass_by_status <- landings1.5 %>%
+  group_by(year, mym, status) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop")
+
+# Stata: browse if mym==6 (UNCLASSIFIED)
+cat("\n=== Unclassified landings by year and status ===\n")
+print(
+  unclass_by_status %>%
+    filter(as.character(mym) == "UNCLASSIFIED") %>%
+    arrange(year, status)
+)
+
+#Wanted to get all the names of all the different dealers/companies
+unique(dealers_annual$dlr_name)
+
+
+```
+
+
+# PART TWO USING TILE FISH DATA
+# Basic exploratory, exploratory dealers, vessel_explorations, and tile_price_explorations.
+
+
+```{r Basic exploratory for tilefish}
+# Removed 2026 data
+tile <- subset(tile, year != 2026)
+str(tile)
+colnames(tile)
+
+# RESTORED: Your original function call
+tile_updated <- apply_gear_categories(tile)
+table(tile_updated[["mygear"]], tile_updated[["market_desc"]], useNA = "always")
+
+# columns with most NA's
+colSums(is.na(tile))
+na_counts <- colSums(is.na(tile))
+sort(na_counts, decreasing = TRUE)
+
+# Most common state and port
+sort(table(tile$state), decreasing = TRUE) # NY, RI, NJ have significant portions of it.
+sort(table(tile$port), decreasing = TRUE)
+sort(table(tile$year), decreasing = TRUE)
+
+#By Category
+sort(table(tile$market_desc), decreasing = TRUE) # Higher values for kittens, medium or select, large, unclassified, etc.
+
+#All categories per year
+#separated by market category
+year_table2 <- table(tile$year, tile$market_desc)
+print(year_table2)
+
+ggplot(as.data.frame.table(year_table2), aes(x = Var1, y = Freq, fill = Var2)) +
+  geom_col() +
+  labs(title = "Tile Categories per Year", x = "Year", y = "Counts", fill = "Category") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90))
+
+#Unclassified per year
+unclassified_per_year2 <- year_table2[, "UNCLASSIFIED"]
+print(unclassified_per_year2)
+
+ggplot(stack(unclassified_per_year2), aes(x = ind, y = values)) +
+  geom_col(fill = "purple", color = "black") +
+  labs(title = "Number of Unclassified Tile per Year", x = "Year", y = "Counts") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#Landings (lb) by year
+annual_landings2 <- aggregate(lndlb ~ year, tile, sum, na.rm = TRUE)
+ggplot(annual_landings2, aes(x = year, y = lndlb)) +
+  geom_line(color = "black", linewidth = 0.8) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = unique(annual_landings2$year)) + # breaks the scientific notation
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Year",
+    y = "Total Landings (lbs)"
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Monthly Landings
+monthly_landings2 <- aggregate(lndlb ~ month, tile, sum, na.rm = TRUE)
+ggplot(monthly_landings2, aes(x = month, y = lndlb)) +
+  geom_line(color = "black", linewidth = 0.8) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = 1:12) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    x = "Month",
+    y = "Total Landings (lbs)"
+  ) +
+  theme_classic()
+
+# RESTORED: Calculating the table using your original mygear variable
+gear_market_table2 <- table(tile_updated$mygear, tile_updated$market_desc)
+
+ggplot(as.data.frame.table(gear_market_table2), aes(x = Var1, y = Freq, fill = Var2)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Tile Market Categories by Gear Type", x = "Gear Type", y = "Percentage", fill = "Market Category") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+
+
+```{r Applied function from gear categories}
+
+tile <- apply_gear_categories(tile)
+
+sort(table(tile_updated$mygear), decreasing = TRUE) #Mostly done with Trawl, Linehand.
+
+# Size
+sort(table(tile_updated$mesh_cat), decreasing = TRUE) #Mostly with SM and LM size mesh.
+
+
+# median price by gear
+price_gear2 <- tile_updated %>%
+  group_by(mygear) %>%
+  summarize(median_price = median(price, na.rm = TRUE))
+
+print(price_gear2)
+
+
+```
+
+```{r Exploring Meidan Price and Missing Prices vs Total landings for tile}
+
+summary(tile$price)
+
+sum(is.na(tile$price)) #2838 missing prices
+
+price_year2 <- aggregate(price ~ year, tile, mean, na.rm = TRUE)
+
+
+# Why missing prices?
+
+missing_table2 <- table(tile$year, is.na(tile$price))
+
+missing_per_year2 <- missing_table2[, "TRUE"]
+
+#missing prices per year
+
+ggplot(stack(missing_per_year2), aes(x = ind, y = values)) +
+  geom_col(fill = "blue") +
+  labs(title = "Missing Prices per Year", x = "Year", y = "Count of Missing Prices") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+# Median price by market category
+
+price_market2 <- aggregate(price ~ market_desc, tile, median, na.rm = TRUE)# Used median
+
+# Median Price by year
+
+ggplot(price_year2, aes(x = factor(year), y = price)) +
+  geom_col(fill = "brown") +
+  labs(title = "Price per Year", x = "Year", y = "Price") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+
+#Missing prices vs total landings
+ggplot(data.frame(Landings = annual_landings2$lndlb, Missing = as.vector(missing_per_year2)), aes(x = Landings, y = Missing)) +
+  geom_point(size = 3, color = "darkred") +
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Total Landings vs. Missing Prices",
+    x = "Total Landings (lbs)",
+    y = "Count of Missing Prices"
+  ) +
+  theme_minimal()
+
+# Yearly
+
+ggplot(data.frame(
+    Year = annual_landings2$year, 
+    Landings = annual_landings2$lndlb, 
+    Missing = as.vector(missing_per_year2)
+  ), aes(x = Landings, y = Missing, color = Year)) +
+  geom_point(size = 4) +
+  scale_color_viridis_c(option = "plasma") + # Creates my gradient
+  scale_x_continuous(labels = scales::comma) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Total Landings vs. Missing Prices Over Time",
+    x = "Total Landings (lbs)",
+    y = "Count of Missing Prices",
+    color = "Year"
+  ) +
+  theme_minimal()
+
+```
+
+```{r Landings by season, median price for tile}
+
+# How does season influence landings and median price?
+
+tile_clean <- apply_gear_categories(tile)
+
+# I added total landing pounds by month then divided by 1m to read it easier.
+seasonality_analysis2 <- tile_clean %>%
+  filter(!is.na(price), !is.na(lndlb)) %>%
+  group_by(month) %>%
+  summarize(
+    total_landings_m_lb = sum(lndlb, na.rm = TRUE) / 1e6,
+    median_price_per_lb = median(price, na.rm = TRUE)
+  )
+
+print(seasonality_analysis2)
+
+#Total landed lbs for each dataset
+total_tile <- sum(tile$lndlb, na.rm = TRUE)
+total_hake <- sum(hake$lndlb, na.rm = TRUE)
+
+
+print(paste("Tilefish total pounds:", total_tile))
+print(paste("Hake total pounds:", total_hake))
+
+```
+
+
+```{r vessel_explorations for Tile}
+
+
+# =============================================================================
+# Script:  bsb_vessel_explorations.R
+# Purpose: Stacked bar charts of BSB landings by hullid and by permit,
+#          showing the top-25 vessels by all-time total for each state
+#          and coastwide. Excludes placeholder/unknown hullids.
+# Inputs:  data_folder/main/commercial/landings_all_{in_string}.Rds
+# Outputs: images/exploratory/hullid_{state}.png    (one per state)
+#          images/exploratory/permit_{state}.png     (one per state)
+#          images/exploratory/hullid_coastwide.png
+#          images/exploratory/permit_coastwide.png
+# Notes:   Ported from stata_code/analysis/bsb_vessel_explorations.do
+#          in_string must be set before sourcing (via wrapper or manually).
+#          Stata uses tsfill + reshape wide + graph bar for stacked bars;
+#          R uses tidyr::complete() + ggplot2::geom_col(position="stack").
+#          Top-25 selected by all-time vessel total (matching Stata bysort-tl logic).
+# =============================================================================
+
+
+# Placeholder hullids to exclude (Stata: multiple drop if inlist(hullid, ...))
+bad_hullids2 <- c(
+  "PA9999", "NY0000", "MD9999", "NJ9999", "NC9999", "NH9999", "MS9999",
+  "VA9999", "NY9999", "CTD9999", "RI9999",
+  "000", "0000", "00000", "000000", "0000000", "00000000",
+  "999999", "Unknown", "UNREGISTER", "FROM_SHORE"
+)
+
+atlantic_states2 <- c("CT", "DE", "MA", "MD", "NC", "NJ", "NY", "RI", "VA")
+
+
+# =============================================================================
+# Load and prepare
+# =============================================================================
+
+landings_raw2 <- readRDS(
+  here("data_folder", "main", "commercial", glue("tile_landings_all_2026-06-09.Rds"))
+)
+
+conflicts_prefer(dplyr::filter)
+
+landings2 <- landings_raw2 %>%
+  dplyr::filter(merge_species_codes != 1) %>% 
+  mutate(dlr_date = as.Date(dlr_date)) %>%
+  # Collapse to permit-hullid-state-year and convert to 000s lbs
+  group_by(year, state, permit, hullid) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  mutate(lndlb = lndlb / 1000) %>%
+  # Keep Atlantic states; drop vessel size class placeholders and pure-state records
+  filter(
+    state %in% atlantic_states,
+    !permit %in% c("190998", "290998", "390998", "490998"),
+    !(hullid %in% c("0000000", "000000") & permit == "000000"),
+    hullid != "FROM_SHORE"
+  )
+
+
+# =============================================================================
+# Helper: select top-25 vessels by all-time total, fill zeros for missing years
+# Mirrors Stata: encode; tsset; tsfill, full; bysort id: egen tl=total(lndlb);
+#                bysort year (tl): gen r=_N-_n+1; keep if r<=25
+# =============================================================================
+
+top25_by_id <- function(df, id_col) {
+  id_sym <- sym(id_col)
+
+  df %>%
+    # complete() = tsfill, full: fill all id × year combos with lndlb = 0
+    complete(!!id_sym, year, fill = list(lndlb = 0)) %>%
+    # all-time total per id (bysort id: egen tl=total(lndlb))
+    group_by(!!id_sym) %>%
+    mutate(tl = sum(lndlb)) %>%
+    ungroup() %>%
+    # rank within each year by all-time total, descending (r=1 = largest)
+    group_by(year) %>%
+    mutate(r = rank(-tl, ties.method = "first")) %>%
+    ungroup() %>%
+    filter(r <= 25) %>%
+    select(-tl, -r)
+}
+
+
+# =============================================================================
+# Helper: stacked bar chart of landings by vessel id
+# =============================================================================
+
+stacked_bar <- function(df, id_col, title_str) {
+  n_ids <- n_distinct(df[[id_col]])
+  pal   <- unname(pals::polychrome(max(n_ids, 2)))  # polychrome min is 2
+  
+  ggplot(df, aes(x = factor(year), y = lndlb, fill = .data[[id_col]])) +
+    geom_col() +
+    scale_fill_manual(values = pal) +
+    labs(
+      x     = "Year",
+      y     = "Landings (000s lbs)",
+      title = title_str
+    ) +
+    theme_bw() +
+    theme(
+      legend.position  = "none",
+      axis.text.x      = element_text(angle = 45, hjust = 1)
+    )
+}
+
+# =============================================================================
+# Per-state plots: hullid and permit
+# Stata: levelsof state; foreach st { preserve; keep if state=="`st'"; ... }
+# =============================================================================
+
+walk(sort(unique(landings2$state)), function(st) {
+
+  # --- Hullid stacked bar ---
+  hull_data <- landings2 %>%
+    filter(state == st) %>%
+    group_by(hullid, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(!hullid %in% bad_hullids) %>%
+    top25_by_id("hullid")
+
+  p_hull <- stacked_bar(hull_data, "hullid",
+                        glue("{st} landings by hullid (top 25)"))
+  ggsave(file.path(img_dir, glue("hullid_{st}.png")),
+         plot = p_hull, width = 10, height = 6, dpi = 150)
+  message(glue("Saved: hullid_{st}.png"))
+
+  # --- Permit stacked bar ---
+  permit_data <- landings2 %>%
+    filter(state == st) %>%
+    group_by(permit, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(permit != "000000") %>%   # Stata: drop if inlist(permit,0)
+    top25_by_id("permit")
+
+  p_permit <- stacked_bar(permit_data, "permit",
+                          glue("{st} landings by permit (top 25)"))
+  ggsave(file.path(img_dir, glue("permit_{st}.png")),
+         plot = p_permit, width = 10, height = 6, dpi = 150)
+  message(glue("Saved: permit_{st}.png"))
+})
+
+# =============================================================================
+# Coastwide plots
+# =============================================================================
+
+# Coastwide hullid
+hull_cw <- landings2 %>%
+  group_by(hullid, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(!hullid %in% bad_hullids) %>%
+  top25_by_id("hullid")
+
+p_hull_cw <- stacked_bar(hull_cw, "hullid", "Top 25 landings by hullid — coastwide")
+ggsave(file.path(img_dir, "hullid_coastwide.png"),
+       plot = p_hull_cw, width = 10, height = 6, dpi = 150)
+message("Saved: hullid_coastwide.png")
+
+# Coastwide permit
+permit_cw <- landings2 %>%
+  group_by(permit, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(permit != "000000") %>%
+  top25_by_id("permit")
+
+p_permit_cw <- stacked_bar(permit_cw, "permit", "Top 25 landings by permit — coastwide")
+ggsave(file.path(img_dir, "permit_coastwide.png"),
+       plot = p_permit_cw, width = 10, height = 6, dpi = 150)
+message("Saved: permit_coastwide.png")
+
+
+
+```
+
+
+```{r, results='asis'}
+# =============================================================================
+# (Changed to map and print) So I can see them here, not saved in my folder.
+# =============================================================================
+plots_list <- map(sort(unique(landings$state)), function(st) {
+  
+  # --- Hullid stacked bar ---
+  hull_data <- landings2 %>%
+    filter(state == st) %>%
+    group_by(hullid, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(!hullid %in% bad_hullids) %>%
+    top25_by_id("hullid")
+  
+  p_hull <- stacked_bar(hull_data, "hullid", glue("{st} landings by hullid (top 25)"))
+  ggsave(file.path(img_dir, glue("hullid_{st}.png")), plot = p_hull, width = 10, height = 6, dpi = 150)
+  
+  # --- Permit stacked bar ---
+  permit_data <- landings2 %>%
+    filter(state == st) %>%
+    group_by(permit, year) %>%
+    summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+    filter(permit != "000000") %>%
+    top25_by_id("permit")
+  
+  p_permit <- stacked_bar(permit_data, "permit", glue("{st} landings by permit (top 25)"))
+  ggsave(file.path(img_dir, glue("permit_{st}.png")), plot = p_permit, width = 10, height = 6, dpi = 150)
+  
+  # Print them now
+  print(p_hull)
+  print(p_permit)
+})
+
+# =============================================================================
+# Coastwide plots
+# =============================================================================
+# Coastwide hullid
+hull_cw2 <- landings2 %>%
+  group_by(hullid, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(!hullid %in% bad_hullids) %>%
+  top25_by_id("hullid")
+
+p_hull_cw2 <- stacked_bar(hull_cw, "hullid", "Top 25 landings by hullid — coastwide")
+ggsave(file.path(img_dir, "hullid_coastwide.png"), plot = p_hull_cw, width = 10, height = 6, dpi = 150)
+print(p_hull_cw)
+
+# Coastwide permit
+permit_cw2 <- landings2 %>%
+  group_by(permit, year) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop") %>%
+  filter(permit != "000000") %>%
+  top25_by_id("permit")
+
+p_permit_cw2 <- stacked_bar(permit_cw, "permit", "Top 25 landings by permit — coastwide")
+ggsave(file.path(img_dir, "permit_coastwide.png"), plot = p_permit_cw, width = 10, height = 6, dpi = 150)
+print(p_permit_cw2)
+```
+
+
+```{r, results='asis'}
+#NY LANDINGS 
+
+tile_landings_all <- readRDS(here("data_folder","main","commercial","tile_landings_all_2026-06-09.Rds"))
+
+# keep just NY
+ny<-tile_landings_all %>% 
+  dplyr::filter(state=="NY") %>%
+  dplyr::filter(year>=2002 & year<=2025)
+
+# pull the top 3 hullids
+top3_hullid<-ny %>%
+  group_by(hullid) %>%
+  summarise(tl=sum(lndlb)) %>%
+  arrange(desc(tl)) %>%
+  slice_head(n=3) %>%
+  pull(hullid)
+
+# filter the dataset to keep just the top 3. Also filter MATCH
+top_3_ny <-ny %>%
+  dplyr::filter(hullid %in% top3_hullid) %>%
+  dplyr::filter(status =="MATCH") %>%
+  mutate(price=value/lndlb)
+  
+
+# compute yearly average prices by market code for each hullid-dlrid-year combination in the top 3 hullid
+ yearly_top3 <-top_3_ny %>%
+   group_by(hullid,year, dlrid, market_code) %>%
+   summarise(sum_landing=sum(lndlb, na.rm=TRUE),
+           sum_value=sum(value),na.rm=TRUE) %>%
+   mutate(price=sum_value/sum_landing) %>%
+   ungroup()
+```
+
+
+```{r publication_quality_plots, fig.width=16, fig.height=22, dev='png', dpi=300}
+
+# Custom publication with  crisp small text
+theme_pub <- function() {
+  theme_classic(base_size = 11) + # Smaller, crisp academic font size
+    theme(
+      text = element_text(family = "sans", color = "black"),
+      axis.text = element_text(color = "black", size = 10),
+      axis.title = element_text(face = "bold", size = 12),
+      strip.background = element_rect(fill = "grey95", color = "black"), # Clean box for headers
+      strip.text = element_text(face = "bold", size = 10),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold", size = 10),
+      legend.text = element_text(size = 9),
+      panel.spacing = unit(1.5, "lines"), # Forces massive space between sub-plots
+      plot.title = element_text(face = "bold", size = 14, margin = margin(b = 12))
+    )
+}
+
+
+p1 <- ggplot(top_3_ny %>% filter(hullid == top3_hullid), 
+       aes(x = as.factor(year), y = price, fill = market_code)) + 
+  geom_boxplot(aes(weight = lndlb), width = 0.5, position = position_dodge(0.7), outlier.size = 0.5) + 
+  scale_fill_viridis_d(option = "viridis") +
+  labs(title = "Annual Variability", x = "Year", y = "Price") +
+  theme_pub() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right" 
+  )
+
+# FORCE R to print the plot using the full display width
+options(repr.plot.width = 16, repr.plot.width = 8)
+print(p1)
+
+
+# look at it another way 
+
+ggplot(top_3_ny %>% filter(hullid == top3_hullid), aes(x = market_code, y = price, fill = market_code)) + 
+  geom_boxplot(aes(weight = lndlb), width = 0.5, outlier.size = 0.6, lwd = 0.4) + 
+  facet_wrap(~year, scale = "free", ncol = 2) + 
+  scale_fill_brewer(palette = "Set1") +
+  labs(title = "Distribution by Market Code and Year", x = "Market Code", y = "Price") +
+  theme_pub()
+
+
+# all 3 of the top 
+ggplot(top_3_ny, aes(x = market_code, y = price, fill = as.factor(hullid))) + 
+  geom_boxplot(aes(weight = lndlb), width = 0.6, outlier.size = 0.6, lwd = 0.4,
+               position = position_dodge(0.8)) + 
+  facet_wrap(~year, scale = "free", ncol = 2) + 
+  scale_fill_brewer(palette = "Dark2") +
+  labs(title = "Comparison of Top 3 Hull IDs Across Years", x = "Market Code", y = "Price") +
+  theme_pub()
+
+# quite variability, prices vary similarly but are good enough to run the model.
+
+```
+
+```{r}
+# Flag dlrid's that have suspiciously little variance in prices.
+dlr_variability <- landings_raw2  %>%
+  mutate(price=value/lndlb) %>%
+  group_by(dlrid, year, market_desc ) %>%
+  summarise(transactions=n(),
+            value=sum(value, na.rm=TRUE),
+            lndlb=sum(lndlb),
+            mean_price=mean(price, na.rm=TRUE),
+            sd_price=sd(price, na.rm=TRUE),
+            mad_price=mad(price, na.rm=TRUE),
+            .groups="drop"
+  )%>%
+  mutate(cv=sd_price/mean_price) %>%
+  arrange(sd_price)
+
+```
+
+
+
+```{r MA landings}
+# 1. Keep just MA
+ma <- tile_landings_all %>% 
+  dplyr::filter(state == "MA") %>% 
+  dplyr::filter(year >= 2002 & year <= 2025)
+
+# 2. Pull the top 3 hullids 
+top3_hullid <- ma %>% 
+  group_by(hullid) %>% 
+  summarise(tl = sum(lndlb)) %>% 
+  arrange(desc(tl)) %>% 
+  slice_head(n = 3) %>% 
+  pull(hullid)
+
+# 3. Filter the dataset to keep just the top 3 and status == "MATCH"
+top_3_ma <- ma %>% 
+  dplyr::filter(hullid %in% top3_hullid) %>% 
+  dplyr::filter(status == "MATCH") %>% 
+  mutate(price = value / lndlb) 
+
+# 4. Compute yearly average prices
+yearly_top3 <- top_3_ma %>% 
+  group_by(hullid, year, dlrid, market_code) %>% 
+  summarise(
+    sum_landing = sum(lndlb, na.rm = TRUE), 
+    sum_value = sum(value, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  mutate(price = sum_value / sum_landing)
+
+```
+
+```{r Exploration on 2006 data}
+# Total Transactions Count (2005 vs 2006 vs 2007)
+
+cat("--- TRANSACTION COUNTS ACROSS YEARS ---\n")
+top_3_ma %>% 
+  group_by(year) %>% 
+  summarise(
+    total_transactions = n(), 
+    total_lbs_landed = sum(lndlb, na.rm = TRUE),
+    overall_avg_price = sum(value, na.rm = TRUE) / sum(lndlb, na.rm = TRUE)
+  ) %>% 
+  dplyr::filter(year %in% c(2005, 2006, 2007)) %>% 
+  print()
+
+#Which market category is driving 2006 up?
+
+cat("\n--- AVERAGE PRICE BY MARKET CODE (Is one category driving the spike?) ---\n")
+top_3_ma %>% 
+  dplyr::filter(year %in% c(2005, 2006, 2007)) %>% 
+  group_by(year, market_desc) %>% 
+  summarise(
+    avg_price = mean(price, na.rm = TRUE),
+    transactions = n(),
+    .groups = "drop"
+  ) %>% 
+  arrange(year, desc(avg_price)) %>% 
+  print()
+
+#one specific Hull ID driving the spike?
+
+cat("\n--- AVERAGE PRICE BY HULL ID (Is one boat skewing the year?) ---\n")
+top_3_ma %>% 
+  dplyr::filter(year %in% c(2005, 2006, 2007)) %>% 
+  group_by(year, hullid) %>% 
+  summarise(
+    avg_price = mean(price, na.rm = TRUE),
+    transactions = n(),
+    .groups = "drop"
+  ) %>% 
+  print()
+```
+
+
+```{r, results='asis'} 
+#Over time status
+#Incomplete match dealer to trip report
+summary_counts2 <- landings_raw2 %>%
+  group_by(status, year) %>%
+  summarise(obs = n(), .groups = "drop")
+
+# Print the summary table to the document
+print(summary_counts2)
+
+p_trends2 <- ggplot(summary_counts, aes(x = year, y = obs, color = status, group = status)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    x = "Year",
+    y = "Number of Observations",
+    title = "Data Observations Over Time by Status",
+    color = "Status Type"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p_trends2)
+
+```
+
+```{r exploratory dealers for tilefish}
+#exploratory dataset
+colnames(landings_raw2)
+colnames(cams_gears)
+# Load, clean, merge gears, apply dealers market rebinning
+
+
+landings_raw2 <- readRDS(
+  here("data_folder", "main", "commercial", glue("tile_landings_all_2026-06-09.Rds"))
+)
+cams_gears <- readRDS(
+  here("data_folder", "main", "commercial", glue("cams_gears_2026-06-09.Rds"))
+)
+
+dealers_annual <- readRDS(
+  here("data_folder", "main", "commercial", glue("dealers_annual_2026-06-09.Rds"))
+)
+
+
+landings2 <- landings_raw2 %>%
+  filter(merge_species_codes != 1) %>%
+  mutate(
+    dlr_date = as.Date(dlr_date),
+    dateq = paste0(lubridate::year(dlr_date), "Q", lubridate::quarter(dlr_date))
+  ) %>%
+  left_join(cams_gears, by = "negear") %>% 
+  apply_gear_categories() %>%
+  apply_market_rebinning_dealers() %>%
+  mutate(
+    mym = factor(market_desc, levels = c("JUMBO", "LARGE", "MEDIUM", "SMALL", "EXTRA SMALL", "UNCLASSIFIED"))
+  )
+
+
+# Section 2: Collapse to dealer × year × market category; merge dealer names, collapse (sum) lndlb, by(dlrid year market_desc)
+
+
+dealer_mkt2 <- landings2 %>%
+  group_by(dlrid, year, mym) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop")
+
+dealer_mkt2<-dealer_mkt2 %>%
+  mutate(dlrid=as.numeric(dlrid))
+
+# Stata: rename dlrid dnum; merge; rename dnum dlrid
+dealer_mkt2 <- dealer_mkt2 %>%
+  left_join(dealers_annual %>% rename(dlrid = dnum), by = c("dlrid", "year"))
+
+# dealers_annual has some 'gaps' in it, sometimes a dealer has a permit in year 1 and 3, but not year 3. 
+# this causes the dealer's demographics to be missing, including dlr_name 
+
+# Pivot wide: one lndlb column per market category (reshape wide lndlb, j(mym))
+dealer_wide2 <- dealer_mkt2 %>%
+  pivot_wider(
+    names_from  = mym,
+    values_from = lndlb,
+    values_fill = 0
+  )
+
+# Stata: foreach var of varlist lndlb*: replace var=0 if var==.
+# (pivot_wider values_fill handles this)
+
+# Stata: egen total=rowtotal(lndlb1-lndlb6)
+dealer_wide2 <- dealer_wide2 %>%
+  mutate(
+    total = rowSums(
+      select(., any_of(c("JUMBO", "LARGE", "MEDIUM", "SMALL",
+                         "EXTRA SMALL", "UNCLASSIFIED"))),
+      na.rm = TRUE
+    ),
+    unclassified_frac = if_else(total > 0, UNCLASSIFIED / total, NA_real_)
+  )
+
+# Yearly totals for comparison
+yearly_unc2 <- dealer_wide2 %>%
+  group_by(year) %>%
+  summarise(
+    t6 = sum(UNCLASSIFIED, na.rm = TRUE),
+    tt = sum(total,        na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(yearly_unc = t6 / tt)
+
+dealer_wide2 <- dealer_wide2 %>%
+  left_join(yearly_unc %>% select(year, yearly_unc), by = "year")
+
+# Stata: gen f6 = lndlb6/t6 (share of total yearly unclassified from this dealer)
+dealer_wide2 <- dealer_wide2 %>%
+  left_join(yearly_unc %>% select(year, t6), by = "year") %>%
+  mutate(f6 = if_else(t6 > 0, UNCLASSIFIED / t6, NA_real_))
+
+# Rank dealers by share of unclassified (frank: highest f6 = rank 1)
+dealer_ranked2 <- dealer_wide2 %>%
+  group_by(year) %>%
+  mutate(frank = rank(-f6, ties.method = "first")) %>%
+  ungroup()
+
+# St browse if year>=2010 & frank<=5  → print top dealers by unclassified share
+cat("\n=== Top 5 dealers by share of yearly unclassified landings (2010+) ===\n")
+print(
+  dealer_ranked2 %>%
+    filter(year >= 2010, frank <= 5) %>%
+    arrange(year, frank) %>%
+    select(year, dlrid, any_of(c("dlr_name")), yearly_unc, unclassified_frac,
+           UNCLASSIFIED, f6, t6, frank)
+)
+
+# browse if unclassified_frac > yearly_unc & year>=2010
+cat("\n=== Dealers with above-average unclassified fraction (2010+) ===\n")
+print(
+  dealer_wide2 %>%
+    filter(year >= 2010, unclassified_frac > yearly_unc) %>%
+    arrange(year, desc(unclassified_frac)) %>%
+    select(year, dlrid, any_of(c("dlr_name")), yearly_unc, unclassified_frac)
+)
+
+#  unclassified landings by status and market code
+
+# Second section near the bottom of your chunk
+landings2 <- landings_raw2 %>%
+  filter(merge_species_codes != 1) %>%
+  mutate(
+    dlr_date = as.Date(dlr_date),
+    dateq = paste0(lubridate::year(dlr_date), "Q", lubridate::quarter(dlr_date)),
+    market_desc = if_else(market_desc == "MIXED OR UNSIZED", "UNCLASSIFIED", market_desc),
+    market_code = if_else(market_code == "MX", "UN", market_code),
+    market_desc = if_else(market_desc == "MEDIUM OR SELECT", "MEDIUM", market_desc),
+    market_desc = if_else(market_desc == "PEE WEE (RATS)", "EXTRA SMALL", market_desc),
+    market_code = if_else(market_code == "PW", "ES", market_code),
+    mym = factor(market_desc, levels = c("JUMBO", "LARGE", "MEDIUM", "SMALL", "EXTRA SMALL", "UNCLASSIFIED"))
+  )
+
+
+# Stata: collapse (sum) lndlb, by(year mym status)
+unclass_by_status2 <- landings2 %>%
+  group_by(year, mym, status) %>%
+  summarise(lndlb = sum(lndlb, na.rm = TRUE), .groups = "drop")
+
+# Stata: browse if mym==6 (UNCLASSIFIED)
+cat("\n=== Unclassified landings by year and status ===\n")
+print(
+  unclass_by_status %>%
+    filter(as.character(mym) == "UNCLASSIFIED") %>%
+    arrange(year, status)
+)
+
+
+```
+
+
+
+
+
+
+
+
+
+
