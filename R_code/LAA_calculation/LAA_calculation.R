@@ -67,11 +67,28 @@ LAA_calculation <- function(species_itis = NULL,
   
   
   comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
+  
+  # If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
+  if(dim(comm.land.res)[1]==0){
+    comm.land.qry <- glue("select * 
+                          from stockeff_pre_prod.mv_cf_stock_caa_land_block_o 
+                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
+                          and LANDINGS_KG IS NOT NULL")
+    
+    
+    
+    comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
+  }
   # Query the landings by age and length from StockEff:
   comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o 
                                    where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
   
+  if(dim(comm.land.length.age.res)[1]==0){
+    comm.land.length.age.qry <- glue("select * from stockeff_pre_prod.v_cf_stock_caa_num_len_age_o 
+                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
+    comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
+  }
   #create a marker flag on in out_of_sample_predictions to make the logic of subsequent case_when a little safer.
   out_of_sample_predictions <- out_of_sample_predictions %>% 
     mutate(has_rf_pred = 1)
