@@ -23,7 +23,7 @@ library("glue")
 
 # load tidyverse and related
 library("tidymodels")
-
+library("butcher")
 # load machine learning and estimation tools
 # ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
 # you might want to install Rcpp, then RcppEigen, then ranger
@@ -151,14 +151,15 @@ best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
 vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
 
+
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
+
 train_data <- training(data_split)
-test_data <- testing(data_split)
 validation_data <- validation(data_split)
 rm(data_split)
 
 nrow(train_data)
-nrow(test_data)
+
 nrow(validation_data)
 
 train_raw_rows<-nrow(train_data)
@@ -211,7 +212,7 @@ selected_params<-tm[2,] %>%
 # Use update to change trees, 
 # finalize the model with best_params
 final_spec <- tune_spec %>%
-  update(trees=500)%>%
+  update(trees=20)%>%
   finalize_model(selected_params)
 
 # I have to adjust the arguments this way or I have to rewrite the entire workflow
@@ -238,35 +239,69 @@ final_fit <-
   fit(train_data)
 
 message("Final model fit finished.", Sys.time())
-#rm(final_model_spec)
-gc()
-write_rds(final_fit, file=here("results","ranger",final_fit_file_name))
 
-#prediction using the validation data 
-test_preds <- augment(final_fit, new_data = test_data)
+
+#prediction using the training data 
+train_preds <- augment(final_fit, new_data = train_data)
 
 # print out the metrics
 
-test_preds <- test_preds %>%
+
+train_metrics <- bind_rows(
+  roc_auc(calib_preds, truth = market_desc, 
+          starts_with(".pred_")
+  ),
+  mn_log_loss(calib_preds, truth = market_desc,
+              starts_with(".pred_")
+  ),
+  brier_class(calib_preds, truth = market_desc,
+              starts_with(".pred_")
+  )
+  
+)
+
+message("Fit metrics on the training data:")
+train_metrics
+
+message("End Fit metrics")
+
+
+
+
+
+#prediction using the validation data 
+calib_preds <- augment(final_fit, new_data = calibration_data)
+
+# print out the metrics
+
+calib_preds <- calib_preds %>%
   mutate(weighting=hardhat::frequency_weights(lndlb)) %>%
   select(-.pred_class)
 
-test_metrics <- bind_rows(
-  roc_auc(test_preds, truth = market_desc, 
+calib_test_metrics <- bind_rows(
+  roc_auc(calib_preds, truth = market_desc, 
           starts_with(".pred_"),
           case_weights = weighting),
-  mn_log_loss(test_preds, truth = market_desc,
+  mn_log_loss(calib_preds, truth = market_desc,
               starts_with(".pred_"),
               case_weights = weighting),
-  brier_class(test_preds, truth = market_desc,
+  brier_class(calib_preds, truth = market_desc,
               starts_with(".pred_"),
               case_weights = weighting)
   
 )
 
-message("Fit metrics")
+message("Fit metrics on the calibration data")
 test_metrics
+
 message("End Fit metrics")
+
+
+
+final_fit_slim <- butcher(final_fit)
+write_rds(final_fit_slim, file=here("results","ranger",final_fit_file_name))
+
+
 
 
 ########################################################################################################
