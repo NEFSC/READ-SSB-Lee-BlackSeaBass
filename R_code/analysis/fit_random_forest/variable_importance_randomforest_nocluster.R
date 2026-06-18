@@ -184,7 +184,7 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 # Set up the tuning workflow
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
-# Read in best parameters.  Do a training on the full training dataset, predict on the validation dataset. Save the data
+# Read in best parameters.  Do a training on the full training dataset
 
 #tune_res<-read_rds(file=here("results","ranger", tune_file_name))
 best_params<-read_rds(file=here("results","ranger", best_param_file_name))
