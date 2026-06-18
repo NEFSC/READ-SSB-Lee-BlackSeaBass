@@ -48,7 +48,7 @@ R_code/data_extraction_processing/processing/commercial\00_commercial_processing
 
 The RF model was tuned with tune_random_forest_nocluster.R
 The RF model was trained with tune_random_forest_nocluster.R
-Variable importance metrics produced by variable_importance_random_forest_nocluster.R
+Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
 
 The model is calibrated with "calibration and validation.Rmd"
 
@@ -60,7 +60,6 @@ Hedonic model was fit with "bsb_size_classifications.do". This file also generat
 * figure2 (windows only)
 * predictions_heatmap
 * out_of_sample_predictions.Rmd makes out of sample predictions.
-* calibration_and_validation - VIP
 
 renders on windows, but not on my container (missing endnotes.sty from that tex install)
 

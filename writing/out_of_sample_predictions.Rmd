@@ -54,6 +54,7 @@ The model is finalized with final_fit and calibrated with "calibration and valid
  
  --->
 ```{r global_options, include=FALSE}
+search_type<-"Advanced"
 
 modeltype<-params$modeltype
 
@@ -121,11 +122,9 @@ if (runClass %in% c('Local', 'Windows')){
   my.parallel.threads<-parallel::detectCores() -2 
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 					  
-												
-  my.parallel.threads<-2
-  
+	my.parallel.threads<-1											
 }
-my.ranger.threads<-7
+my.ranger.threads<-22
 
 here::i_am("writing/out_of_sample_predictions.Rmd")
 
@@ -199,16 +198,8 @@ read in the final model, extract the recipe and the predictors. Read in the prob
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
 
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
-
-# And the recipe
-extract_recipe(final_fit)
-
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
-
-num_preds<-nrow(preds)
+# What the recipe
+classification_recipe<-extract_recipe(final_fit)
 
 
 # Read in the out-of-sample data
@@ -240,7 +231,7 @@ Apply the final RF model to the data. Calibrate the probabilities
 
 ```{r Validation_predictions}
 # Apply the Final fit to the out of sample dataset that I feel confident about 
-oos_predictable <- augment(final_workflow,oos_predictable)
+oos_predictable <- augment(final_fit,oos_predictable)
 
 
 # Apply calibration apply to the out-of-sample dataset
