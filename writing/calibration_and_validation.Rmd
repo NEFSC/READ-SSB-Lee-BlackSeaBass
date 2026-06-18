@@ -14,7 +14,7 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: noclusterTEST
+    value: nocluster
     choices:
     - nocluster
     - noclusterTEST
@@ -49,7 +49,7 @@ Calibration and Validation
  
  --->
 ```{r global_options, include=FALSE}
-
+search_type<-"Advanced"
 modeltype<-params$modeltype
 
 
@@ -157,13 +157,10 @@ tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
-# My "final fit" bombed out because I didn't have drive space.  
-# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
-# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
-# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
-# finalfit_vintage<-max(finalfit_vintage)
+# Tuning, training, VI code guarantees that the finalfit and VI vintages are the same as the tuning vintages.  
 
 finalfit_vintage<-tuning_vintage
+VI_vintage<-tuning_vintage
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
@@ -185,28 +182,28 @@ read in the final model, extract the recipe and the predictors, extract the pred
 # # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
 # Onlyneed the test and validation 
-# train_data <- training(data_split)
+train_data <- training(data_split)
 validation_data <- validation(data_split)
 test_data <- testing(data_split)
+
+# recreate the frequency weights variables
+validation_data<-validation_data %>%
+  mutate(weighting=frequency_weights(lndlb))
+test_data<-test_data %>%
+  mutate(weighting=frequency_weights(lndlb))
+
 rm(data_split)
 
 
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
-
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
-
 # And the recipe
-extract_recipe(final_fit)
+classification_recipe<-extract_recipe(final_fit)
 
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
 
-num_preds<-nrow(preds)
+# here, I have to augment, probably the data_split object, but it coudl be the validation dataset.
+final_predictions <- augment(final_fit,validation_data)
 
-final_predictions<-final_fit %>%
-  collect_predictions()
 
 # pull the probability names
 prob_names<-colnames(final_predictions) 
@@ -215,9 +212,10 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
 # look at the fit metrics
-final_fit_metrics<-final_fit %>%
-  collect_metrics()
-final_fit_metrics
+# I think I have to do this by hand from final_predictions (or from the augmented training data
+#final_fit_metrics<-final_fit %>%
+#  collect_metrics()
+#final_fit_metrics
 
 ```
 
@@ -228,12 +226,11 @@ Log loss of the final fit is slightly better than that of the average of the ind
 
 Look at the VIP, ROC, and PR curves
 
-```{r VIP}
+```{r VIP, eval=FALSE}
 # Look at variable importance. I want to see all the predictors.
-# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Permutation"
+# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Impurity Corrected."
 
 vi_data<-read_rds(file=here("results","ranger",glue("{vi_pattern}{finalfit_vintage}.Rds")))
-
 
 vi_data <- vi_data %>%
   #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
@@ -358,11 +355,11 @@ Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if
 ```{r Validation_predictions}
 # Apply the Final fit to the validation dataset. 
 
-validation_data <- augment(final_workflow,validation_data)
 
 #The validation plots indicate characteristic issues with probability trees. All models are underconfident. Groups of observations with a 75% predicted probability of Jumbo have a true probability of Jumbo of almost 90%.  Groups of observations with a predicted probability of ~15% probabilty of Jumbo have a true probability closer to 10%.
 
 # Calibration should fix this.
+validation_data<-final_predictions
 
 cal_gg <- validation_data %>%
   cal_plot_windowed(
@@ -426,7 +423,6 @@ ggsave(
 
 
 ```
-
 
 Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
 
@@ -908,7 +904,7 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{m
 # Predict Out of Sample on the testing holdout.
 
 
-test_data <- augment(final_workflow,test_data)
+test_data <- augment(final_fit,test_data)
 
 ############ How well calibrated is the model? 
 # A: Better when calibrated - same pattern as training data.
