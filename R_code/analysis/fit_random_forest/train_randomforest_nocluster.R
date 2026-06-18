@@ -213,7 +213,7 @@ selected_params<-tm[2,] %>%
 # Use update to change trees, 
 # finalize the model with best_params
 final_spec <- tune_spec %>%
-  update(trees=20)%>%
+  update(trees=500)%>%
   finalize_model(selected_params)
 
 # I have to adjust the arguments this way or I have to rewrite the entire workflow
