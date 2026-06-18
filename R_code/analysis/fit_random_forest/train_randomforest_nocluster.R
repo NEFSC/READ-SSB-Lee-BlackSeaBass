@@ -153,14 +153,15 @@ vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
 
 
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
+# do not read in the test data
 
 train_data <- training(data_split)
-validation_data <- validation(data_split)
+calibration_data <- validation(data_split)
 rm(data_split)
 
 nrow(train_data)
 
-nrow(validation_data)
+nrow(calibration_data)
 
 train_raw_rows<-nrow(train_data)
 
@@ -189,7 +190,7 @@ source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R
 # Set up the tuning workflow
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
-# Read in best parameters.  Do a training on the full training dataset, predict on the validation dataset. Save the data
+# Read in best parameters.  Do a training on the full training dataset, predict on the calibration dataset. 
 
 #tune_res<-read_rds(file=here("results","ranger", tune_file_name))
 best_params<-read_rds(file=here("results","ranger", best_param_file_name))
