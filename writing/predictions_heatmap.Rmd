@@ -42,6 +42,7 @@ Construct hard and soft predictive heatmaps.  Hard will go into the Appendix, so
  
  --->
 ```{r global_options, include=FALSE}
+search_type<-"Advanced"
 
 modeltype<-params$modeltype
 
@@ -189,8 +190,6 @@ train_data <- training(data_split)
 validation_data <- validation(data_split)
 
 source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-search_type<-"Initial"
-
 
 source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
@@ -206,31 +205,14 @@ read in the final model, extract the recipe and the predictors, extract the pred
 
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
-
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
-
-# And the recipe
-extract_recipe(final_fit)
-
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
-
-num_preds<-nrow(preds)
-
-final_predictions<-final_fit %>%
-  collect_predictions()
+# What the recipe
+classification_recipe<-extract_recipe(final_fit)
 
 # pull the probability names
 prob_names<-colnames(predictions) 
 prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
-
-# look at the fit metrics
-final_fit_metrics<-final_fit %>%
-  collect_metrics()
-final_fit_metrics
 
 # all.metrics %>%
 #   dplyr::filter(.config==best_config) 
@@ -253,7 +235,7 @@ Make the heat maps (confusion matrices).
 ```{r Validation_predictions}
 # Load in the validation data
 
-test_data <- augment(final_workflow,test_data)
+test_data <- augment(final_fit,test_data)
 
 ```
 
