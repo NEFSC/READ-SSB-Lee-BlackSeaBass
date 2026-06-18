@@ -23,6 +23,7 @@ library("glue")
 
 # load tidyverse and related
 library("tidymodels")
+library("butcher")
 
 # load machine learning and estimation tools
 # ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
@@ -206,7 +207,7 @@ selected_params<-tm[2,] %>%
 # Use update to change trees, 
 # finalize the model with best_params
 vi_spec <- tune_spec %>%
-  update(trees=500)%>%
+  update(trees=20)%>%
   finalize_model(selected_params)
 
 # I have to adjust the arguments this way or I have to rewrite the entire workflow
@@ -239,16 +240,20 @@ vi_fit <-
   vi_wf %>%
   fit(train_data)
 
+vi_fit_slim <- butcher(vi_fit)
+rm(vi_fit)
+gc()
+
 message("Variable Importance Model fit finished", Sys.time())
 # 
 # 
 # Pull the variable importance
- vi_data<-vi_fit%>%
+ vi_data<-vi_fit_slim%>%
    extract_fit_parsnip() %>%
    vi(method = "model") 
 # 
-# write_rds(vi_data, file=here("results","ranger",vi_file_name))
-# message("Variable Importance metrics saved", Sys.time())
+write_rds(vi_data, file=here("results","ranger",vi_file_name))
+message("Variable Importance metrics saved", Sys.time())
 
 ########################################################################################################
 ########################################################################################################
@@ -257,6 +262,113 @@ message("Variable Importance Model fit finished", Sys.time())
 
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
+
+
+
+
+
+# PLOT
+
+
+
+
+vi_data <- vi_data %>%
+  #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
+  mutate(
+    Variable = forcats::fct_reorder(Variable, Importance),
+    Variable = forcats::fct_recode(Variable,
+                                   "Price Difference Jumbo" = "Price_Diff_J",
+                                   "Price Difference Large" = "Price_Diff_L",
+                                   "Price Difference Medium" = "Price_Diff_M",
+                                   "Dealer Propensity Small" = "LagSharePoundsSmall",
+                                   "Dealer Propensity Medium" = "LagSharePoundsMedium",
+                                   "Dealer Propensity Large" = "LagSharePoundsLarge",
+                                   "Dealer Propensity Jumbo" = "LagSharePoundsJumbo",
+                                   "Year" = "year",
+                                   "Stockarea Catch Jumbo" = "MA7_StockareaQJumbo",
+                                   "Stockarea Catch Large" = "MA7_StockareaQLarge",
+                                   "Stockarea Catch Medium" = "MA7_StockareaQMedium",
+                                   "Stockarea Catch Small" = "MA7_StockareaQSmall",
+                                   "State Catch Jumbo" = "MA7_StateQJumbo",
+                                   "State Catch Large" = "MA7_StateQLarge",
+                                   "State Catch Medium" = "MA7_StateQMedium",
+                                   "State Catch Small" = "MA7_StateQSmall",
+                                   "Gear Catch Jumbo" = "MA7_gearQJumbo",
+                                   "Gear Catch Large" = "MA7_gearQLarge",
+                                   "Gear Catch Medium" = "MA7_gearQMedium",
+                                   "Gear Catch Small" = "MA7_gearQSmall",
+                                   "Transaction Weight" = "lndlb",
+                                   "Stockarea Trips" = "MA7_stockarea_trips",
+                                   "State Trips" = "MA7_state_trips"
+    )
+  )
+
+
+
+p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease Impurity (Corrected)",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+p_vip
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vip{modeltype}{tuning_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease Impurity (Corrected)",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vipFULL{modeltype}{tuning_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
 
 cat("All done")
 
