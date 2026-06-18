@@ -249,13 +249,13 @@ train_preds <- augment(final_fit, new_data = train_data)
 
 
 train_metrics <- bind_rows(
-  roc_auc(calib_preds, truth = market_desc, 
+  roc_auc(train_preds, truth = market_desc, 
           starts_with(".pred_")
   ),
-  mn_log_loss(calib_preds, truth = market_desc,
+  mn_log_loss(train_preds, truth = market_desc,
               starts_with(".pred_")
   ),
-  brier_class(calib_preds, truth = market_desc,
+  brier_class(train_preds, truth = market_desc,
               starts_with(".pred_")
   )
   
