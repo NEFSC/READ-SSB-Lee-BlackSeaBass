@@ -23,10 +23,9 @@
 # -----------------------------------------------------------------------------
 # Read
 # -----------------------------------------------------------------------------
-landings <- readRDS(
-  file = here("data_folder", "main", "commercial",
-              glue("landings_cleaned_{vintage_string}.Rds"))
-)
+landings <- readRDS(file = here("R_code", "data_extraction_processing", "processing", "tilefish",
+glue("tilefish_landings_cleaned_{vintage_string}.Rds")))
+
 
 # Drop rows where lndlb is na.
 landings<-landings %>%
@@ -274,7 +273,7 @@ camsid_specific <- landings %>%
 saveRDS(
   camsid_specific,
   file = here("data_folder", "main", "commercial",
-              glue("camsid_specific_cleaned_{vintage_string}.Rds"))
+              glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds"))
 )
 
 # =============================================================================
