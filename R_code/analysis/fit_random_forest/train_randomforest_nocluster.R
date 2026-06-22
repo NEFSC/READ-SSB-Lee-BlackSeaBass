@@ -151,45 +151,6 @@ best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
 vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
 
-
-data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
-# do not read in the test data
-
-train_data <- training(data_split)
-calibration_data <- validation(data_split)
-rm(data_split)
-
-nrow(train_data)
-
-nrow(calibration_data)
-
-train_raw_rows<-nrow(train_data)
-
-
-#expand by landed pounds 
-#replacing "in place" so that there's no chance the recipe fits to the wrong data.
-train_data<-train_data %>%
-  select(-c(price,priceR_CPI, dlrid, myl_id)) %>%
-  mutate(lndlb2=lndlb) %>%
-  uncount(lndlb2)
-
-train_expand_rows<-nrow(train_data)
-
-
-
-message("Original training dataset :", train_raw_rows )
-message("Training dataset rows (expanded):", train_expand_rows )
-
-
-# # Recipe definition
-# 
-# The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
-# and predictor variables.
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-
-# Set up the tuning workflow
-source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
-
 # Read in best parameters.  Do a training on the full training dataset, predict on the calibration dataset. 
 
 #tune_res<-read_rds(file=here("results","ranger", tune_file_name))
@@ -204,6 +165,52 @@ tm<-fold_results  %>%
 
 selected_params<-tm[2,] %>%
   select(-mt)
+rm(fold_results)
+
+
+
+
+data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
+# do not read in the test data
+
+train_data <- training(data_split)
+#calibration_data <- validation(data_split)
+rm(data_split)
+
+#nrow(train_data)
+
+#nrow(calibration_data)
+
+train_raw_rows<-nrow(train_data)
+
+
+train_data<-train_data %>%
+  select(-c(price,priceR_CPI, dlrid, myl_id))
+
+
+
+
+
+# # Recipe definition
+# 
+# The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
+# and predictor variables.
+source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+
+
+# Set up the tuning workflow
+source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+
+
+#expand by landed pounds 
+#replacing "in place" so that there's no chance the recipe fits to the wrong data.
+train_data<-train_data %>% 
+  mutate(lndlb2=lndlb) %>%
+  uncount(lndlb2)
+
+train_expand_rows<-nrow(train_data)
+message("Original training dataset :", train_raw_rows )
+message("Training dataset rows (expanded):", train_expand_rows )
 
 
 
@@ -220,7 +227,7 @@ final_spec <- tune_spec %>%
 # Verbose=TRUE to monitor what is going on.
 # save.memory slows it way down, but writes trees to disk to save on memory.
 final_spec$eng_args$verbose<-rlang::quo(TRUE)
-final_spec$eng_args$save.memory<-rlang::quo(TRUE)
+#final_spec$eng_args$save.memory<-rlang::quo(TRUE)
 
 # finalize model by setting best model hyperparameters
 final_wf_spec  <- BSB.Ranger.tuning.Workflow %>%
@@ -228,7 +235,7 @@ final_wf_spec  <- BSB.Ranger.tuning.Workflow %>%
 set.seed(132564)
 
 # clean up
-rm(BSB.Ranger.tuning.Workflow)
+rm(BSB.Ranger.tuning.Workflow, recipe_summary, tm, tune_spec, rf_grid)
 gc()
 
 fit_control<-control_parsnip(verbosity = 2L, catch = FALSE)
@@ -267,11 +274,14 @@ train_metrics
 message("End Fit metrics")
 
 
+# calibration predictions
+data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 
-
+calibration_data <- validation(data_split)
+rm(data_split)
 
 #prediction using the validation data 
-calib_preds <- augment(final_fit, new_data = calibration_data)
+calib_preds <- augment(final_fit, new_data = calibration_baked)
 
 # print out the metrics
 
