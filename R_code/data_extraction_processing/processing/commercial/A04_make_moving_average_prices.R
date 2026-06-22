@@ -20,7 +20,7 @@
 
 landings <- readRDS(
   file = here("data_folder", "main", "commercial",
-              glue("landings_cleaned_{vintage_string}.Rds"))
+              glue("tile_landings_cleaned_{vintage_string}.Rds"))
 )
 
 # Drop Unclassified throughout this script
