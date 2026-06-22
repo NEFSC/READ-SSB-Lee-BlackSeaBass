@@ -48,7 +48,6 @@ source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
 ```{r}
 
-
 # =============================================================================
 # Script:  gear_market_helpers.R
 # Purpose: Shared helper functions used across multiple BSB analysis scripts:
@@ -77,7 +76,6 @@ source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 #          (bsb_exploratory.R, bsb_exploratory_dealers.R, prices_by_category.R)
 #          if rebinning rules change.
 # =============================================================================
-
 
 # -----------------------------------------------------------------------------
 # apply_gear_categories()
@@ -122,82 +120,17 @@ apply_gear_categories <- function(df) {
       )
     )
 }
+```
 
 
-# -----------------------------------------------------------------------------
-# apply_bsb_market_rebinning()
-# Standard rebinning for bsb_exploratory and prices_by_category.
-# Returns df with cleaned market_code and market_desc (ordered factor).
-# Rules: MX→UN, PW+ES→SQ (Small), XG→JB (Jumbo), proper-case titles.
-# -----------------------------------------------------------------------------
-apply_bsb_market_rebinning <- function(df) {
-  market_levels <- c("Jumbo", "Large", "Medium", "Small", "Extra Small", "Unclassified")
-
-  df %>%
-    mutate(
-      # MX (Mixed/Unsized) → UN (Unclassified)
-      market_desc = if_else(market_desc == "MIXED OR UNSIZED", "UNCLASSIFIED", market_desc),
-      market_code = if_else(market_code == "MX",              "UN",           market_code),
-
-      # PW (Pee Wee) + ES (Extra Small) → SQ (Small)
-      market_code = if_else(market_code %in% c("PW", "ES"), "SQ", market_code),
-      market_desc = if_else(market_desc %in% c("PEE WEE (RATS)", "EXTRA SMALL"), "SMALL", market_desc),
-
-      # XG (Extra Large) → JB (Jumbo)
-      market_desc = if_else(market_desc == "EXTRA LARGE", "JUMBO", market_desc),
-      market_code = if_else(market_code == "XG",          "JB",    market_code),
-
-      # Title-case and fix "Medium Or Select"
-      market_desc = str_to_title(market_desc),
-      market_desc = if_else(market_desc == "Medium Or Select", "Medium", market_desc),
-
-      market_desc = factor(market_desc, levels = market_levels)
-    )
-}
+```{r}
 
 
-# -----------------------------------------------------------------------------
-# apply_bsb_market_rebinning_dealers()
-# Dealers-analysis variant: PW stays as ES (Extra Small), not merged into Small.
-# NOTE: intentionally differs from apply_market_rebinning() — Pee Wee is kept
-# as a separate Extra Small record to preserve finer size detail for
-# dealer-pattern analysis.  No XG→JB rule here.
-# -----------------------------------------------------------------------------
-apply_bsb_market_rebinning_dealers <- function(df) {
-  df %>%
-    mutate(
-      # MX (Mixed/Unsized) → UN (Unclassified)
-      market_desc = if_else(market_desc == "MIXED OR UNSIZED",  "UNCLASSIFIED", market_desc),
-      market_code = if_else(market_code == "MX",                "UN",           market_code),
-
-      # MEDIUM OR SELECT → MEDIUM
-      market_desc = if_else(market_desc == "MEDIUM OR SELECT", "MEDIUM", market_desc),
-
-      # PEE WEE (RATS) → EXTRA SMALL (code PW → ES; stays in Extra Small, not merged to Small)
-      market_desc = if_else(market_desc == "PEE WEE (RATS)", "EXTRA SMALL", market_desc),
-      market_code = if_else(market_code == "PW",             "ES",          market_code)
-    )
-}
-
-# -----------------------------------------------------------------------------
-# apply_bsb_grade_cleaning()
-# Standardizes grade_desc values and returns an ordered factor.
-# NOTE: Stata maps UNGRADED → "Round" (not "Ungraded"). Faithfully reproduced.
-# -----------------------------------------------------------------------------
-apply_bsb_grade_cleaning <- function(df) {
-  df %>%
-    mutate(
-      grade_desc = case_when(
-        grade_desc == "LIVE (MOLLUSCS SHELL ON)" ~ "Live",
-        grade_desc == "UNGRADED"                 ~ "Round",  # NOTE: Stata maps UNGRADED → Round
-        TRUE ~ str_to_title(grade_desc)
-      ),
-      grade_desc = factor(grade_desc, levels = c("Round", "Live", "Ungraded"))
-    )
-}
 
 
 
 
 ```
+
+
 
