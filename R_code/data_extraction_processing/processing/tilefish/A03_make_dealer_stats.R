@@ -13,9 +13,8 @@
 ###############################################################################
 
 landings <- readRDS(
-  file = here("data_folder", "main", "commercial",
-              glue("landings_cleaned_{vintage_string}.Rds"))
-)
+  file = here("R_code", "data_extraction_processing", "processing", "tilefish",
+              glue("tilefish_landings_cleaned_{vintage_string}.Rds")))
 
 
 # Drop rows where lndlb is na.
@@ -58,7 +57,7 @@ historical_wide <- historical %>%
     values_fill = 0L
   )
 
-# Rename lndlb columns to DealerHLbsPurchased{Size}
+  # Rename lndlb columns to DealerHLbsPurchased{Size}
 historical_wide <- historical_wide %>%
   rename_with(~ gsub("^lndlb", "DealerHLbsPurchased", .x),
               starts_with("lndlb"))
