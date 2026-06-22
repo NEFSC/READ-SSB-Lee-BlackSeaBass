@@ -141,7 +141,7 @@ landings <- apply_gear_categories(landings) %>%
 
 
 # Fix this part too
-market_levels <- c("Jumbo", "Large", "Medium", "Small", "Extra Small", "Unclassified")
+market_levels <- c("Xl", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
 
 landings <- apply_tilefish_market_rebinning(landings) %>%
   mutate(
@@ -286,5 +286,6 @@ stopifnot(!anyNA(landings$value) )
 saveRDS(
   landings,
   file = here("R_Code", "data_extraction_processing", "processing" , "tilefish" ,
-              glue("landings_cleaned_{vintage_string}.Rds"))
+              glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
 )
+
