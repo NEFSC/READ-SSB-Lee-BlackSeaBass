@@ -64,6 +64,7 @@ search_type<-"Advanced"
 
 
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
 
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -108,7 +109,6 @@ if (runClass %in% c('Local', 'Windows')){
 }
 lbs_per_mt<-2204.62
 
-lbs_per_mt<-2204.62
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -151,7 +151,24 @@ best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 
 final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
 vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
 
+#tune_res<-read_rds(file=here("results","ranger", tune_file_name))
+best_params<-read_rds(file=here("results","ranger", best_param_file_name))
+
+
+
+
+fold_results<-read_rds(file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
+tm<-fold_results  %>%
+  filter(.metric == "brier_class") %>%
+  group_by(mtry, min_n, .config) %>%
+  summarise(mt=mean(.estimate), .groups="drop_last")%>%
+  arrange(mt)
+
+selected_params<-tm[2,] %>%
+  select(-mt)
+rm(fold_results)
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 train_data <- training(data_split)
 rm(data_split)
@@ -159,13 +176,15 @@ rm(data_split)
 nrow(train_data)
 train_raw_rows<-nrow(train_data)
 
+ train_data$rand<-runif(nrow(train_data))
+ train_data<-train_data %>%
+  dplyr::filter(rand<=.05)%>%
+  select(-rand)
 
 #expand by landed pounds 
 #replacing "in place" so that there's no chance the recipe fits to the wrong data.
 train_data<-train_data %>%
-  select(-c(price,priceR_CPI, dlrid, myl_id)) %>%
-  mutate(lndlb2=lndlb) %>%
-  uncount(lndlb2)
+  select(-c(price,priceR_CPI, dlrid, myl_id)) 
 
 train_expand_rows<-nrow(train_data)
 
@@ -179,78 +198,94 @@ message("Training dataset rows (expanded):", train_expand_rows )
 # 
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+# source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
+# I need to handle the prep and bake the recipe manually, instead of using a workflow.
 
+# read in the prepped recipe
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+				
 # Set up the tuning workflow
-source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+# source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
-# Read in best parameters.  Do a training on the full training dataset
+# configure the final_spec
+vi_spec <- rand_forest(
+  trees = 500,
+  mtry = tune(),
+  min_n = tune(),
+) %>%
+  set_mode("classification") %>%
+  set_engine("ranger",
+             num.threads=!!my.ranger.sequential.threads, 
+             na.action="na.learn", 
+             respect.unordered.factors="order",
+             importance="impurity_corrected", # Impurity corrected
+             oob.error = FALSE, # not used.
+             keep.inbag=FALSE, # default, but explicit 
+             probability = TRUE, # set to a probability model
+             write.forest=FALSE,
+             save.memory=FALSE,
+             verbose=TRUE,  # default, but explicit 
+             seed= 132564) %>% 
+  finalize_model(selected_params) 
 
-#tune_res<-read_rds(file=here("results","ranger", tune_file_name))
-best_params<-read_rds(file=here("results","ranger", best_param_file_name))
-
-fold_results<-read_rds(file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
-tm<-fold_results  %>%
-  filter(.metric == "brier_class") %>%
-  group_by(mtry, min_n, .config) %>%
-  summarise(mt=mean(.estimate), .groups="drop_last")%>%
-  arrange(mt)
-
-selected_params<-tm[2,] %>%
-  select(-mt)
-
-
-
-
-############################################
-# Final fit spec
-# Use update to change trees, 
-# finalize the model with best_params
-vi_spec <- tune_spec %>%
-  update(trees=500)%>%
-  finalize_model(selected_params)
-
-# I have to adjust the arguments this way or I have to rewrite the entire workflow
-# Verbose=TRUE to monitor what is going on.
-# save.memory slows it way down, but writes trees to disk to save on memory. I think I can comment out
-vi_spec$eng_args$verbose<-rlang::quo(TRUE)
-#vi_spec$eng_args$save.memory<-rlang::quo(TRUE)
-vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
-vi_spec$eng_args$write.forest<-rlang::quo(FALSE)
+translate(vi_spec)
+				  
+#Not currently used for training, but keeping it around
+class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
+#expand by landed pounds 
+train_expanded<-train_data %>% 
+  mutate(lndlb2=lndlb) %>%
+  uncount(lndlb2)
 
 
-# finalize model by setting best model hyperparameters
-vi_wf  <- BSB.Ranger.tuning.Workflow %>%
-  update_model(vi_spec)
-set.seed(132564)
+train_expand_rows<-nrow(train_data)
+message("Original training dataset :", train_raw_rows )
+message("Training dataset rows (expanded):", train_expand_rows )
 
-# clean up
-rm(BSB.Ranger.tuning.Workflow)
-gc()
+# Apply 
+train_baked <- bake(
+  prepped_recipe,
+  new_data = train_expanded)
 
-fit_control<-control_parsnip(verbosity = 2L, catch = FALSE)
 
-# set.seed(132564)
-# 
-# Final model fitting on the full training dataset to estimate importance
-message("Fitting model to estimate variable importance.", Sys.time())
-vi_fit <-
-  vi_wf %>%
-  fit(train_data)
 
-vi_fit_slim <- butcher(vi_fit)
-rm(vi_fit)
+# Final model fitting on the baked dataset
+message("Fitting final model:...")
+vi_ranger_fit <- ranger(
+  market_desc ~ .,                              # outcome ~ all remaining columns
+  data                      = train_baked,
+  num.trees                 = 500,              # full 500 trees (memory budget allows)
+  mtry                      = selected_params$mtry,
+  min.node.size             = selected_params$min_n,
+  probability               = TRUE,            # required: returns class probabilities
+  num.threads              =  my.ranger.sequential.threads, 
+  respect.unordered.factors = "order",
+  na.action                 = "na.learn",
+  importance                = "impurity_corrected",           # VI handled here
+  save.memory               = FALSE,
+  write.forest              = FALSE,  # don't need to write forest. saves memory
+  verbose                   = TRUE,
+  seed                      = 132564
+)
+
+message("Final model fit finished.", Sys.time())
+write_rds(vi_ranger_fit, file=here("results","ranger",vi_file_name))
 gc()
 
 message("Variable Importance Model fit finished", Sys.time())
 # 
 # 
 # Pull the variable importance
- vi_data<-vi_fit_slim%>%
-   extract_fit_parsnip() %>%
-   vi(method = "model") 
+ vi_data<- vi_ranger_fit$variable.importance
+ 
+ vi_data <- tibble(
+   Variable   = names(vi_data),
+   Importance = vi_data
+ ) %>%
+   arrange(desc(Importance))
+ 
 # 
 write_rds(vi_data, file=here("results","ranger",vi_file_name))
 message("Variable Importance metrics saved", Sys.time())
@@ -284,6 +319,7 @@ vi_data <- vi_data %>%
                                    "Dealer Propensity Medium" = "LagSharePoundsMedium",
                                    "Dealer Propensity Large" = "LagSharePoundsLarge",
                                    "Dealer Propensity Jumbo" = "LagSharePoundsJumbo",
+                                   "Trip BSB Landings" = "trip_level_BSB",
                                    "Year" = "year",
                                    "Stockarea Catch Jumbo" = "MA7_StockareaQJumbo",
                                    "Stockarea Catch Large" = "MA7_StockareaQLarge",
@@ -309,7 +345,7 @@ p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y =
   geom_col(fill = "#1B6CA8", width = 0.7) +
   geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
   scale_x_continuous(
-    name   = "Mean Decrease Impurity (Corrected)",
+    name   = "Mean Decrease in (Corrected) Impurity ",
     expand = expansion(mult = c(0, 0.05))
   ) +
   scale_y_discrete(name = NULL) +
@@ -341,7 +377,7 @@ p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
   geom_col(fill = "#1B6CA8", width = 0.7) +
   geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
   scale_x_continuous(
-    name   = "Mean Decrease Impurity (Corrected)",
+    name   = "Mean Decrease in (Corrected) Impurity ",
     expand = expansion(mult = c(0, 0.05))
   ) +
   scale_y_discrete(name = NULL) +
