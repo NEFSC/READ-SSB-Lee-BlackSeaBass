@@ -1,13 +1,12 @@
 ###############################################################################
 # A03_make_dealer_stats.R
-# Purpose: R translation of A03_make_dealer_stats.do
+# Purpose:Target encode dealer ids
 #
 # Inputs:
 #   - landings_cleaned_{vintage_string}.Rds
 #
 # Outputs:
-#   - dlrid_historical_stats_{vintage_string}.Rds
-#   - dlrid_lag_stats_{vintage_string}.Rds
+#   - dlrid_tile_lag_stats_{vintage_string}.Rds
 #
 # Expects in environment: vintage_string, data_main
 ###############################################################################
@@ -21,109 +20,34 @@ landings <- readRDS(
 landings<-landings %>%
   filter(!is.na(lndlb)) 
 
-
-# =============================================================================
-# Block 1: Historical dealer statistics (2010-2014)
-# Used for target encoding of dlrid.
-# One row per dlrid x market_desc, then reshaped wide.
-# Unclassified is dropped throughout.
-# =============================================================================
-
-# TransactionCount: 1 per unique dlrid x camsid x market_desc combination.
-# Stata: bysort dlrid camsid market_desc: gen TransactionCount = (_n==1)
-# then collapse (sum). Net effect: count distinct camsid per dlrid x market_desc.
-historical <- landings %>%
-  filter(year >= 2010, year <= 2012) %>%
-  group_by(dlrid, camsid, market_desc) %>%
-  mutate(TransactionCount = row_number() == 1L) %>%
-  ungroup() %>%
-  group_by(dlrid, market_desc) %>%
-  summarise(
-    lndlb          = sum(lndlb),
-    TransactionCount = sum(as.integer(TransactionCount)),
-    .groups = "drop"
-  ) %>%
-  mutate(mymarket = as.character(market_desc)) %>%
-  filter(mymarket != "Unclassified") %>%
-  select(dlrid, mymarket, lndlb, TransactionCount)
-
-# Reshape wide: one row per dlrid, columns per size category
-historical_wide <- historical %>%
-  pivot_wider(
-    id_cols     = dlrid,
-    names_from  = mymarket,
-    names_sep = "",
-    values_from = c(lndlb, TransactionCount),
-    values_fill = 0L
-  )
-
-  # Rename lndlb columns to DealerHLbsPurchased{Size}
-historical_wide <- historical_wide %>%
-  rename_with(~ gsub("^lndlb", "DealerHLbsPurchased", .x),
-              starts_with("lndlb"))
-
-# Compute totals and shares across the four size categories
-sizes_hist <- c("Jumbo", "Large", "Medium", "Small")
-
-historical_wide <- historical_wide %>%
-  mutate(
-    totalland  = rowSums(select(., paste0("DealerHLbsPurchased", sizes_hist)),
-                         na.rm = TRUE),
-    totaltrans = rowSums(select(., paste0("TransactionCount",    sizes_hist)),
-                         na.rm = TRUE)
-  )
-
-for (s in sizes_hist) {
-  historical_wide[[glue("Share2012{s}")]] <-
-    historical_wide[[glue("DealerHLbsPurchased{s}")]] / historical_wide$totalland
-  historical_wide[[glue("Frac2012T{s}")]] <-
-    historical_wide[[glue("TransactionCount{s}")]] / historical_wide$totaltrans
-}
-
-historical_wide <- historical_wide %>%
-  select(-totalland, -totaltrans)
-
-saveRDS(
-  historical_wide,
-  file = here("data_folder", "main", "commercial",
-              glue("dlrid_historical_stats_{vintage_string}.Rds"))
-)
-
-
 # =============================================================================
 # Block 2: Lagged annual dealer statistics 
-# Produces 1-year lags of size-category share of pounds and transactions.
+# Produces 1-year lags of size-category share of pounds
 # After reshape, tsfill equivalent fills all dlrid x year combinations;
 # missing values mean the dealer bought nothing that year (no zero-fill here).
 # =============================================================================
 lag_stats <- landings %>%
-  group_by(dlrid, camsid, market_desc) %>%
-  mutate(TransactionCount = row_number() == 1L) %>%
-  ungroup() %>%
   group_by(dlrid, market_desc, year) %>%
   summarise(
     lndlb            = sum(lndlb),
-    TransactionCount = sum(as.integer(TransactionCount)),
     .groups          = "drop"
   ) %>%
   mutate(mymarket = as.character(market_desc)) %>%
   filter(mymarket != "Unclassified") %>%
-  select(dlrid, year, mymarket, lndlb, TransactionCount)
+  select(dlrid, year, mymarket, lndlb)
 
 # Compute within-year totals and shares
 lag_stats <- lag_stats %>%
   group_by(dlrid, year) %>%
   mutate(
-    TotalPounds = sum(lndlb),
-    TotalTrans  = sum(TransactionCount)
+    TotalPounds = sum(lndlb)
   ) %>%
   ungroup() %>%
   mutate(
-    LagSharePounds = lndlb / TotalPounds,
-    LagShareTrans  = TransactionCount / TotalTrans
+    LagSharePounds = lndlb / TotalPounds
   ) %>%
-  rename(LagPounds = lndlb, LagTrans = TransactionCount) %>%
-  select(dlrid, year, mymarket, LagSharePounds, LagShareTrans, LagPounds, LagTrans)
+  rename(LagPounds = lndlb) %>%
+  select(dlrid, year, mymarket, LagSharePounds, LagPounds)
 
 # Lag: shift year forward by 1 so year t row contains year t-1 statistics
 lag_stats <- lag_stats %>%
@@ -131,7 +55,7 @@ lag_stats <- lag_stats %>%
 
 #there are no missing values. If a firm didn't buy any Medium, the dlrid-year-mymarket combination doesn't show up.
 # If a firm didn't buy anything, there is no row of data
-stopifnot(nrow(filter(lag_stats, if_any(c(LagSharePounds, LagShareTrans, LagPounds, LagTrans), is.na))) == 0)
+stopifnot(nrow(filter(lag_stats, if_any(c(LagSharePounds, LagPounds), is.na))) == 0)
 
 
 
@@ -141,7 +65,7 @@ lag_wide <- lag_stats %>%
     id_cols     = c(dlrid, year),
     names_from  = mymarket,
     names_sep = "",
-    values_from = c(LagSharePounds, LagShareTrans, LagPounds, LagTrans),
+    values_from = c(LagSharePounds, LagPounds),
     values_fill = 0
   )
 
@@ -156,5 +80,5 @@ lag_wide <- lag_wide %>%
 saveRDS(
   lag_wide,
   file = here("data_folder", "main", "commercial",
-              glue("dlrid_lag_stats_{vintage_string}.Rds"))
+              glue("dlrid_tile_lag_stats_{vintage_string}.Rds"))
 )
