@@ -16,6 +16,8 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(conflicted)
+library(glue)
+library(kableExtra)
 
 conflicts_prefer(dplyr::filter)
 conflicts_prefer(lubridate::year)
@@ -46,91 +48,132 @@ source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
 ```
 
-```{r}
+Here is some exploratory analysis of tilefish
 
-# =============================================================================
-# Script:  gear_market_helpers.R
-# Purpose: Shared helper functions used across multiple BSB analysis scripts:
-#          (1) apply_gear_categories()       — maps negear codes to 5 gear groups
-#          (2) apply_bsb_market_rebinning()       — standard market category rebinning
-#          (3) apply_bsb_market_rebinning_dealers() — dealers-analysis variant
-#          (4) apply_bsb_grade_cleaning()          — standardizes grade_desc values
-# Notes:   IMPORTANT -- this rebinning makes sense for black sea bass, but may not 
-#          be optimal for another fishery. Use with care
-#          Gear mapping and market rebinning logic appears in multiple Stata
-#          scripts (bsb_exploratory.do, bsb_exploratory_dealers.do,
-#          prices_by_category.do).  Extracted here to avoid triplication.
-#          If gear or market rules change, update this file only.
-#
-#          GEAR CATEGORY MAPPING
-#          Maps NEFSC negear codes into 5 final categories:
-#          LineHand, Trawl, Gillnet, PotTrap, Misc (Dredge + Seine + Unknown).
-#          NOTE: negear 71 (otter trawl) and 160 (mid-water pair trawl) are
-#          listed under Trawl in the Stata code but later overridden by Seine;
-#          they end up as Misc.  case_when order preserves that final state.
-#
-#          MARKET CATEGORY REBINNING
-#          Standard: MX→UN, PW+ES→SQ (Small), XG→JB (Jumbo)
-#          Dealers:  MX→UN, PW→ES (Pee Wee kept as Extra Small, not merged)
-#          See README for full code table.  Update all three calling scripts
-#          (bsb_exploratory.R, bsb_exploratory_dealers.R, prices_by_category.R)
-#          if rebinning rules change.
-# =============================================================================
+```{r dealerbargraphs}
 
-# -----------------------------------------------------------------------------
-# apply_gear_categories()
-# Adds column `mygear` to df based on `negear`.
-# Final categories: LineHand, Trawl, Gillnet, PotTrap, Misc.
-# Rows with unrecognized negear codes get NA.
-# -----------------------------------------------------------------------------
-apply_gear_categories <- function(df) {
-  df %>%
-    mutate(
-      mygear = case_when(
-        # LineHand (hooks, lines, rods, cast nets, weirs, handlines)
-        negear %in% c(10, 20, 21, 22, 30, 34, 40, 60, 62, 65, 66,
-                      90, 250, 251, 330, 340, 380, 410, 414, 420) ~ "LineHand",
-        negear >= 220 & negear <= 230                              ~ "LineHand",
+#Unique dealers
 
-        # Seine → Misc (placed before Trawl range: negear 71 and 160 are listed
-        # under Trawl in Stata but overridden by Seine; Stata's last-replace-wins
-        # means they end up Seine → Misc.  Listing here first achieves same result.)
-        negear %in% c(70, 71, 160, 360)   ~ "Misc",   # Seine → Misc
-        negear >= 120 & negear <= 124      ~ "Misc",   # Seine → Misc
+dealers_annual <- tile
 
-        # Trawl (otter, beam, pair, mid-water — excludes 71 & 160 handled above)
-        negear >= 50  & negear <= 59  ~ "Trawl",
-        negear %in% c(150, 170, 350, 351, 353, 370, 450) ~ "Trawl",
+colnames(dealers_annual)
 
-        # Gillnet
-        negear >= 100 & negear <= 117 ~ "Gillnet",
-        negear %in% c(500, 520)       ~ "Gillnet",
+# Year
+dealers_by_year <- dealers_annual %>%
+group_by(year) %>%
+summarise(unique_dealers = n_distinct(dlrid))
+print(dealers_by_year)
 
-        # PotTrap (pots, traps, weirs, pounds)
-        negear >= 180 & negear <= 217 ~ "PotTrap",
-        negear >= 300 & negear <= 301 ~ "PotTrap",
-        negear %in% c(80, 140, 141, 142, 143, 240, 260, 270, 320, 321, 322, 323) ~ "PotTrap",
 
-        # Dredge + Unknown → Misc
-        negear >= 381 & negear <= 383 ~ "Misc",
-        negear %in% c(132, 400)       ~ "Misc",
-        negear == 999                 ~ "Misc",
+# By State
+dealers_by_state <- dealers_annual %>%
+group_by(state) %>%
+summarise(unique_dealers = n_distinct(dlrid))
+print(dealers_by_state)
 
-        TRUE ~ NA_character_
-      )
+
+# plot
+dealers_annual %>% 
+  group_by(year, state) %>% 
+  summarise(count = n_distinct(dlrid), .groups = "drop") %>% 
+  ggplot(aes(x = factor(year), y = count, fill = state)) + 
+  geom_col() + 
+  labs(x = "Year") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+
+
+```
+
+
+After 2012, June-August started increasing in unique transactions for every year afterwards.
+Throughout every year, Jan-May had much more unique transactions then later months in the spring.
+Later winter starts picking up again.
+
+
+```{r uniquetransactions}
+# Price variables
+
+ # 1. How many unique transactions are there in every month per year?
+
+tile %>% 
+  group_by(year, month) %>% 
+  summarise(unique_transactions = n_distinct(camsid), .groups = "drop") %>% 
+  kable()
+
+
+# adding lndlb with unique transactions
+tile %>% 
+  group_by(year, month) %>% 
+  summarise(
+    unique_transactions = n_distinct(camsid),
+    total_weight = sum(lndlb, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  ) %>% 
+  arrange(year, month) %>% 
+  mutate(
+    display_value = paste0(
+      scales::comma(unique_transactions), 
+      " (", scales::comma(total_weight, accuracy = 0.1), "k)"
     )
-}
+  ) %>%
+  pivot_wider(
+    id_cols = year,
+    names_from = month, 
+    values_from = display_value,
+    values_fill = "0"
+  ) %>% 
+  select(year, any_of(as.character(1:12))) %>%
+  kable(format = "html", align = "c") %>% 
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+
 ```
 
+
+
+# 2006-2015 was landing more pounds
+
+```{r market_desc}
+
+# Month, Market_desc, and Year
+
+tile %>% 
+  group_by(market_desc, month, year) %>% 
+  summarise(
+    total_unique_transactions = n_distinct(camsid), 
+    total_weight = sum(lndlb, na.rm = TRUE) / 1000, 
+    .groups = "drop"
+  ) %>% 
+  arrange(market_desc, year, month) %>% 
+  mutate(
+    total_unique_transactions = scales::comma(total_unique_transactions),
+    total_weight = scales::comma(total_weight)
+  ) %>% 
+  kable(
+    format = "html", 
+    align = "c", 
+    col.names = c("Market Category", "Month", "Year", "Unique transactions", "Total Weight ")
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"), 
+    full_width = FALSE
+  )
+
+```
 
 ```{r}
+#plot by market_desc
 
-
-
-
-
+tile %>% 
+  group_by(market_desc, year) %>% 
+  summarise(total_unique_transactions = n_distinct(camsid), .groups = "drop") %>% 
+  ggplot(aes(x = factor(year), y = total_unique_transactions, fill = market_desc)) + 
+  geom_col() + 
+  labs(x = "Year", y = "Unique Transactions", fill = "Market Category") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 
 ```
-
 
 

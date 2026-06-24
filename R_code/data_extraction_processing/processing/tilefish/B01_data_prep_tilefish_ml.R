@@ -260,16 +260,6 @@ cleaned_landings<-cleaned_landings %>%
 ################################################################################
 ############# Not all dealers had "historical landings"#########################
 ################################################################################
-# merge in dlrid historical statistics
-cleaned_landings<-cleaned_landings %>%
-  left_join(dlrid_historical, by=join_by(dlrid==dlrid), relationship="many-to-one")%>%
-  mutate(
-    .merge_dlrid = case_when(
-      .in_original == 1L & is.na(.in_dlrid_historical) ~ 1L,
-      is.na(.in_original) & .in_dlrid_historical == 1L ~ 2L,
-      .in_original == 1L & .in_dlrid_historical == 1L ~ 3L,
-    )
-  )
 
 ################################################################################
 ############# Not all dealers had landings in the previous year ################
@@ -353,12 +343,6 @@ cleaned_landings<-cleaned_landings %>%
       ) 
 
 
-cleaned_landings<-cleaned_landings %>%
-  mutate(Price_Diff_J=priceR_CPI-JumboMA14price,
-         Price_Diff_L=priceR_CPI-LargeMA14price,
-         Price_Diff_M=priceR_CPI-MediumMA14price,
-         Price_Diff_S=priceR_CPI-SmallMA14price)
-
 
 
 #Use the variable labels to convert to factors 
@@ -407,34 +391,6 @@ cleaned_landings<-cleaned_landings %>%
 # Final Tidyup
 ###############################################################################
 
-# Keep  2013 to 2025 data
-# deal with factors -- 
-combined_dataset<-cleaned_landings %>%
-    filter(year>=2013 & year<=2025) %>%
-    mutate(market_desc=forcats::fct_relevel(market_desc,c("Jumbo","Large","Medium","Small","Unclassified")) ) %>%
-    mutate(year=factor(year, levels=2013:2025, ordered=TRUE),
-           month=factor(month, levels=1:12, ordered=FALSE), 
-           semester=factor(semester, levels=1:2, ordered=FALSE), 
-           dlrid=factor(dlrid, ordered=FALSE), 
-           region=factor(region, ordered=FALSE), 
-          market_desc=fct_drop(market_desc),
-        year=fct_drop(year)
-    ) 
-
-# order the states.  I chose not to order the month and semester, because month12 of one year is next to month 1 of the following
-# There's only 2 regions and 2 semesters, so no reason to order them.  
-combined_dataset<-combined_dataset %>%
-  mutate(state=forcats::fct_relevel(state,c("CN","ME","NH", "MA","RI","CT","NY","NJ","PA","DE","MD","VA","NC","SC")) ) %>%
-  mutate(state=ordered(state)
-  )
-
-# Encode catch share
-combined_dataset<-combined_dataset %>%
-  mutate(catch_share=case_when(
-    state %in% c("MD","VA","DE") ~ "CatchShare",
-    .default="Non CatchShare")
-  ) %>%
-  mutate(catch_share=as.factor(catch_share))
 
 # generate a compact group id variable to take the place of camsid, market_desc, dlrid
 combined_dataset<-combined_dataset %>%
@@ -526,35 +482,4 @@ estimation_dataset<-combined_dataset %>%
 write_rds(estimation_dataset, file=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.Rds")))
 haven::write_dta(estimation_dataset, path=here("data_folder","main","commercial",glue("BSB_estimation_dataset{out_data_string}.dta")))
 
-
-
-# Make sure we have the same proper columns 
-# This mimics getting the part of the estimation code that gets ready to estimate. 
-# If I don't have the proper columns, the part that sources the Recipe will break.
-
-
-estimation_dataset<-estimation_dataset %>%
-  mutate(weighting = frequency_weights(weighting),
-         market_desc=fct_drop(market_desc))
-
-
-keep_cols<-c("market_desc","myl_id","dlrid","weighting", "mygear","price","priceR_CPI", "stockarea","state", "year","month", "semester","lndlb", "grade_desc", "trip_level_BSB", "catch_share")
-keep_cols<-c(keep_cols,"shore","nofederal")
-keep_cols<-c(keep_cols,"StateOtherQJumbo", "StateOtherQLarge", "StateOtherQMedium", "StateOtherQSmall" )
-keep_cols<-c(keep_cols,"StockareaOtherQJumbo", "StockareaOtherQLarge", "StockareaOtherQMedium", "StockareaOtherQSmall" )
-keep_cols<-c(keep_cols,"MA7_StockareaQJumbo", "MA7_StockareaQLarge", "MA7_StockareaQMedium", "MA7_StockareaQSmall" )
-keep_cols<-c(keep_cols,"MA7_StateQJumbo", "MA7_StateQLarge","MA7_StateQMedium", "MA7_StateQSmall")
-keep_cols<-c(keep_cols,"MA7_gearQJumbo", "MA7_gearQLarge","MA7_gearQMedium", "MA7_gearQSmall")
-keep_cols<-c(keep_cols,"MA7_stockarea_trips", "MA7_state_trips" )
-# keep_cols<-c(keep_cols,"Share2014Jumbo", "Share2014Large", "Share2014Medium","Share2014Small", "Share2014Unclassified" )
-# keep_cols<-c(keep_cols,"TransactionCountJumbo", "TransactionCountLarge", "TransactionCountMedium", "TransactionCountSmall", "TransactionCountUnclassified" )
-keep_cols<-c(keep_cols,"LagSharePoundsJumbo","LagSharePoundsLarge", "LagSharePoundsMedium","LagSharePoundsSmall", "first_dlr_year")
-#keep_cols<-c(keep_cols,"LagShareTransJumbo", "LagShareTransLarge", "LagShareTransMedium","LagShareTransSmall", "LagShareTransUnclassified")
-keep_cols<-c(keep_cols, "Price_Diff_J","Price_Diff_L", "Price_Diff_M") 
-estimation_dataset<- estimation_dataset %>%
-  select(all_of(keep_cols))
-
-train_data<-estimation_dataset
-
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
