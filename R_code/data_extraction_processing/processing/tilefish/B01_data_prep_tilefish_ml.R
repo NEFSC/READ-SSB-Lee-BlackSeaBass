@@ -6,7 +6,6 @@
 #   - daily_ma
 #   - state_ma
 #   - stockarea_ma
-#   - dlrid_historical_stats_
 
 
 # Outputs:
@@ -97,7 +96,6 @@ out_data_string<-Sys.Date()
 # 
 # stockarea_ma<-read_dta(here("data_folder","main","commercial", glue("stockarea_ma_{vintage_string}.dta")))
 # 
-# dlrid_historical<-read_dta(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.dta")))
 # dlrid_lag<-read_dta(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.dta")))
 # 
 # grand_moving_average_prices<-read_dta(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.dta")))
@@ -130,12 +128,7 @@ stockarea_ma<-readRDS(here("data_folder","main","commercial", glue("stockarea_ma
 stockarea_ma<-stockarea_ma%>%
   mutate(.in_stockarea_ma = 1L)
 
-dlrid_historical<-readRDS(here("data_folder","main","commercial", glue("dlrid_historical_stats_{vintage_string}.Rds")))
-dlrid_historical<-dlrid_historical%>%
-  mutate(.in_dlrid_historical = 1L)
-
-
-dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_lag_stats_{vintage_string}.Rds")))
+dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_tile_lag_stats_{vintage_string}.Rds")))
 dlrid_lag<-dlrid_lag%>%
   mutate(.in_dlrid_lag = 1L)
 
@@ -163,16 +156,6 @@ cleaned_landings<-cleaned_landings %>%
            .groups="drop"
   )
 
-# South - Delaware, Florida*, Maryland, North Carolina, South Carolina*, Virginia
-# North - Connecticut, Maine*, Massachusetts, New Hampshire*, New Jersey, New York, Pennsylvania*, Rhode Island, Vermont*, Canada*
-# * have no landings or limited landings are are dropped later.
-# this is like a north-south market category region. Similar to the STOCK_ABBREV, although that is based on stat area
-cleaned_landings<-cleaned_landings %>% 
-  mutate(region=case_when(
-    state %in% c("CT","ME", "MA", "NH", "NJ", "NY", "PA", "RI", "VT", "CN") ~ "North",
-    state %in% c("DE", "FL", "MD", "NC", "SC", "VA")  ~ "South",
-    .default = "Unknown"  )
-  )
 # create an indicator variable
 cleaned_landings  <- cleaned_landings  %>%
    mutate(.in_original  = 1L)
@@ -303,24 +286,6 @@ cleaned_landings<-cleaned_landings %>%
 cleaned_landings<-cleaned_landings %>%
   select(-c(.in_dlrid_historical, .merge_dlrid, .in_dlrid_lag, .merge_dlr_lags, .in_original))
 
-
-
-# NAs for Transaction count and lndlb can be replaced by zero.
-# cleaned_landings<-cleaned_landings %>%
-#   mutate(TransactionCountJumbo=replace_na(TransactionCountJumbo),
-#          TransactionCountLarge=replace_na(TransactionCountLarge),
-#          TransactionCountMedium=replace_na(TransactionCountMedium),
-#          TransactionCountSmall=replace_na(TransactionCountSmall),
-#          TransactionCountUnclassified=replace_na(TransactionCountUnclassified)
-#   )
-# 
-# cleaned_landings<-cleaned_landings %>%
-#   mutate(DealerHLbsPurchasedJumbo=replace_na(DealerHLbsPurchasedJumbo),
-#          DealerHLbsPurchasedLarge=replace_na(DealerHLbsPurchasedLarge),
-#          DealerHLbsPurchasedMedium=replace_na(DealerHLbsPurchasedMedium),
-#          DealerHLbsPurchasedSmall=replace_na(DealerHLbsPurchasedSmall),
-#          DealerHLbsPurchasedUnclassified=replace_na(DealerHLbsPurchasedUnclassified)
-#   )
 
 # compute prices and real prices
 cleaned_landings<-cleaned_landings %>%
