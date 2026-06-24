@@ -321,7 +321,7 @@ daily_ma <- landings %>%
 saveRDS(
   daily_ma,
   file = here("data_folder", "main", "commercial",
-              glue("daily_ma_{vintage_string}.Rds"))
+              glue("daily_tilefish_ma_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -356,7 +356,7 @@ state_ma <- landings %>%
 saveRDS(
   state_ma,
   file = here("data_folder", "main", "commercial",
-              glue("state_ma_{vintage_string}.Rds"))
+              glue("state_tilefish_ma_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -389,7 +389,7 @@ stockarea_ma <- landings %>%
 saveRDS(
   stockarea_ma,
   file = here("data_folder", "main", "commercial",
-              glue("stockarea_ma_{vintage_string}.Rds"))
+              glue("stockarea_tilefish_ma_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -422,5 +422,6 @@ gear_ma <- landings %>%
 saveRDS(
   gear_ma,
   file = here("data_folder", "main", "commercial",
-              glue("gear_ma_{vintage_string}.Rds"))
+              glue("gear_tilefish_ma_{vintage_string}.Rds"))
 )
+
