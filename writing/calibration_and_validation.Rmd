@@ -14,7 +14,7 @@ editor_options:
 fontsize: 12pt
 params:
   modeltype:
-    value: noclusterTEST
+    value: nocluster
     choices:
     - nocluster
     - noclusterTEST
@@ -49,7 +49,7 @@ Calibration and Validation
  
  --->
 ```{r global_options, include=FALSE}
-
+search_type<-"Advanced"
 modeltype<-params$modeltype
 
 
@@ -126,6 +126,7 @@ here::i_am("writing/calibration_and_validation.Rmd")
 
 #handle model patterns
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
 
 
 
@@ -157,13 +158,16 @@ tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
-# My "final fit" bombed out because I didn't have drive space.  
-# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
-# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
-# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
-# finalfit_vintage<-max(finalfit_vintage)
+# Tuning, training, VI code guarantees that the finalfit and VI vintages are the same as the tuning vintages.  
 
 finalfit_vintage<-tuning_vintage
+VI_vintage<-tuning_vintage
+
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
+
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
@@ -185,40 +189,57 @@ read in the final model, extract the recipe and the predictors, extract the pred
 # # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
 # Onlyneed the test and validation 
-# train_data <- training(data_split)
+train_data <- training(data_split)
 validation_data <- validation(data_split)
 test_data <- testing(data_split)
-rm(data_split)
+
+# recreate the frequency weights variables
+validation_data<-validation_data %>%
+  mutate(weighting=frequency_weights(lndlb))
+test_data<-test_data %>%
+  mutate(weighting=frequency_weights(lndlb))
+
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+
+final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
 
-final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
-
-
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
 
 # And the recipe
-extract_recipe(final_fit)
+#classification_recipe<-extract_recipe(final_fit)
 
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
 
-num_preds<-nrow(preds)
+# here, I have to augment, probably the data_split object, but it coudl be the validation dataset.
 
-final_predictions<-final_fit %>%
-  collect_predictions()
+validation_preds<-predict_byhand(new_data=validation_data,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
 
-# pull the probability names
-prob_names<-colnames(final_predictions) 
-prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
-prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value)
 
+# Bind cols
+validation_preds<-bind_cols(validation_preds,validation_data)
+
+validation_preds<-validation_preds%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
 
 # look at the fit metrics
-final_fit_metrics<-final_fit %>%
-  collect_metrics()
-final_fit_metrics
 
+# compute training metrics with yardstick
+validation_metrics <-  bind_rows(
+  roc_auc(validation_preds, truth = market_desc,
+          starts_with(".pred_"),
+          case_weights = weighting),
+  mn_log_loss(validation_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting),
+  brier_class(validation_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting)
+)
+validation_metrics
 ```
 
 Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
@@ -228,12 +249,11 @@ Log loss of the final fit is slightly better than that of the average of the ind
 
 Look at the VIP, ROC, and PR curves
 
-```{r VIP}
+```{r VIP, eval=FALSE}
 # Look at variable importance. I want to see all the predictors.
-# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Permutation"
+# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Impurity Corrected."
 
 vi_data<-read_rds(file=here("results","ranger",glue("{vi_pattern}{finalfit_vintage}.Rds")))
-
 
 vi_data <- vi_data %>%
   #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
@@ -344,7 +364,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
 
-final_pr<-final_predictions %>%
+final_pr<-validation_preds %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_pr)
@@ -358,13 +378,13 @@ Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if
 ```{r Validation_predictions}
 # Apply the Final fit to the validation dataset. 
 
-validation_data <- augment(final_workflow,validation_data)
 
 #The validation plots indicate characteristic issues with probability trees. All models are underconfident. Groups of observations with a 75% predicted probability of Jumbo have a true probability of Jumbo of almost 90%.  Groups of observations with a predicted probability of ~15% probabilty of Jumbo have a true probability closer to 10%.
 
 # Calibration should fix this.
+validation_data<-validation_preds
 
-cal_gg <- validation_data %>%
+cal_gg <- validation_preds %>%
   cal_plot_windowed(
     truth          = market_desc,
     estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
@@ -426,7 +446,6 @@ ggsave(
 
 
 ```
-
 
 Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
 
@@ -628,142 +647,13 @@ ggsave(here("results","ranger","final",glue("validation_uncal_roc_curve{modeltyp
 
 
 
-```{r pub_ready_ROC_uncalibrated}
-# --- 1. Compute per-class ROC curve data ---
-roc_data <- validation_data %>%
-  roc_curve(
-    truth = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    case_weights=weighting
-  )
-
-
-roc_dataUW <- validation_data %>%
-  roc_curve(
-    truth = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
-  )
-
-
-
-# --- 2. Compute per-class AUC for annotation ---
-auc_dataW <- validation_data %>%
-  roc_auc(
-    truth     = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    case_weights=weighting,
-    estimator = "macro"
-  )
-
-
-auc_dataUW <- validation_data %>%
-  roc_auc(
-    truth     = market_desc,
-    .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
-    estimator = "macro"
-  )
-
-# --- 3. Colour palette — four classes ---
-class_colours <- c(
-  "Jumbo"  = "#1B6CA8",   # deep blue
-  "Large"  = "#E05C2A",   # burnt orange
-  "Medium" = "#2E8B57",   # sea green
-  "Small"  = "#7B3F9E"    # purple
-)
-
-# --- 4. Build the figures ---
-p_facet <- ggplot(roc_data,
-                  aes(x = 1 - specificity, y = sensitivity)) +
-  geom_abline(slope = 1, intercept = 0,
-              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
-  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ .level, ncol = 4) +
-  scale_colour_manual(values = class_colours) +
-  scale_x_continuous(
-    name   = "1 \u2212 Specificity (False Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_y_continuous(
-    name   = "Sensitivity (True Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  coord_equal() +
-  theme_bw(base_size = 9) +
-  theme(
-    strip.background = element_rect(fill = "grey92", colour = "grey40"),
-    strip.text       = element_text(size = 8, face = "bold"),
-    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor = element_blank(),
-    axis.title       = element_text(size = 8),
-    axis.text        = element_text(size = 7, colour = "grey20"),
-    plot.margin      = margin(4, 6, 4, 4, "pt")
-  )
-p_facet
-# --- 5. Save at ICES JMS specifications ---
-ggsave(here("results","ranger","final",glue("validation_nocal_roc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
-
-
-
-
-# --- 6. Build the unweighted figure ---
-p_facetUW <- ggplot(roc_dataUW,
-                  aes(x = 1 - specificity, y = sensitivity)) +
-  geom_abline(slope = 1, intercept = 0,
-              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
-  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) +
-  facet_wrap(~ .level, ncol = 4) +
-  scale_colour_manual(values = class_colours) +
-  scale_x_continuous(
-    name   = "1 \u2212 Specificity (False Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_y_continuous(
-    name   = "Sensitivity (True Positive Rate)",
-    limits = c(0, 1),
-    breaks = seq(0, 1, 0.25),
-    expand = expansion(mult = 0.01)
-  ) +
-  coord_equal() +
-  theme_bw(base_size = 9) +
-  theme(
-    strip.background = element_rect(fill = "grey92", colour = "grey40"),
-    strip.text       = element_text(size = 8, face = "bold"),
-    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
-    panel.grid.minor = element_blank(),
-    axis.title       = element_text(size = 8),
-    axis.text        = element_text(size = 7, colour = "grey20"),
-    plot.margin      = margin(4, 6, 4, 4, "pt")
-  )
-p_facetUW
-ggsave(here("results","ranger","final",glue("validation_nocal_UWroc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facetUW,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
-
-
-
-```
-
-
-
-
-
 
 
 ```{r pub_ready_ROC_calibrated}
+# Note, I'm using the calibrated data, but the calibration cannot change the ROC curve. 
+# The ROC curve depends on the rank orders of the probabilities and the calibration
+# does not change the rank order, the ROC curve on calibrated and uncalibrated data are identical.
+
 # --- 1. Compute per-class ROC curve data ---
 roc_data <- validation_data_isocalib_applied %>%
   roc_curve(
@@ -908,7 +798,7 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{m
 # Predict Out of Sample on the testing holdout.
 
 
-test_data <- augment(final_workflow,test_data)
+test_data <- augment(final_fit,test_data)
 
 ############ How well calibrated is the model? 
 # A: Better when calibrated - same pattern as training data.
@@ -1054,6 +944,10 @@ ggsave(
 
 
 ```{r pub_ready_test_ROC_calibrated}
+# Note, I'm using the calibrated data, but the calibration cannot change the ROC curve. 
+# The ROC curve depends on the rank orders of the probabilities and the calibration
+# does not change the rank order, the ROC curve on calibrated and uncalibrated data are identical.
+
 # --- 1. Compute per-class ROC curve data ---
 roc_data <- test_data_calibration_applied %>%
   roc_curve(

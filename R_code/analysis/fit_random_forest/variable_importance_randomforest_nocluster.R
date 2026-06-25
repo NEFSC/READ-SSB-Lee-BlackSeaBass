@@ -1,5 +1,5 @@
 ###############################################################################
-# Purpose: 	Train a Random Forest classification model on 4 classes WITHOUT Clustering
+# Purpose: 	Train the RF with the impurity_correction option to get VI metrics.   
 # on DLRID for the validation. Unclassified are excluded.
 # this assumes you have already trined a model using 
 # tune_randomforest_nocluster.R
@@ -24,6 +24,7 @@ library("glue")
 # load tidyverse and related
 library("tidymodels")
 library("butcher")
+
 # load machine learning and estimation tools
 # ranger imports RcppEigen and Rcpp, all 3 need to be compiled on unix.
 # you might want to install Rcpp, then RcppEigen, then ranger
@@ -50,7 +51,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
-here::i_am("R_code/analysis/fit_random_forest/train_randomforest_nocluster.R")
+here::i_am("R_code/analysis/fit_random_forest/variable_importance_randomforest_nocluster.R")
 
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
@@ -150,14 +151,13 @@ best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
 
 final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
 vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
-
 prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
-calib_dataset_name<-glue("{calib_data_pattern}{tuning_vintage}.Rds")
-
-# Read in best parameters.  Do a training on the full training dataset, predict on the calibration dataset. 
 
 #tune_res<-read_rds(file=here("results","ranger", tune_file_name))
 best_params<-read_rds(file=here("results","ranger", best_param_file_name))
+
+
+
 
 fold_results<-read_rds(file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
 tm<-fold_results  %>%
@@ -169,55 +169,46 @@ tm<-fold_results  %>%
 selected_params<-tm[2,] %>%
   select(-mt)
 rm(fold_results)
-
-
-
-
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
-# do not read in the test data
-
 train_data <- training(data_split)
-#calibration_data <- validation(data_split)
 rm(data_split)
 
-# train_data$rand<-runif(nrow(train_data))
-# train_data<-train_data %>%
-#  dplyr::filter(rand<=.05)%>%
-#  select(-rand)
-
-
+nrow(train_data)
 train_raw_rows<-nrow(train_data)
 
+ train_data$rand<-runif(nrow(train_data))
+ train_data<-train_data %>%
+  dplyr::filter(rand<=.05)%>%
+  select(-rand)
+
+#expand by landed pounds 
+#replacing "in place" so that there's no chance the recipe fits to the wrong data.
 train_data<-train_data %>%
-  select(-c(price,priceR_CPI, dlrid, myl_id))
+  select(-c(price,priceR_CPI, dlrid, myl_id)) 
+
+train_expand_rows<-nrow(train_data)
 
 
 
+message("Original training dataset :", train_raw_rows )
+message("Training dataset rows (expanded):", train_expand_rows )
 
 
 # # Recipe definition
 # 
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-
+# source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 # I need to handle the prep and bake the recipe manually, instead of using a workflow.
 
-prepped_recipe <- prep(
-  BSB.Classification.Recipe,
-  training = train_data,
-  retain   = FALSE        # <--save memory 
-)
-
-write_rds(prepped_recipe, file=here("results","ranger",prepped_recipe_file_name))
-
-# I need to do the workflow manually to save memory
+# read in the prepped recipe
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+				
 # Set up the tuning workflow
 # source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
-
 # configure the final_spec
-final_spec <- rand_forest(
+vi_spec <- rand_forest(
   trees = 500,
   mtry = tune(),
   min_n = tune(),
@@ -227,19 +218,18 @@ final_spec <- rand_forest(
              num.threads=!!my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="none", # default, but I don't need importance for tuning.
+             importance="impurity_corrected", # Impurity corrected
              oob.error = FALSE, # not used.
              keep.inbag=FALSE, # default, but explicit 
              probability = TRUE, # set to a probability model
-             write.forest=TRUE,
-             save.memory=TRUE,
+             write.forest=FALSE,
+             save.memory=FALSE,
              verbose=TRUE,  # default, but explicit 
              seed= 132564) %>% 
   finalize_model(selected_params) 
 
-#Print the ranger call
-translate(final_spec)
-
+translate(vi_spec)
+				  
 #Not currently used for training, but keeping it around
 class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
@@ -248,6 +238,7 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 train_expanded<-train_data %>% 
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)
+
 
 train_raw_rows<-nrow(train_data)
 train_expand_rows<-nrow(train_expanded)
@@ -261,13 +252,10 @@ train_baked <- bake(
   new_data = train_expanded)
 
 
-rm(train_data, train_expanded)
-gc()
-############################################
 
 # Final model fitting on the baked dataset
 message("Fitting final model:...")
-final_ranger_fit <- ranger(
+vi_ranger_fit <- ranger(
   market_desc ~ .,                              # outcome ~ all remaining columns
   data                      = train_baked,
   num.trees                 = 500,              # full 500 trees (memory budget allows)
@@ -277,164 +265,32 @@ final_ranger_fit <- ranger(
   num.threads              =  my.ranger.sequential.threads, 
   respect.unordered.factors = "order",
   na.action                 = "na.learn",
-  importance                = "none",           # VI handled in a separate lighter fit
+  importance                = "impurity_corrected",           # VI handled here
   save.memory               = FALSE,
+  write.forest              = FALSE,  # don't need to write forest. saves memory
   verbose                   = TRUE,
   seed                      = 132564
 )
 
 message("Final model fit finished.", Sys.time())
-write_rds(final_ranger_fit, file=here("results","ranger",final_fit_file_name))
-
-rm(train_baked)
+write_rds(vi_ranger_fit, file=here("results","ranger",vi_file_name))
 gc()
-# Augment by hand. Since final_ranger_fit is a ranger object, not a workflow, I have to 
-# predict by hand and then bind into the original data
-data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
 
-train_data <- training(data_split)
-calibration_data <- validation(data_split)
-
-
-train_preds<-predict_byhand(new_data=train_data,
-                            prepped_recipe = prepped_recipe,
-                            ranger_fitted_model  = final_ranger_fit)
-
-#get the hard class prediction by picking the largest value
-class <- colnames(train_preds)[max.col(train_preds, ties.method = "first")]
-class<-as_tibble(class) %>%
-  rename(.pred_class=value)
-
-# Rename and bind columns
-train_preds<-train_preds %>%
-  rename_with(~ paste0(".pred_", .))
-
-train_preds<-bind_cols(train_preds,train_data)
-
-
-train_preds<-train_preds%>%
-  mutate(weighting=hardhat::frequency_weights(lndlb)) 
-
-
-# compute training metrics with yardstick
-train_metrics <-  bind_rows(
-  roc_auc(train_preds, truth = market_desc,
-          starts_with(".pred_"),
-          case_weights = weighting),
-  mn_log_loss(train_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting),
-  brier_class(train_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting)
-)
-
-message("Fit metrics on the training data:")
-train_metrics
-message("End Fit metrics")
-
-train_preds<-bind_cols(class,train_preds)
-
-################################################################################
-# calibration predictions
+message("Variable Importance Model fit finished", Sys.time())
+# 
+# 
+# Pull the variable importance
+ vi_data<- vi_ranger_fit$variable.importance
  
-# prediction using the validation data, bake with the prepped recipe
-#prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
-
-
-calib_preds<-predict_byhand(new_data=calibration_data,
-                            prepped_recipe = prepped_recipe,
-                            ranger_fitted_model  = final_ranger_fit)
-
-
-
-#get the hard class prediction
-calib_class <- colnames(calib_preds)[max.col(calib_preds, ties.method = "first")]
-calib_class<-as.tibble(calib_class) %>%
-  rename(.pred_class=value)
-
-
-calib_preds<-calib_preds %>%
-  rename_with(~ paste0(".pred_", .))
-
-calib_preds<-bind_cols(calib_preds,calibration_data)
-
-
-# print out the metrics
-
-calib_preds <- calib_preds %>%
-  mutate(weighting=hardhat::frequency_weights(lndlb)) 
-
-calib_test_metrics <- bind_rows(
-  roc_auc(calib_preds, truth = market_desc,
-          starts_with(".pred_"),
-          case_weights = weighting),
-  mn_log_loss(calib_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting),
-  brier_class(calib_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting)
-
-)
-
-message("Fit metrics on the calibration data")
-calib_test_metrics
-
-message("End Fit metrics")
-
-# Save the calibration dataset 
-
-calib_preds<-bind_cols(calib_class,calib_preds)
-
-write_rds(calib_preds, file=here("results","ranger",calib_dataset_name))
-
-
-message("End Training of Random Forest")
-message("Next steps: Fit the variable importance model")
-message("Next steps: Run the calibration routine.")
-
-
-
-
-
-########################################################################################################
-# Final fit with impurity_correction.  Permutation is better, but an uncount() handling of weighted observations makes the 
-# OOB not truly "out of the bag".  Impurity corrected is the next best alternative, however it is not appropriate for predictions.
-# Therefore, we fit the model once to get the proper variable importance, then we refit to get the true 'last model' for predictions.
-########################################################################################################
-# variable importance spec
-
-# A threading note 
-# here I'm fitting an RF on a single set of params (there's 1 mtry and 1 num_trees). I could run a multisession, but just allocating alot of threads to ranger will work fine too.
+ vi_data <- tibble(
+   Variable   = names(vi_data),
+   Importance = vi_data
+ ) %>%
+   arrange(desc(Importance))
+ 
 # 
-# vi_spec <- final_spec
-# # patch in impurity corrected
-# vi_spec$eng_args$importance<-rlang::quo("impurity_corrected")
-# 
-#   
-# # Update the workflow
-# vi_wf  <- BSB.Ranger.tuning.Workflow %>%
-#   update_model(vi_spec)
-# 
-# set.seed(132564)
-# 
-# # Final model fitting on the full training dataset to estimate importance
-# message("Fitting model to estimate variable importance.", Sys.time())
-# vi_fit <- 
-#   vi_wf %>%
-#   fit(train_data) 
-# 
-# message("Variable Importance Model fit finished", Sys.time())
-# 
-# 
-# # Pull the variable importance
-# vi_data<-vi_fit%>%
-#   extract_fit_parsnip() %>%
-#   vi(method = "model") 
-# 
-# write_rds(vi_data, file=here("results","ranger",vi_file_name))
-# message("Variable Importance metrics saved", Sys.time())
+write_rds(vi_data, file=here("results","ranger",vi_file_name))
+message("Variable Importance metrics saved", Sys.time())
 
 ########################################################################################################
 ########################################################################################################
@@ -444,10 +300,119 @@ message("Next steps: Run the calibration routine.")
 system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
+
+
+
+
+# PLOT
+
+
+
+
+vi_data <- vi_data %>%
+  #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
+  mutate(
+    Variable = forcats::fct_reorder(Variable, Importance),
+    Variable = forcats::fct_recode(Variable,
+                                   "Price Difference Jumbo" = "Price_Diff_J",
+                                   "Price Difference Large" = "Price_Diff_L",
+                                   "Price Difference Medium" = "Price_Diff_M",
+                                   "Dealer Propensity Small" = "LagSharePoundsSmall",
+                                   "Dealer Propensity Medium" = "LagSharePoundsMedium",
+                                   "Dealer Propensity Large" = "LagSharePoundsLarge",
+                                   "Dealer Propensity Jumbo" = "LagSharePoundsJumbo",
+                                   "Trip BSB Landings" = "trip_level_BSB",
+                                   "Year" = "year",
+                                   "Stockarea Catch Jumbo" = "MA7_StockareaQJumbo",
+                                   "Stockarea Catch Large" = "MA7_StockareaQLarge",
+                                   "Stockarea Catch Medium" = "MA7_StockareaQMedium",
+                                   "Stockarea Catch Small" = "MA7_StockareaQSmall",
+                                   "State Catch Jumbo" = "MA7_StateQJumbo",
+                                   "State Catch Large" = "MA7_StateQLarge",
+                                   "State Catch Medium" = "MA7_StateQMedium",
+                                   "State Catch Small" = "MA7_StateQSmall",
+                                   "Gear Catch Jumbo" = "MA7_gearQJumbo",
+                                   "Gear Catch Large" = "MA7_gearQLarge",
+                                   "Gear Catch Medium" = "MA7_gearQMedium",
+                                   "Gear Catch Small" = "MA7_gearQSmall",
+                                   "Transaction Weight" = "lndlb",
+                                   "Stockarea Trips" = "MA7_stockarea_trips",
+                                   "State Trips" = "MA7_state_trips"
+    )
+  )
+
+
+
+p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease in (Corrected) Impurity ",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+p_vip
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vip{modeltype}{tuning_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
+  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
+  scale_x_continuous(
+    name   = "Mean Decrease in (Corrected) Impurity ",
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  scale_y_discrete(name = NULL) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor   = element_blank(),
+    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
+    axis.text.y        = element_text(size = 7, colour = "grey20"),
+    axis.text.x        = element_text(size = 7, colour = "grey20"),
+    axis.title.x       = element_text(size = 8),
+    plot.margin        = margin(4, 6, 4, 4, "pt")
+  )
+
+# --- 3. Save at ICES JMS single-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("vipFULL{modeltype}{tuning_vintage}.pdf")),
+  plot   = p_vip,
+  width  = 84,
+  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
 cat("All done")
 
 
 end_time<-Sys.time()
 end_time
 
+end_time-start_time
 sessionInfo()

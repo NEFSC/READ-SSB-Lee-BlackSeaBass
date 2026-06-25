@@ -41,11 +41,16 @@ output:
  <!---- 
 Summary and Housekeeping
 
-I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
-And a final round of data processing with data_prep_ml.R (run 3/13)
+Data extraction is handled in the "DataPull" repository. 
+Data processing was ported to R and handled with 
 
-The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
-The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
+R_code/data_extraction_processing/processing/commercial\00_commercial_processing_wrapper.R
+
+The RF model was tuned with tune_random_forest_nocluster.R
+The RF model was trained with tune_random_forest_nocluster.R
+Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
+
+The model is calibrated with "calibration and validation.Rmd"
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
@@ -55,7 +60,6 @@ Hedonic model was fit with "bsb_size_classifications.do". This file also generat
 * figure2 (windows only)
 * predictions_heatmap
 * out_of_sample_predictions.Rmd makes out of sample predictions.
-* calibration_and_validation - VIP
 
 renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
