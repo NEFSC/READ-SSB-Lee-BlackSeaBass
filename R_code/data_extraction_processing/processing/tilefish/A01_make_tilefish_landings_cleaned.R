@@ -86,6 +86,43 @@ table(landings$questionable_status)
 # merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
 # These should be only VTR discards, orphan species, novel market/grade codes.
 # -----------------------------------------------------------------------------
+
+#Patch some mis-matched kittens.  There are no Round Kittens in the keyfile, causing 
+#mis-matches
+
+landings<-landings %>%
+  mutate(market_desc=ifelse(
+      (market_code=="KT" & is.na(market_desc)),
+            "KITTENS", market_desc)
+  ) %>%
+  mutate(grade_desc=ifelse(
+    (market_code=="KT" & is.na(grade_desc)),
+    "ROUND", grade_desc)
+  ) %>%
+  mutate(cf_lndlb_livlb=ifelse(
+    (market_code=="KT" & is.na(cf_lndlb_livlb)),
+    1, cf_lndlb_livlb)
+  )%>%
+  mutate(cf_lndlb_livlb=ifelse(
+    (market_code=="KT" & is.na(cf_lndlb_livlb)),
+    1, cf_lndlb_livlb)
+  )%>%
+  mutate(nespp4=ifelse(
+    (market_code=="KT" & is.na(nespp4)),
+    4464, nespp4)
+  )%>%
+  mutate(merge_species_codes=ifelse(
+    (market_code=="KT" & merge_species_codes==1 & market_desc=="KITTENS"),
+    3, merge_species_codes)
+  )
+
+
+
+
+
+
+
+
 no_codes<-landings %>%
   filter(merge_species_codes==1)
 
