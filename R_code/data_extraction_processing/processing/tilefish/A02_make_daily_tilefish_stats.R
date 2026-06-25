@@ -9,7 +9,6 @@
 #   - camsid_specific_cleaned_{vintage_string}.Rds
 #   - daily_ma_{vintage_string}.Rds
 #   - state_ma_{vintage_string}.Rds
-#   - stockarea_ma_{vintage_string}.Rds
 #   - gear_ma_{vintage_string}.Rds
 #
 # Expects in environment: vintage_string, data_main
@@ -111,34 +110,6 @@ stopifnot(
 
 landings <- landings %>%
   select(-starts_with("StateOwnQ"))
-
-# -----------------------------------------------------------------------------
-# Stockarea x day totals: StockareaQ{Size}
-# This is the "extended" stockarea, where we've included some landings from statistical areas
-# not in the North/South.  This is intentionally not STOCK_ABBRV  
-# -----------------------------------------------------------------------------
-landings <- landings %>%
-  group_by(dlr_date, stockarea) %>%
-  mutate(across(all_of(lndlbx_cols), sum, .names = "Stockarea{.col}")) %>%
-  ungroup()
-  
-# Stockarea x day x trip totals: StockareaOwnQ{Size}
-landings <- landings %>%
-  group_by(dlr_date, camsid, stockarea) %>%
-  mutate(across(all_of(lndlbx_cols), sum, .names = "StockareaOwn{.col}")) %>%
-  ungroup()
-
-for (lvl in sizes) {
-  landings[[paste0("StockareaOtherQ_", lvl)]] <- landings[[paste0("StockareaQ_", lvl)]] - landings[[paste0("StockareaOwnQ_", lvl)]]
-}
-stopifnot(
-  "StockareaOtherQ assert: negative values found" =
-    all(select(landings, starts_with("StockareaOtherQ")) >= 0, na.rm = TRUE)
-)
-
-landings <- landings %>%
-  select(-starts_with("StockareaOwnQ"))
-
 # -----------------------------------------------------------------------------
 # Gear x day totals: gearQ{Size}
 # -----------------------------------------------------------------------------
@@ -159,12 +130,6 @@ landings <- landings %>%
   mutate(ndistinct_stateM = n_distinct(camsid)) %>%
   ungroup()
 
-# ndistinct_stockareaM: distinct camsids per stockarea x dlr_date x market_desc
-landings <- landings %>%
-  group_by(stockarea, dlr_date, market_desc) %>%
-  mutate(ndistinct_stockareaM = n_distinct(camsid)) %>%
-  ungroup()
-
 # ndistinct_gear: distinct camsids per mygear x dlr_date x market_desc
 landings <- landings %>%
   group_by(mygear, dlr_date, market_desc) %>%
@@ -175,12 +140,6 @@ landings <- landings %>%
 landings <- landings %>%
   group_by(state, dlr_date) %>%
   mutate(ndistinct_state = n_distinct(camsid)) %>%
-  ungroup()
-
-# ndistinct_stockarea: distinct camsids per stockarea x dlr_date
-landings <- landings %>%
-  group_by(stockarea, dlr_date) %>%
-  mutate(ndistinct_stockarea = n_distinct(camsid)) %>%
   ungroup()
 
 # ndistinct_trips: distinct camsids per dlr_date
@@ -207,9 +166,7 @@ camsid_cols <- c(
   paste0("StateOtherQ_",   sizes),
   paste0("StateQ_",        sizes),
   paste0("DailyQ_",        sizes),
-  paste0("StockareaOtherQ_", sizes),
-  paste0("StockareaQ_",    sizes),
-  "ndistinct_state", "ndistinct_stockarea", "ndistinct_trips"
+  "ndistinct_state", "ndistinct_trips"
 )
 
 camsid_specific <- landings %>%
@@ -221,8 +178,8 @@ camsid_specific <- landings %>%
 
 saveRDS(
   camsid_specific,
-  file = here("data_folder", "main", "commercial",
-              glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -269,8 +226,8 @@ daily_ma <- landings %>%
 
 saveRDS(
   daily_ma,
-  file = here("data_folder", "main", "commercial",
-              glue("daily_tilefish_ma_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("daily_tilefish_ma_{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -304,8 +261,8 @@ state_ma <- landings %>%
 
 saveRDS(
   state_ma,
-  file = here("data_folder", "main", "commercial",
-              glue("state_tilefish_ma_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("state_tilefish_ma_{vintage_string}.Rds"))
 )
 # =============================================================================
 # Output 5: gear_ma
@@ -336,7 +293,7 @@ gear_ma <- landings %>%
 
 saveRDS(
   gear_ma,
-  file = here("data_folder", "main", "commercial",
-              glue("gear_tilefish_ma_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("gear_tilefish_ma_{vintage_string}.Rds"))
 )
 
