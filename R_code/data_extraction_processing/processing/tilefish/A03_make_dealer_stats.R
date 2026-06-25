@@ -12,7 +12,7 @@
 ###############################################################################
 
 landings <- readRDS(
-  file = here("R_code", "data_extraction_processing", "processing", "tilefish",
+  file = file.path(tile_data_dir,
               glue("tilefish_landings_cleaned_{vintage_string}.Rds")))
 
 
@@ -21,7 +21,7 @@ landings<-landings %>%
   filter(!is.na(lndlb)) 
 
 # =============================================================================
-# Block 2: Lagged annual dealer statistics 
+# Lagged annual dealer statistics 
 # Produces 1-year lags of size-category share of pounds
 # After reshape, tsfill equivalent fills all dlrid x year combinations;
 # missing values mean the dealer bought nothing that year (no zero-fill here).
@@ -79,6 +79,6 @@ lag_wide <- lag_wide %>%
 
 saveRDS(
   lag_wide,
-  file = here("data_folder", "main", "commercial",
+  file = file.path(tile_data_dir,
               glue("dlrid_tile_lag_stats_{vintage_string}.Rds"))
 )

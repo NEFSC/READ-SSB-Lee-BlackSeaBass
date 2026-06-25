@@ -130,7 +130,7 @@ valid_vals<-c("VTR_DISCARD", "VTR_NO_CATCH", "VTR_NOT_SOLD", "VTR_ORPHAN_SPECIES
 stopifnot(!anyNA(no_codes$status), all(no_codes$status %in% valid_vals))
 
 # Saving dataset
-saveRDS(no_codes, "R_code/data_extraction_processing/processing/no_codes.rds")
+saveRDS(no_codes,  file = file.path(tile_data_dir, "no_codes.Rds"))
 
 
 # -----------------------------------------------------------------------------
@@ -300,12 +300,12 @@ landings <- landings %>%
 questionable_status<-landings%>%
   filter(questionable_status == 1) 
 # -----------------------------------------------------------------------------
-# Save questionalbe dataset # Need to change these.
+# Save questionabke dataset # Need to change these.
 # -----------------------------------------------------------------------------
 saveRDS(
   landings,
-  file = here("R_Code", "data_extraction_processing", "processing" , "tilefish" ,
-              glue("questionable_tilefish_status_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("questionable_tilefish_status_{vintage_string}.Rds"))
 )
 
 
@@ -320,7 +320,7 @@ stopifnot(!anyNA(landings$value) )
 # -----------------------------------------------------------------------------
 saveRDS(
   landings,
-  file = here("R_Code", "data_extraction_processing", "processing" , "tilefish" ,
-              glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
 )
 

@@ -25,7 +25,9 @@ here::i_am("R_code/data_extraction_processing/processing/tilefish/00_tilefish_pr
 my_datapull<-dirname(here())
 my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
 
-    
+tile_data_dir<-here("data_folder", "main", "tilefish")     
+dir.create(tile_data_dir, showWarnings=FALSE)
+
 in_string      <- "2026-06-09"  
 vintage_string <- Sys.Date()   # matches Stata vintage_string / output vintage
 lbs_to_kg<-2.20462
@@ -37,7 +39,7 @@ source(here("R_code", "data_extraction_processing","processing","tilefish",  "A0
 
 
 # Will not use them at the moment 
-#source(here("R_code", "data_extraction_processing","processing", "tilefish", "A03_make_dealer_stats.R"))
+source(here("R_code", "data_extraction_processing","processing", "tilefish", "A03_make_dealer_stats.R"))
 #source(here("R_code", "data_extraction_processing","processing", "tilefish", "A04_make_moving_average_prices.R"))
 
 #final data prep.
