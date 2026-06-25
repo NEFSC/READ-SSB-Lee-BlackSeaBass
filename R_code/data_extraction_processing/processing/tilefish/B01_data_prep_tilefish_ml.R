@@ -249,8 +249,8 @@ cleaned_landings<-cleaned_landings %>%
          trip_level_tile=as.integer(trip_level_tile))
 
 cleaned_landings<-cleaned_landings %>%
-         across(starts_with("StateOtherQ"), as.integer)
-         )
+  mutate(across(starts_with("StateOtherQ"), as.integer)
+      )
 
 # 
 
