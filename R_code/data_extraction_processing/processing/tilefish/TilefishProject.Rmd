@@ -139,10 +139,11 @@ tile %>%
 # Month, Market_desc, and Year
 
 tile %>% 
+  apply_tilefish_market_rebinning() %>% 
   group_by(market_desc, month, year) %>% 
   summarise(
-    total_unique_transactions = n_distinct(camsid), 
-    total_weight = sum(lndlb, na.rm = TRUE) / 1000, 
+    total_unique_transactions = n_distinct(camsid),
+    total_weight = sum(lndlb, na.rm = TRUE) / 1000,
     .groups = "drop"
   ) %>% 
   arrange(market_desc, year, month) %>% 
@@ -153,7 +154,7 @@ tile %>%
   kable(
     format = "html", 
     align = "c", 
-    col.names = c("Market Category", "Month", "Year", "Unique transactions", "Total Weight ")
+    col.names = c("Market Category", "Month", "Year", "Unique transactions", "Total Weight (1,000 lbs)")
   ) %>% 
   kable_styling(
     bootstrap_options = c("striped", "condensed"), 
@@ -162,10 +163,15 @@ tile %>%
 
 ```
 
+
 ```{r}
 #plot by market_desc
 
+# What is going on with NA? and why is Large/Medium not printing? Maybe need to include Large-Medium (not mixed) in the function.
+
+
 tile %>% 
+  apply_tilefish_market_rebinning() %>% 
   group_by(market_desc, year) %>% 
   summarise(total_unique_transactions = n_distinct(camsid), .groups = "drop") %>% 
   ggplot(aes(x = factor(year), y = total_unique_transactions, fill = market_desc)) + 
