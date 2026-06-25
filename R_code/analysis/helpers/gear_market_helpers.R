@@ -111,7 +111,7 @@ apply_bsb_market_rebinning <- function(df) {
 # Rules: Tiny and Round unclass should be lumped into
 # -----------------------------------------------------------------------------
 apply_tilefish_market_rebinning <- function(df) {
-  market_levels <- c("Extra Large", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
+  market_levels <- c("Extra Large", "Large", "Large/medium", "Medium",  "Small Kitten", "Extra Small", "Unclassified")
   
   df %>% mutate(
     
@@ -119,6 +119,9 @@ apply_tilefish_market_rebinning <- function(df) {
     market_desc = if_else(market_desc == "LARGE-MEDIUM (NOT MIXED)", "Large/medium", market_desc),
     market_desc = if_else(market_desc == "MEDIUM OR SELECT", "Medium", market_desc),
     market_desc = if_else(market_desc == "MIXED OR UNSIZED", "UNCLASSIFIED", market_desc),
+    market_desc = if_else(market_desc == "SMALL", "Small Kitten", market_desc),
+    market_desc = if_else(market_desc == "KITTENS", "Small Kitten", market_desc),
+    
     
     # The one case of pooling is that the mixed or unsized category gets pooled with the unclassified:
     market_code = if_else(market_code == "MX","UN",market_code),
