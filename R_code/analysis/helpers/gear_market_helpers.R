@@ -111,7 +111,7 @@ apply_bsb_market_rebinning <- function(df) {
 # Rules: Tiny and Round unclass should be lumped into
 # -----------------------------------------------------------------------------
 apply_tilefish_market_rebinning <- function(df) {
-  market_levels <- c("Xl", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
+  market_levels <- c("Extra Large", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
   
   df %>% mutate(
     
@@ -129,6 +129,7 @@ apply_tilefish_market_rebinning <- function(df) {
     market_desc = factor(market_desc, levels = market_levels)
   )
 }
+
 
 
 
