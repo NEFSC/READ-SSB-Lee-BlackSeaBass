@@ -178,12 +178,10 @@ landings <- apply_gear_categories(landings) %>%
 
 
 # Fix this part too
-market_levels <- c("Xl", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
 
 landings <- apply_tilefish_market_rebinning(landings) %>%
   mutate(
-    market_desc_string = as.character(market_desc),
-    market_desc        = factor(market_desc_string, levels = market_levels)
+    market_desc_string = as.character(market_desc)
   )
 
 # -----------------------------------------------------------------------------
