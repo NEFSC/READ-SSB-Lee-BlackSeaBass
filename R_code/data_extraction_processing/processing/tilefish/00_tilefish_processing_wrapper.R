@@ -35,17 +35,17 @@ lbs_to_kg<-2.20462
 source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
 source(here("R_code", "data_extraction_processing","processing","tilefish",  "A01_make_tilefish_landings_cleaned.R"))
-source(here("R_code", "data_extraction_processing","processing","tilefish",  "A02_make_daily_stats.R"))
+source(here("R_code", "data_extraction_processing","processing","tilefish",  "A02_make_daily_tilefish_stats.R"))
 
 
 # Will not use them at the moment 
-source(here("R_code", "data_extraction_processing","processing", "tilefish", "A03_make_dealer_stats.R"))
-#source(here("R_code", "data_extraction_processing","processing", "tilefish", "A04_make_moving_average_prices.R"))
+source(here("R_code", "data_extraction_processing","processing", "tilefish", "A03_make_tilefish_dealer_stats.R"))
+#source(here("R_code", "data_extraction_processing","processing", "tilefish", "A04_make_moving_average_tilefish_prices.R"))
 
 #final data prep.
 # there's no great reason to have these start with B, execpt that the A files were previously made by stata.
-source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B01_data_prep_ml.R"))
+source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B01_data_prep_tilefish_ml.R"))
 # aggreggate landings that were excluded
 
-source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B02_handle_not_in_estimation_dataset.R"))
+source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B02_handle_not_in_tilefish_estimation_dataset.R"))
      

@@ -23,9 +23,11 @@
 # -----------------------------------------------------------------------------
 # Read
 # -----------------------------------------------------------------------------
-landings <- readRDS(file = here("R_code", "data_extraction_processing", "processing", "tilefish",
-glue("tilefish_landings_cleaned_{vintage_string}.Rds")))
+landings <- readRDS(file = file.path(tile_data_dir,
+  glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+  )
 
+                 
 
 # Drop rows where lndlb is na.
 landings<-landings %>%
