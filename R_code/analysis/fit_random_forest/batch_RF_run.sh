@@ -1,23 +1,19 @@
 #!/bin/bash
 set -o pipefail
-# batch file to run a bunch of RF models over the weekend
-#Rscript --no-save --no-restore --verbose ./estimate_randomforest_nocluster_Tsubset.R > estimate_randomforest_nocluster_Tsubset.log 2>&1
-
-#Rscript --no-save --no-restore --verbose ./estimate_randomforest_nocluster.R > estimate_randomforest_nocluster.log 2>&1
-
-#Run from the project root
+# batch file to the Tune, train, Variable importance code
+# Tune. Run from the project root
+# Rscript --no-save --no-restore --verbose \
+#   ./R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R \
+#   2>&1 | stdbuf -oL -eL tee ./results/ranger/tune_randomforest_nocluster.log #\
+#&& \
+# Train \
+#Rscript --no-save --no-restore --verbose \
+#  ./R_code/analysis/fit_random_forest/train_randomforest_nocluster.R \
+#  2>&1 | stdbuf -oL -eL tee ./results/ranger/train_randomforest_nocluster.log #\
+#&& \
+# Fit the Variable importance 
  Rscript --no-save --no-restore --verbose \
-   ./R_code/analysis/fit_random_forest/tune_randomforest_nocluster.R \
-   2>&1 | stdbuf -oL -eL tee ./results/ranger/tune_randomforest_nocluster.log\
- && \
-Rscript --no-save --no-restore --verbose \
-  ./R_code/analysis/fit_random_forest/train_randomforest_nocluster.R \
-  2>&1 | stdbuf -oL -eL tee ./results/ranger/train_randomforest_nocluster.log\
+   ./R_code/analysis/fit_random_forest/variable_importance_randomforest_nocluster.R \
+  2>&1 | stdbuf -oL -eL tee ./results/ranger/variable_importance_randomforest_nocluster.log
 
 
-# Rscript --no-save --no-restore --verbose ./estimate_5class_randomforest.R > estimate_5class_randomforest.log 2>&1
-
- 
-#Rscript --no-save --no-restore --verbose ./estimate_randomforest_RegionN_nocluster.R > estimate_randomforest_RegionN_nocluster.log 2>&1
-
-# Rscript --no-save --no-restore --verbose  ./estimate_randomforest.R > estimate_randomforest.log 2>&1
