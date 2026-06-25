@@ -278,7 +278,7 @@ final_ranger_fit <- ranger(
   respect.unordered.factors = "order",
   na.action                 = "na.learn",
   importance                = "none",           # VI handled in a separate lighter fit
-  save.memory               = TRUE,
+  save.memory               = FALSE,
   verbose                   = TRUE,
   seed                      = 132564
 )
