@@ -14,10 +14,10 @@
 # assign roles to predictors, outcome, groups, and weights
 Tile.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
-  update_role(c(year, month, semester), new_role = "predictor")
+  update_role(c(year, month), new_role = "predictor")
 
-Tile.Classification.Recipe <- recipe(train_data) %>%
-  update_role(c(grade_desc, price), new_role = "predictor")
+Tile.Classification.Recipe <- Tile.Classification.Recipe %>%
+  update_role(c(priceR_CPI), new_role = "predictor")
 
 recipe_summary<-Tile.Classification.Recipe %>%
   summary() %>%

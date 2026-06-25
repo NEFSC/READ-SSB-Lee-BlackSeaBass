@@ -58,7 +58,7 @@ search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-0.2		  
+testing_fraction<-1	  
 start_time<-Sys.time()
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -99,11 +99,13 @@ if (runClass %in% c('Local', 'Windows')){
 }
 lbs_per_mt<-2204.62
 
+
+# for reproducibility
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("tilefish_estimation_dataset*Rds"))
+vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_estimation_dataset*Rds"))
 vintage_string<-gsub("tilefish_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
@@ -119,10 +121,8 @@ final_fit_file_name<-glue("tilefish_final{tuning_vintage}.Rds")
 vi_file_name<-glue("tilefish_vi{tuning_vintage}.Rds")
 
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",glue("tilefish_estimation_dataset{vintage_string}.Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{vintage_string}.Rds")))
 
-
-# for reproducibility
 set.seed(4587315)
 
 
@@ -130,6 +130,11 @@ set.seed(4587315)
 estimation_dataset<-estimation_dataset %>%
   mutate(market_desc=fct_drop(market_desc))%>%
   select(-weighting)
+
+estimation_dataset<-estimation_dataset %>%
+  mutate(year=factor(year),
+         month=factor(month))
+
 
 # When testing, take a subset of the data. This is just to test how my code is working   
 if  (search_type=="Prototype"){
@@ -182,10 +187,10 @@ train_full_rows<-nrow(train_data)
 # 
 # The recipe simply defines the dataset, outcome (reponse, y) variable, id variables,
 # and predictor variables.
-source(here("R_code","analysis","fit_random_forest","Tilefish.Classification.Recipe.R"))
+source(here("R_code","analysis","fit_tilefish_random_forest","Tilefish.Classification.Recipe.R"))
 
 # Set up the workflow
-source(here("R_code","analysis","fit_random_forest","Tilefish.Workflow.Setup.R"))
+source(here("R_code","analysis","fit_tilefish_random_forest","Tilefish.Workflow.Setup.R"))
 
 set.seed(123)
 # split the training data group wise into 10 folds with the same number of observations, 
@@ -201,9 +206,21 @@ vfold_cv_results <- fit_resamples(
 )
 
 
+first_tilefish_model <- fit(
+  tilefish.multi.tuning.Workflow,
+  train_data
+)
+
+first_tilefish_model
+
+
+first_train_predictions<-augment(first_tilefish_model, new_data=train_data)
+
+
+first_validation_predictions<-augment(first_tilefish_model, new_data=validation_data)
 
 metrics_by_fold <- collect_metrics(vfold_cv_results, summarize = FALSE)  # fold-level
-saveRDS(metrics_by_fold,  "tilefish_metrics_by_fold.rds")
+saveRDS(metrics_by_fold,  "tilefish_metrics_by_fold.Rds")
 write_rds(metrics_by_fold, file=here("results","ranger", glue("Tilefish_folding_metrics_by_fold{tuning_vintage}.Rds")))
 
 #rm(metrics_by_fold)
