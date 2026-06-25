@@ -358,7 +358,7 @@ Variable importance measures are the Prices and the Dealer proporption variables
 
 ```{r PR_Curve}
 # pull the probability names
-prob_names<-colnames(final_predictions) 
+prob_names<-colnames(validation_preds) 
 prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
@@ -368,6 +368,13 @@ final_pr<-validation_preds %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_pr)
+
+final_prWeighted<-validation_preds %>%
+  pr_curve(market_desc,  any_of(prob_names), case_weights=weighting) %>%
+  autoplot()
+ggsave(here("results","ranger","final",glue("Weighted_pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_prWeighted)
+
+
 ```
 
 # Validation and Calibration 
@@ -500,7 +507,39 @@ validation_data_multicalib_applied <-
 write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
 
 
+# Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
+# (ESPR_raw - ESPR_cal)/ESPR_raw
+
+ESPR_raw<-validation_data %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_caliso<-validation_data_isocalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_calbeta<-validation_data_betacalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_calmulti<-validation_data_multicalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+# the difference between these metrics is the calibration loss (A little weird). But basically, the "goodness of fit metric" improves when I apply a calibration. the multinomial model is slightly better than iso and beta and also theoretically better.
+ESPR_raw
+ESPR_caliso
+ESPR_calbeta
+ESPR_calmulti
+
+CalLoss<-ESPR_raw-ESPR_calmulti
+rCalLoss<-100*CalLoss/ESPR_raw
+
+CalLoss
+rCalLoss
 ```
+
+
 
 
 ```{r plot_iso_calib}
@@ -569,52 +608,74 @@ ggsave(
 ```
 
 ```{r other_calibs}
-#Multi looks a little rough
-multi_applied_window<-cal_plot_windowed(validation_data_multicalib_applied,
-                  truth = market_desc, step_size = 0.05, include_points =FALSE)
+
+cal_gg <- validation_data_multicalib_applied %>%
+  cal_plot_windowed(
+    truth          = market_desc,
+    estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
+    step_size      = 0.025,
+    include_points = FALSE
+  )
+
+
+cal_data <- cal_gg$data
+
+# --- 2. Build publication-ready faceted calibration plot ---
+multi_applied_window <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
 multi_applied_window
-ggsave(here("results","ranger","final",glue("cal_multicalibrate_window{modeltype}{finalfit_vintage}.png")), plot=multi_applied_window)
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("cal_multivalidate_window{modeltype}{finalfit_vintage}.pdf")),
+  plot   = multi_applied_window,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+```
 
-
-
+```{r beta}
+#just a rough one
 beta_applied_window<-cal_plot_windowed(validation_data_betacalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
 ggsave(here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.png")), plot=beta_applied_window)
 
 
-
-# Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
-# (ESPR_raw - ESPR_cal)/ESPR_raw
-
-ESPR_raw<-validation_data %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-ESPR_caliso<-validation_data_isocalib_applied %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-ESPR_calbeta<-validation_data_betacalib_applied %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-ESPR_calmulti<-validation_data_multicalib_applied %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-
-# the difference between these metrics is the calibration loss (A little weird). But basically, the "goodness of fit metric" improves when I apply a calibration. the multinomial model doesn't work so well. But Iso and Beta do. Iso is slightly better, so we will use that.
-ESPR_raw
-ESPR_caliso
-ESPR_calbeta
-ESPR_calmulti
-
-CalLoss<-ESPR_raw-ESPR_caliso
-rCalLoss<-100*CalLoss/ESPR_raw
-
-CalLoss
-rCalLoss
 ```
-
 
 
 
@@ -655,7 +716,7 @@ ggsave(here("results","ranger","final",glue("validation_uncal_roc_curve{modeltyp
 # does not change the rank order, the ROC curve on calibrated and uncalibrated data are identical.
 
 # --- 1. Compute per-class ROC curve data ---
-roc_data <- validation_data_isocalib_applied %>%
+roc_data <- validation_data_multicalib_applied %>%
   roc_curve(
     truth = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
@@ -663,7 +724,7 @@ roc_data <- validation_data_isocalib_applied %>%
   )
 
 
-roc_dataUW <- validation_data_isocalib_applied %>%
+roc_dataUW <- validation_data_multicalib_applied %>%
   roc_curve(
     truth = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small
@@ -672,7 +733,7 @@ roc_dataUW <- validation_data_isocalib_applied %>%
 
 
 # --- 2. Compute per-class AUC for annotation ---
-auc_data <- validation_data_isocalib_applied %>%
+auc_data <- validation_data_multicalib_applied %>%
   roc_auc(
     truth     = market_desc,
     .pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small,
@@ -797,8 +858,24 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{m
 
 # Predict Out of Sample on the testing holdout.
 
+test_preds<-predict_byhand(new_data=test_data,
+                          prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
 
-test_data <- augment(final_fit,test_data)
+test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
+test_class<-as_tibble(test_class) %>%
+  rename(.pred_class=value)
+
+# Bind cols
+test_data<-bind_cols(test_preds,test_data)
+
+test_data<-test_data%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+
+
+
+
 
 ############ How well calibrated is the model? 
 # A: Better when calibrated - same pattern as training data.
@@ -811,7 +888,7 @@ uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05
 
 test_data_calibration_applied <-
   test_data %>%
-  cal_apply(calibrate_iso)
+  cal_apply(calibrate_multinom)
 
 # Plot the calibrated predictions
 # need to pub-ready this.
@@ -1039,7 +1116,6 @@ p_facetUW <- ggplot(roc_dataUW,
     limits = c(0, 1),
     breaks = seq(0, 1, 0.25),
     expand = expansion(mult = 0.01)
-  ) +
   scale_y_continuous(
     name   = "Sensitivity (True Positive Rate)",
     limits = c(0, 1),
@@ -1086,12 +1162,12 @@ ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{mod
 # (ESPR_raw - ESPR_cal)/ESPR_raw
 
 ESPR_raw<-test_data %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
   pull(.estimate)
 
 
 ESPR_cal<-test_data_calibration_applied %>%
-  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
   pull(.estimate)
 
 ESPR_raw
