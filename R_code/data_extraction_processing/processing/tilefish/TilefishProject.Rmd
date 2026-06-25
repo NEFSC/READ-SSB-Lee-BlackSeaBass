@@ -28,7 +28,6 @@ conflicts_prefer(dplyr::arrange)
 
 here::i_am("R_code/data_extraction_processing/processing/tilefish/TilefishProject.Rmd")
 
-tile <- readRDS(here("data_folder", "main", "commercial", "tile_landings_all_2026-06-09.Rds"))
 
 
 my_datapull<-dirname(here())
@@ -40,6 +39,7 @@ vintage_string <- Sys.Date()
 lbs_to_kg<-2.20462
 
 
+tile <- readRDS(file.path(my_datapull,"data_folder", "main", "commercial", glue("tile_landings_all_{in_string}.Rds")))
 # need to change this- maybe need to add the rest.
 source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 

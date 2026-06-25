@@ -34,6 +34,7 @@ landings <- landings %>%
     dlr_date = if_else(is.na(dlr_date), record_land, dlr_date) 
   )
 
+
 # # -----------------------------------------------------------------------------
 # # Drop zero-pound landings
 # # -----------------------------------------------------------------------------
@@ -86,6 +87,43 @@ table(landings$questionable_status)
 # merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
 # These should be only VTR discards, orphan species, novel market/grade codes.
 # -----------------------------------------------------------------------------
+
+#Patch some mis-matched kittens.  There are no Round Kittens in the keyfile, causing 
+#mis-matches
+
+landings<-landings %>%
+  mutate(market_desc=ifelse(
+      (market_code=="KT" & is.na(market_desc)),
+            "KITTENS", market_desc)
+  ) %>%
+  mutate(grade_desc=ifelse(
+    (market_code=="KT" & is.na(grade_desc)),
+    "ROUND", grade_desc)
+  ) %>%
+  mutate(cf_lndlb_livlb=ifelse(
+    (market_code=="KT" & is.na(cf_lndlb_livlb)),
+    1, cf_lndlb_livlb)
+  )%>%
+  mutate(cf_lndlb_livlb=ifelse(
+    (market_code=="KT" & is.na(cf_lndlb_livlb)),
+    1, cf_lndlb_livlb)
+  )%>%
+  mutate(nespp4=ifelse(
+    (market_code=="KT" & is.na(nespp4)),
+    4464, nespp4)
+  )%>%
+  mutate(merge_species_codes=ifelse(
+    (market_code=="KT" & merge_species_codes==1 & market_desc=="KITTENS"),
+    3, merge_species_codes)
+  )
+
+
+
+
+
+
+
+
 no_codes<-landings %>%
   filter(merge_species_codes==1)
 
@@ -93,7 +131,7 @@ valid_vals<-c("VTR_DISCARD", "VTR_NO_CATCH", "VTR_NOT_SOLD", "VTR_ORPHAN_SPECIES
 stopifnot(!anyNA(no_codes$status), all(no_codes$status %in% valid_vals))
 
 # Saving dataset
-saveRDS(no_codes, "R_code/data_extraction_processing/processing/no_codes.rds")
+saveRDS(no_codes,  file = file.path(tile_data_dir, "no_codes.Rds"))
 
 
 # -----------------------------------------------------------------------------
@@ -141,12 +179,10 @@ landings <- apply_gear_categories(landings) %>%
 
 
 # Fix this part too
-market_levels <- c("Xl", "Large", "Large/medium", "Medium", "Kittens",  "Small", "Extra Small", "Unclassified")
 
 landings <- apply_tilefish_market_rebinning(landings) %>%
   mutate(
-    market_desc_string = as.character(market_desc),
-    market_desc        = factor(market_desc_string, levels = market_levels)
+    market_desc_string = as.character(market_desc)
   )
 
 # -----------------------------------------------------------------------------
@@ -177,48 +213,6 @@ state_fips_levels <- c(
 landings <- landings %>%
   rename(state_string = state) %>%
   mutate(state = factor(state_string, levels = state_fips_levels))
-
-# -----------------------------------------------------------------------------
-# Stockarea: North / South stock partition by CAMS statistical area
-# South: area >= 621, or area in {614, 615}
-# North: area <= 613, or area == 616
-# Stata label stockunit: 0=Unknown 1=South 2=North
-# Stata asserts stockarea >= 1 after assignment (no Unknown rows remain).
-# -----------------------------------------------------------------------------
-landings <- landings %>%
-  mutate(
-    stockarea = case_when(
-      area >= 621              ~ 1L,
-      area %in% c(614L, 615L) ~ 1L,
-      area == 616L             ~ 2L,
-      area <= 613              ~ 2L,
-      TRUE                     ~ 0L
-    ),
-    stockarea = factor(stockarea,
-                       levels = c(0L, 1L, 2L),
-                       labels = c("Unknown", "South", "North"))
-  )
-
-stopifnot(
-  "stockarea assert: unassigned (Unknown) rows found" =
-    !any(landings$stockarea == "Unknown", na.rm = TRUE)
-)
-
-landings <- landings %>%
-  mutate(
-    stock_abbrev = case_when(
-      area >= 621 & area<=639 ~ "SOUTH",
-      area %in% c(614, 615)   ~ "SOUTH",
-      area %in% c(464,465,467,468,510,511,512,513,514,515) ~ "NORTH",
-      area %in% c(520,521,522,523,524,525,526,530,533,534,537,538,539,541,542) ~ "NORTH",
-      area %in% c(543,551,552,560,561,562,611,612,613,616)~ "NORTH",
-      area==0 ~ "UNK",
-      .default = "UNK"
-    )
-  )
-
-
-
 
 
 
@@ -265,12 +259,12 @@ landings <- landings %>%
 questionable_status<-landings%>%
   filter(questionable_status == 1) 
 # -----------------------------------------------------------------------------
-# Save questionalbe dataset # Need to change these.
+# Save questionabke dataset # Need to change these.
 # -----------------------------------------------------------------------------
 saveRDS(
   landings,
-  file = here("R_Code", "data_extraction_processing", "processing" , "tilefish" ,
-              glue("questionable_tilefish_status_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("questionable_tilefish_status_{vintage_string}.Rds"))
 )
 
 
@@ -285,7 +279,7 @@ stopifnot(!anyNA(landings$value) )
 # -----------------------------------------------------------------------------
 saveRDS(
   landings,
-  file = here("R_Code", "data_extraction_processing", "processing" , "tilefish" ,
-              glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+  file = file.path(tile_data_dir,
+                   glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
 )
 
