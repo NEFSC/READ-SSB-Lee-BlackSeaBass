@@ -126,6 +126,7 @@ here::i_am("writing/calibration_and_validation.Rmd")
 
 #handle model patterns
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
 
 
 
@@ -162,6 +163,12 @@ tuning_vintage<-max(tuning_vintage)
 finalfit_vintage<-tuning_vintage
 VI_vintage<-tuning_vintage
 
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
+
+
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
 raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_unclassified_dataset*Rds"))
@@ -192,31 +199,47 @@ validation_data<-validation_data %>%
 test_data<-test_data %>%
   mutate(weighting=frequency_weights(lndlb))
 
-rm(data_split)
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+
+final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
 
-final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
 # And the recipe
-classification_recipe<-extract_recipe(final_fit)
+#classification_recipe<-extract_recipe(final_fit)
 
 
 # here, I have to augment, probably the data_split object, but it coudl be the validation dataset.
-final_predictions <- augment(final_fit,validation_data)
 
+validation_preds<-predict_byhand(new_data=validation_data,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
 
-# pull the probability names
-prob_names<-colnames(final_predictions) 
-prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
-prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value)
 
+# Bind cols
+validation_preds<-bind_cols(validation_preds,validation_data)
+
+validation_preds<-validation_preds%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
 
 # look at the fit metrics
-# I think I have to do this by hand from final_predictions (or from the augmented training data
-#final_fit_metrics<-final_fit %>%
-#  collect_metrics()
-#final_fit_metrics
 
+# compute training metrics with yardstick
+validation_metrics <-  bind_rows(
+  roc_auc(validation_preds, truth = market_desc,
+          starts_with(".pred_"),
+          case_weights = weighting),
+  mn_log_loss(validation_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting),
+  brier_class(validation_preds, truth = market_desc,
+              starts_with(".pred_"),
+              case_weights = weighting)
+)
+validation_metrics
 ```
 
 Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
@@ -341,7 +364,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 
 
-final_pr<-final_predictions %>%
+final_pr<-validation_preds %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_pr)
@@ -359,9 +382,9 @@ Use the Validation set to (1 assess how well the model fits) and 2. Calibrate if
 #The validation plots indicate characteristic issues with probability trees. All models are underconfident. Groups of observations with a 75% predicted probability of Jumbo have a true probability of Jumbo of almost 90%.  Groups of observations with a predicted probability of ~15% probabilty of Jumbo have a true probability closer to 10%.
 
 # Calibration should fix this.
-validation_data<-final_predictions
+validation_data<-validation_preds
 
-cal_gg <- validation_data %>%
+cal_gg <- validation_preds %>%
   cal_plot_windowed(
     truth          = market_desc,
     estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
