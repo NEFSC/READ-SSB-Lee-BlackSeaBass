@@ -167,9 +167,6 @@ tile %>%
 ```{r}
 #plot by market_desc
 
-# What is going on with NA? and why is Large/Medium not printing? Maybe need to include Large-Medium (not mixed) in the function.
-
-
 tile %>% 
   apply_tilefish_market_rebinning() %>% 
   group_by(market_desc, year) %>% 
