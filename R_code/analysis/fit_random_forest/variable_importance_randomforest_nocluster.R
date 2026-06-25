@@ -240,7 +240,9 @@ train_expanded<-train_data %>%
   uncount(lndlb2)
 
 
-train_expand_rows<-nrow(train_data)
+train_raw_rows<-nrow(train_data)
+train_expand_rows<-nrow(train_expanded)
+
 message("Original training dataset :", train_raw_rows )
 message("Training dataset rows (expanded):", train_expand_rows )
 
