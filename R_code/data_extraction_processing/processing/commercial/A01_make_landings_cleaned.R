@@ -170,6 +170,47 @@ landings <- landings %>%
   rename(state_string = state) %>%
   mutate(state = factor(state_string, levels = state_fips_levels))
 
+# -----------------------------------------------------------------------------
+# Stockarea: North / South stock partition by CAMS statistical area
+# South: area >= 621, or area in {614, 615}
+# North: area <= 613, or area == 616
+# Stata label stockunit: 0=Unknown 1=South 2=North
+# Stata asserts stockarea >= 1 after assignment (no Unknown rows remain).
+# -----------------------------------------------------------------------------
+landings <- landings %>%
+  mutate(
+    stockarea = case_when(
+      area >= 621              ~ 1L,
+      area %in% c(614L, 615L) ~ 1L,
+      area == 616L             ~ 2L,
+      area <= 613              ~ 2L,
+      TRUE                     ~ 0L
+    ),
+    stockarea = factor(stockarea,
+                       levels = c(0L, 1L, 2L),
+                       labels = c("Unknown", "South", "North"))
+  )
+
+stopifnot(
+  "stockarea assert: unassigned (Unknown) rows found" =
+    !any(landings$stockarea == "Unknown", na.rm = TRUE)
+)
+
+landings <- landings %>%
+  mutate(
+    stock_abbrev = case_when(
+      area >= 621 & area<=639 ~ "SOUTH",
+      area %in% c(614, 615)   ~ "SOUTH",
+      area %in% c(464,465,467,468,510,511,512,513,514,515) ~ "NORTH",
+      area %in% c(520,521,522,523,524,525,526,530,533,534,537,538,539,541,542) ~ "NORTH",
+      area %in% c(543,551,552,560,561,562,611,612,613,616)~ "NORTH",
+      area==0 ~ "UNK",
+      .default = "UNK"
+    )
+  )
+
+
+
 
 
 
