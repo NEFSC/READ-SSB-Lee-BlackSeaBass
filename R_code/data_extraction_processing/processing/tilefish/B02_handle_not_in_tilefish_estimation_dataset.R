@@ -17,45 +17,6 @@
 ###############################################################################
 # Packages 
 ###############################################################################
-
-
-library("here")
-
-# load tidyverse and related
-library("tidyverse")
-library("haven")
-library("scales")
-library("glue")
-# load tidyverse and related
-library("tidymodels")
-
-
-# load machine learning and estimation tools
-library("nnet")
-library("ranger")
-library("partykit")
-
-# load utilities
-library("knitr")
-library("kableExtra")
-library("viridis")
-library("conflicted")
-
-#deal with conflicts
-conflicts_prefer(dplyr::filter())
-conflicts_prefer(dplyr::lag())
-conflicts_prefer(purrr::discard())
-conflicts_prefer(dplyr::group_rows())
-conflicts_prefer(yardstick::spec())
-conflicts_prefer(recipes::fixed())
-conflicts_prefer(recipes::step())
-conflicts_prefer(viridis::viridis_pal())
-
-###############################################################################
-# Directories 
-###############################################################################
-here::i_am("R_code/data_extraction_processing/processing/commercial/B02_handle_not_in_tilefish_estimation_dataset.R")
-
 #############################################################################
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -79,15 +40,14 @@ excluded_from_estimation_dataset<-combined_dataset %>%
 
 excluded_from_estimation_dataset <-excluded_from_estimation_dataset %>%
    mutate(YEAR = as.numeric(as.character(year)),
-          STOCK_ABBREV= as.character(toupper(stockarea)),
           BLOCK_ID= as.integer(semester), #create block_id (for stockeff) that is the semester.
-          MARKET_DESC = toupper(as.character(market_desc)),
-          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
-                                   MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
+          MARKET_DESC = toupper(as.character(market_desc))#, this market desc renaming will be wrong
+#          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
+#                                  MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
    )
   
 excluded_from_estimation_dataset<-excluded_from_estimation_dataset %>%
-  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_to_kg,.groups="drop_last")
 
 
@@ -98,21 +58,20 @@ qs <- readr::read_rds(file=here("data_folder","main","tilefish",glue("questionab
 
 qs<-qs %>%
    mutate(YEAR = as.numeric(as.character(year)),
-          STOCK_ABBREV= as.character(toupper(stockarea)),
           BLOCK_ID= as.integer(semester), #create block_id (for stockeff) that is the semester.
-          MARKET_DESC = toupper(as.character(market_desc)),
-          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
-                                 MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
+          MARKET_DESC = toupper(as.character(market_desc))#, this market desc renaming will be wrong
+#          MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
+#                                 MARKET_DESC != 'MEDIUM' ~ MARKET_DESC)
    )
 
 
 qs<-qs %>%
-  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_to_kg,.groups="drop_last")
 
 
 excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
-  group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC, status) %>%
+  group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
 write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_estimation_dataset_{vintage_string}.Rds")))
 
