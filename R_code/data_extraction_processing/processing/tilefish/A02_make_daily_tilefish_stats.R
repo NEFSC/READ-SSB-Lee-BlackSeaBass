@@ -39,55 +39,40 @@ landings<-landings %>%
 # lndlbx{Size} = lndlb if market_desc_string == Size, else 0
 # These are the building blocks for all downstream quantity aggregations.
 # -----------------------------------------------------------------------------
-sizes <- c("Jumbo", "Large", "Medium", "Small", "Unclassified")
+sizes <-levels(landings$market_desc)
 
 for (lvl in sizes) {
-  landings[[paste0("lndlbx", lvl)]] <- as.numeric(landings$market_desc == lvl) * landings$lndlb
+  landings[[paste0("Q_", lvl)]] <- as.numeric(landings$market_desc == lvl) * landings$lndlb
 }
 
+lndlbx_cols <- glue("Q_{sizes}")
 
 # -----------------------------------------------------------------------------
 # Daily market-level totals: DailyQ{Size}
 # -----------------------------------------------------------------------------
-
 landings <- landings %>%
   group_by(dlr_date) %>%
-  mutate(
-    DailyQJumbo        = sum(lndlbxJumbo),
-    DailyQLarge        = sum(lndlbxLarge),
-    DailyQMedium       = sum(lndlbxMedium),
-    DailyQSmall        = sum(lndlbxSmall),
-    DailyQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "Daily{.col}")) %>%
   ungroup()
+
 
 # -----------------------------------------------------------------------------
 # Trip (camsid x dlr_date) level totals: OwnQ{Size}
 # -----------------------------------------------------------------------------
-
 landings <- landings %>%
-  group_by(dlr_date, camsid) %>%
-  mutate(
-    OwnQJumbo        = sum(lndlbxJumbo),
-    OwnQLarge        = sum(lndlbxLarge),
-    OwnQMedium       = sum(lndlbxMedium),
-    OwnQSmall        = sum(lndlbxSmall),
-    OwnQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  group_by(dlr_date,camsid) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "Own{.col}")) %>%
   ungroup()
 
 # -----------------------------------------------------------------------------
 # Other-trip quantity: DailyQ - OwnQ
 # Stata asserts OtherQ >= 0 for all rows.
 # -----------------------------------------------------------------------------
-landings <- landings %>%
-  mutate(
-    OtherQJumbo        = DailyQJumbo        - OwnQJumbo,
-    OtherQLarge        = DailyQLarge        - OwnQLarge,
-    OtherQMedium       = DailyQMedium       - OwnQMedium,
-    OtherQSmall        = DailyQSmall        - OwnQSmall,
-    OtherQUnclassified = DailyQUnclassified - OwnQUnclassified
-  )
+
+for (lvl in sizes) {
+  landings[[paste0("OtherQ_", lvl)]] <- landings[[paste0("DailyQ_", lvl)]] - landings[[paste0("OwnQ_", lvl)]]
+}
+
 
 stopifnot(
   "OtherQ assert: negative values found" =
@@ -98,39 +83,26 @@ stopifnot(
 # State x day totals: StateQ{Size}
 # -----------------------------------------------------------------------------
 landings <- landings %>%
-  group_by(dlr_date, state) %>%
-  mutate(
-    StateQJumbo        = sum(lndlbxJumbo),
-    StateQLarge        = sum(lndlbxLarge),
-    StateQMedium       = sum(lndlbxMedium),
-    StateQSmall        = sum(lndlbxSmall),
-    StateQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  group_by(dlr_date,state) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "State{.col}")) %>%
   ungroup()
+
 
 # State x day x trip totals: StateOwnQ{Size}
 # adding state to the group_by() produces only a small 
 # slight difference between this and the "OwnQ" 
 landings <- landings %>%
   group_by(dlr_date, camsid, state) %>%
-  mutate(
-    StateOwnQJumbo        = sum(lndlbxJumbo),
-    StateOwnQLarge        = sum(lndlbxLarge),
-    StateOwnQMedium       = sum(lndlbxMedium),
-    StateOwnQSmall        = sum(lndlbxSmall),
-    StateOwnQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "StateOwn{.col}")) %>%
   ungroup()
 
 # State other-trip quantity
-landings <- landings %>%
-  mutate(
-    StateOtherQJumbo        = StateQJumbo        - StateOwnQJumbo,
-    StateOtherQLarge        = StateQLarge        - StateOwnQLarge,
-    StateOtherQMedium       = StateQMedium       - StateOwnQMedium,
-    StateOtherQSmall        = StateQSmall        - StateOwnQSmall,
-    StateOtherQUnclassified = StateQUnclassified - StateOwnQUnclassified
-  )
+
+
+for (lvl in sizes) {
+  landings[[paste0("StateOtherQ_", lvl)]] <- landings[[paste0("StateQ_", lvl)]] - landings[[paste0("StateOwnQ_", lvl)]]
+}
+
 
 stopifnot(
   "StateOtherQ assert: negative values found" =
@@ -147,37 +119,18 @@ landings <- landings %>%
 # -----------------------------------------------------------------------------
 landings <- landings %>%
   group_by(dlr_date, stockarea) %>%
-  mutate(
-    StockareaQJumbo        = sum(lndlbxJumbo),
-    StockareaQLarge        = sum(lndlbxLarge),
-    StockareaQMedium       = sum(lndlbxMedium),
-    StockareaQSmall        = sum(lndlbxSmall),
-    StockareaQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "Stockarea{.col}")) %>%
   ungroup()
-
+  
 # Stockarea x day x trip totals: StockareaOwnQ{Size}
 landings <- landings %>%
   group_by(dlr_date, camsid, stockarea) %>%
-  mutate(
-    StockareaOwnQJumbo        = sum(lndlbxJumbo),
-    StockareaOwnQLarge        = sum(lndlbxLarge),
-    StockareaOwnQMedium       = sum(lndlbxMedium),
-    StockareaOwnQSmall        = sum(lndlbxSmall),
-    StockareaOwnQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "StockareaOwn{.col}")) %>%
   ungroup()
 
-# Stockarea other-trip quantity
-landings <- landings %>%
-  mutate(
-    StockareaOtherQJumbo        = StockareaQJumbo        - StockareaOwnQJumbo,
-    StockareaOtherQLarge        = StockareaQLarge        - StockareaOwnQLarge,
-    StockareaOtherQMedium       = StockareaQMedium       - StockareaOwnQMedium,
-    StockareaOtherQSmall        = StockareaQSmall        - StockareaOwnQSmall,
-    StockareaOtherQUnclassified = StockareaQUnclassified - StockareaOwnQUnclassified
-  )
-
+for (lvl in sizes) {
+  landings[[paste0("StockareaOtherQ_", lvl)]] <- landings[[paste0("StockareaQ_", lvl)]] - landings[[paste0("StockareaOwnQ_", lvl)]]
+}
 stopifnot(
   "StockareaOtherQ assert: negative values found" =
     all(select(landings, starts_with("StockareaOtherQ")) >= 0, na.rm = TRUE)
@@ -191,13 +144,7 @@ landings <- landings %>%
 # -----------------------------------------------------------------------------
 landings <- landings %>%
   group_by(dlr_date, mygear) %>%
-  mutate(
-    gearQJumbo        = sum(lndlbxJumbo),
-    gearQLarge        = sum(lndlbxLarge),
-    gearQMedium       = sum(lndlbxMedium),
-    gearQSmall        = sum(lndlbxSmall),
-    gearQUnclassified = sum(lndlbxUnclassified)
-  ) %>%
+  mutate(across(all_of(lndlbx_cols), sum, .names = "gear{.col}")) %>%
   ungroup()
 
 # -----------------------------------------------------------------------------
@@ -256,12 +203,12 @@ landings <- landings %>%
 # =============================================================================
 camsid_cols <- c(
   "camsid", "dlr_date",
-  paste0("OtherQ",        sizes),
-  paste0("StateOtherQ",   sizes),
-  paste0("StateQ",        sizes),
-  paste0("DailyQ",        sizes),
-  paste0("StockareaOtherQ", sizes),
-  paste0("StockareaQ",    sizes),
+  paste0("OtherQ_",        sizes),
+  paste0("StateOtherQ_",   sizes),
+  paste0("StateQ_",        sizes),
+  paste0("DailyQ_",        sizes),
+  paste0("StockareaOtherQ_", sizes),
+  paste0("StockareaQ_",    sizes),
   "ndistinct_state", "ndistinct_stockarea", "ndistinct_trips"
 )
 
