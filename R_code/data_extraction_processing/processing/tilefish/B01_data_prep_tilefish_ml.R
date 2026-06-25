@@ -5,7 +5,6 @@
 #   - camsid_specific_cleaned_
 #   - daily_ma
 #   - state_ma
-#   - stockarea_ma
 
 
 # Outputs:
@@ -16,39 +15,6 @@
 # Packages 
 ###############################################################################
 
-
-library("here")
-
-# load tidyverse and related
-library("tidyverse")
-library("haven")
-library("scales")
-library("glue")
-# load tidyverse and related
-library("tidymodels")
-
-
-
-# load utilities
-library("knitr")
-library("kableExtra")
-library("viridis")
-library("conflicted")
-
-#deal with conflicts
-conflicts_prefer(dplyr::filter())
-conflicts_prefer(dplyr::lag())
-conflicts_prefer(purrr::discard())
-conflicts_prefer(dplyr::group_rows())
-conflicts_prefer(yardstick::spec())
-conflicts_prefer(recipes::fixed())
-conflicts_prefer(recipes::step())
-conflicts_prefer(viridis::viridis_pal())
-
-###############################################################################
-# Directories 
-###############################################################################
-here::i_am("R_code/data_extraction_processing/processing/tilefish/B01_data_prep_tilefish_ml.R")
 
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -74,28 +40,28 @@ cleaned_landings<-readRDS(here("data_folder","main","tilefish", glue("tilefish_l
 
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
-camsid_specific_stats<-readRDS(here("data_folder","main","commercial", glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds")))
+camsid_specific_stats<-readRDS(here("data_folder","main","tilefish", glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds")))
 camsid_specific_stats<-camsid_specific_stats%>%
   mutate(.in_camsid = 1L)
 
-daily_ma<-readRDS(here("data_folder","main","commercial", glue("daily_tilefish_ma_{vintage_string}.Rds")))
+daily_ma<-readRDS(here("data_folder","main","tilefish", glue("daily_tilefish_ma_{vintage_string}.Rds")))
 daily_ma<-daily_ma%>%
   mutate(.in_dailyma = 1L)
 
-state_ma<-readRDS(here("data_folder","main","commercial", glue("state_tilefish_ma_{vintage_string}.Rds")))
+state_ma<-readRDS(here("data_folder","main","tilefish", glue("state_tilefish_ma_{vintage_string}.Rds")))
 state_ma<-state_ma%>%
   mutate(.in_state_ma = 1L)
 
-gear_ma<-readRDS(here("data_folder","main","commercial", glue("gear_tilefish_ma_{vintage_string}.Rds")))
+gear_ma<-readRDS(here("data_folder","main","tilefish", glue("gear_tilefish_ma_{vintage_string}.Rds")))
 gear_ma<-gear_ma%>%
   mutate(.in_gear_ma = 1L)
 
 
-dlrid_lag<-readRDS(here("data_folder","main","commercial", glue("dlrid_tile_lag_stats_{vintage_string}.Rds")))
+dlrid_lag<-readRDS(here("data_folder","main","tilefish", glue("dlrid_tile_lag_stats_{vintage_string}.Rds")))
 dlrid_lag<-dlrid_lag%>%
   mutate(.in_dlrid_lag = 1L)
 
-#grand_moving_average_prices<-readRDS(here("data_folder","main","commercial", glue("grand_moving_average_prices_{vintage_string}.Rds")))
+#grand_moving_average_prices<-readRDS(here("data_folder","main","tilefish", glue("grand_moving_average_prices_{vintage_string}.Rds")))
 #grand_moving_average_prices<-grand_moving_average_prices%>%
 #  mutate(.in_gma = 1L)
 
@@ -110,7 +76,7 @@ cleaned_landings<-cleaned_landings %>%
 # this is the "collapse" statement in stata. Not sure but I think some of the things in the group_by() might need to be a "first" in the summarise
 cleaned_landings<-cleaned_landings %>%
   ungroup() %>%
-  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, stockarea, status, flag_in) %>%
+  group_by(camsid,hullid, permit, mygear, record_sail, record_land, dlr_date, dlrid, state, grade_desc, market_desc, dateq, year, month, status, flag_in) %>%
   summarise(value=sum(value),
            valueR_CPI=sum(valueR_CPI),
            lndlb=sum(lndlb),
@@ -264,8 +230,7 @@ cleaned_landings<-cleaned_landings %>%
   mutate(market_desc=fct_drop(market_desc),
          mygear=fct_drop(mygear),
          state=fct_drop(state),
-         grade_desc=fct_drop(grade_desc),
-         stockarea=fct_drop(stockarea)
+         grade_desc=fct_drop(grade_desc)
          )
 
 #Factor the cams status column
@@ -284,7 +249,6 @@ cleaned_landings<-cleaned_landings %>%
          trip_level_tile=as.integer(trip_level_tile))
 
 cleaned_landings<-cleaned_landings %>%
-  mutate(across(starts_with("StockareaOtherQ"), as.integer),
          across(starts_with("StateOtherQ"), as.integer)
          )
 
