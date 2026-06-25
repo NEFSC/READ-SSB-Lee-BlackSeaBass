@@ -307,40 +307,6 @@ saveRDS(
   file = here("data_folder", "main", "commercial",
               glue("state_tilefish_ma_{vintage_string}.Rds"))
 )
-
-# =============================================================================
-# Output 4: stockarea_ma
-# Stata: collapse (first) StockareaQ* ndistinct_stockarea, by(dlr_date stockarea);
-#        tsset stockarea dlr_date; tsfill; zero-fill; tssmooth ma window(7 0 0)
-# =============================================================================
-stockarea_ma <- landings %>%
-  select(dlr_date, stockarea, starts_with("StockareaQ"), ndistinct_stockarea) %>%
-  rename(stockarea_trips = ndistinct_stockarea) %>%
-  group_by(dlr_date, stockarea) %>%
-  slice(1) %>%
-  ungroup() %>%
-  complete(
-    stockarea,
-    dlr_date = seq(min(dlr_date), max(dlr_date), by = "day")
-  ) %>%
-  mutate(across(c(starts_with("StockareaQ"), stockarea_trips),
-                ~ replace_na(.x, 0L))) %>%
-  arrange(stockarea, dlr_date) %>%
-  group_by(stockarea) %>%
-  mutate(across(
-    c(starts_with("StockareaQ"), stockarea_trips),
-    rolling_ma7,
-    .names = "MA7_{.col}"
-  )) %>%
-  ungroup() %>%
-  select(dlr_date, stockarea, starts_with("MA7_"))
-
-saveRDS(
-  stockarea_ma,
-  file = here("data_folder", "main", "commercial",
-              glue("stockarea_tilefish_ma_{vintage_string}.Rds"))
-)
-
 # =============================================================================
 # Output 5: gear_ma
 # Stata: collapse (first) gearQ* ndistinct_gear, by(dlr_date mygear);
