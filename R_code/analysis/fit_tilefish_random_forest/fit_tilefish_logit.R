@@ -249,9 +249,8 @@ cat("Tuning done")
 
 # how well the model fits the training data.
 # Look at the ROC curve, PR curve, and Confusion Matrix to evaluate model fit on training data.
-
-
 # 1.probability names from the training predictions- plot the top 20- pending
+
 prob_names <- colnames(first_train_predictions)
 prob_names <- grep("^\\.pred_", prob_names, value = TRUE)
 prob_names <- grep("^\\.pred_class", prob_names, value = TRUE, invert = TRUE)
@@ -270,7 +269,7 @@ final_roc <- first_train_predictions %>%
   autoplot()
 print(final_roc)
 
-# 4. Generate, visualize, and save the Confusion Matrix
+# 4.  Confusion Matrix
 final_cm <- first_train_predictions %>%
   conf_mat(truth = market_desc, estimate = .pred_class) %>%
   autoplot(type = "heatmap")
@@ -278,6 +277,59 @@ final_cm <- first_train_predictions %>%
 print(final_cm)
 
 
+# Validation Dataset
+
+validation_data_preds <- augment(first_tilefish_model, validation_data)
+
+cal_gg <- validation_data_preds %>% 
+  cal_plot_windowed(
+    truth          = market_desc, 
+    estimate       = c(`.pred_Extra Small`, `.pred_Small Kitten`, .pred_Medium, `.pred_Large/Medium`, .pred_Large, `.pred_Extra Large`), 
+    step_size      = 0.025, 
+    include_points = FALSE
+  )
+
+
+cal_data <- cal_gg$data
+
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+p_cal
 
 
 

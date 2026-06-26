@@ -16,8 +16,20 @@ Tile.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
   update_role(c(year, month), new_role = "predictor")
 
-Tile.Classification.Recipe <- Tile.Classification.Recipe %>%
-  update_role(c(priceR_CPI), new_role = "predictor")
+Tile.Classification.Recipe <- Tile.Classification.Recipe %>% 
+    update_role(
+      priceR_CPI, 
+      mygear, 
+      lndlb, 
+      trip_level_tile,
+      `LagSharePoundsExtra Large`,   
+      `LagSharePoundsExtra Small`,  
+      LagSharePoundsLarge,          
+      `LagSharePoundsLarge/Medium`,       
+      LagSharePoundsMedium,               
+      `LagSharePoundsSmall Kitten`,      
+      `LagSharePoundsExtra Small`, new_role = "predictor" )
+
 
 recipe_summary<-Tile.Classification.Recipe %>%
   summary() %>%
