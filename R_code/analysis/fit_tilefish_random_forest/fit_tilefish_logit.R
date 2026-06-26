@@ -34,6 +34,19 @@ library("viridis")
 library("conflicted")
 library("plotly")
 library("htmlwidgets")
+library("nnet")
+library("ranger")
+library("partykit")
+library("bonsai")
+library("vip")
+library("probably")
+library("discrim")
+library("betacal")
+
+
+#3d plots
+library("plotly")
+
 
 #deal with conflicts
 conflicts_prefer(dplyr::filter())
@@ -232,3 +245,40 @@ message("CPU logger stopped")
 
 
 cat("Tuning done")
+
+
+# how well the model fits the training data.
+# Look at the ROC curve, PR curve, and Confusion Matrix to evaluate model fit on training data.
+
+
+# 1.probability names from the training predictions- plot the top 20- pending
+prob_names <- colnames(first_train_predictions)
+prob_names <- grep("^\\.pred_", prob_names, value = TRUE)
+prob_names <- grep("^\\.pred_class", prob_names, value = TRUE, invert = TRUE)
+
+
+
+# 2. PR Curve
+final_pr <- first_train_predictions %>%
+  pr_curve(market_desc, any_of(prob_names)) %>%
+  autoplot()
+print(final_pr)
+
+# 3. ROC Curve
+final_roc <- first_train_predictions %>%
+  roc_curve(market_desc, any_of(prob_names)) %>%
+  autoplot()
+print(final_roc)
+
+# 4. Generate, visualize, and save the Confusion Matrix
+final_cm <- first_train_predictions %>%
+  conf_mat(truth = market_desc, estimate = .pred_class) %>%
+  autoplot(type = "heatmap")
+
+print(final_cm)
+
+
+
+
+
+
