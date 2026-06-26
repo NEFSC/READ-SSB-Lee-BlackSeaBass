@@ -867,7 +867,7 @@ test_class<-as_tibble(test_class) %>%
   rename(.pred_class=value)
 
 # Bind cols
-test_data<-bind_cols(test_preds,test_data)
+test_data<-bind_cols(test_class,test_preds,test_data)
 
 test_data<-test_data%>%
   mutate(weighting=hardhat::frequency_weights(lndlb)) 
@@ -1116,6 +1116,7 @@ p_facetUW <- ggplot(roc_dataUW,
     limits = c(0, 1),
     breaks = seq(0, 1, 0.25),
     expand = expansion(mult = 0.01)
+  ) + 
   scale_y_continuous(
     name   = "Sensitivity (True Positive Rate)",
     limits = c(0, 1),
