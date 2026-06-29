@@ -10,13 +10,25 @@
 # I use this many times when I run different models, so it's good to have it in 1 place 
 ###############################################################################  
 
- 
-tune_spec <- multinom_reg(
-  mode = "classification",
-  engine = "nnet",
-  penalty=NULL,
-  mixture=NULL
-)
+tune_spec <- rand_forest(
+  trees = 200,
+  mtry = tune(),
+  min_n = tune(),
+) %>%
+  set_mode("classification") %>%
+  set_engine("ranger",
+             num.threads=!!my.ranger.sequential.threads, 
+             na.action="na.learn", 
+             respect.unordered.factors="order",
+             importance="none", # default, but I don't need importance for tuning.
+             oob.error = FALSE, # not used.
+             keep.inbag=FALSE, # default, but explicit 
+             probability = TRUE, # set to a probability model
+             write.forest=TRUE) # default, but explicit
+case_weights_allowed(tune_spec) 
+
+
+
 
 # Use a workflow that combines the data processing recipe, assigns weights, and the model configuation
 tilefish.multi.tuning.Workflow <-
@@ -83,3 +95,54 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 #     size = 4                    # number of grid points for initial exploration
 #   )    
 # }
+
+
+
+# I have about 40 predictors, so I'll specify a coarse initial grid with 25 points, 
+if (search_type == "Initial") {
+  
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(5L, 100))  # minimum points in a leaf node
+    )
+  
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 24                    # number of grid points for initial exploration
+  )
+}
+
+# The initial grid search found an optimal min_n parameter on the boundary of my grid (min_n=100). 
+# Very small mtry and min_n did poorly, so did mtry approaching the number of factors, so I've tightened up the boundaries of the grid a bit.
+# And I've added 
+if (search_type == "Advanced") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
+      min_n=min_n(range = c(10L, 300L))  # minimum points in a leaf nodee
+    )
+  
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 120                    # number of grid points for initial exploration
+  )
+}
+
+
+# Overwite mtry rf_grid for testing=true to speed prototyping
+
+
+if (search_type == "Prototype") {
+  finalized_params<-finalized_params %>%
+    update(
+      mtry = mtry(range = c(2L, 8L)),   # override upper bound after finalization
+      min_n=min_n(range = c(5L, 50L))  # minimum points in a leaf node
+    )
+  
+  rf_grid <- grid_space_filling(
+    finalized_params,   
+    size = 4                    # number of grid points for initial exploration
+  )    
+}
+

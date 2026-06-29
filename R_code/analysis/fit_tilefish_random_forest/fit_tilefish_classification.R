@@ -60,7 +60,7 @@ conflicts_prefer(recipes::fixed())
 conflicts_prefer(recipes::step())
 conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
-here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_logit.R")
+here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classification.R")
 
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
@@ -72,7 +72,7 @@ search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
-testing_fraction<-1	  
+testing_fraction<-1.0  
 start_time<-Sys.time()
 
 # Determine what platform the code is running on and set the number of threads for ranger
@@ -213,27 +213,73 @@ myfolds<-vfold_cv(train_data,
                         strata=market_desc, 
                         v = 10)
 
-vfold_cv_results <- fit_resamples(
-  tilefish.multi.tuning.Workflow,
-  resamples = myfolds,
+rf_control_grid<-control_grid(save_pred = TRUE, 
+                              #verbose = TRUE, 
+                              allow_par=FALSE)
+start_time_tune<-Sys.time()
+
+message("Tuning model hyperparameters", Sys.time())
+
+tune_res <- tune_grid(
+  tilefish.multi.tuning.Workflow,  
+  resamples =  myfolds,
+  grid = rf_grid,
+  control=rf_control_grid,
   metrics=class_and_probs_metrics
 )
+message("Grid Tuning Finished at", Sys.time())
+
+best_paramsA <- tune_res %>%
+  select_best(metric = "brier_class")
+
+best_paramsA
+
+final_spec <- tune_spec %>%
+  finalize_model(best_paramsA) %>%
+  set_engine("ranger",
+             num.threads = !!my.ranger.sequential.threads, 
+             na.action = "na.learn", 
+             respect.unordered.factors = "order",
+             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
+             oob.error = FALSE,          # Kept OFF 
+             keep.inbag = FALSE,         # Kept OFF to save memory
+             probability = TRUE, 
+             write.forest = TRUE)
 
 
-first_tilefish_model <- fit(
-  tilefish.multi.tuning.Workflow,
-  train_data
-)
-
-first_tilefish_model
 
 
-first_train_predictions<-augment(first_tilefish_model, new_data=train_data)
+# finalize model by picking the best model hyperparameters
+final_wf  <-    tilefish.multi.tuning.Workflow %>%
+  update_model(final_spec)
+set.seed(132564)
+
+# Final model fitting on the full training dataset 
+message("Fitting final model:...")
+first_tilefish_model <- 
+  final_wf %>%
+  last_fit(data_split, metrics=class_and_probs_metrics)
+
+write_rds(first_tilefish_model, file=here("results","ranger",final_fit_file_name))
 
 
-first_validation_predictions<-augment(first_tilefish_model, new_data=validation_data)
 
-metrics_by_fold <- collect_metrics(vfold_cv_results, summarize = FALSE)  # fold-level
+run_this<-1
+
+if (run_this==1){
+
+  # Pulling the trained model out of the last_fit container
+  trained_wf <- extract_workflow(first_tilefish_model)
+  
+  # using train data
+first_train_predictions <- augment(trained_wf, new_data = train_data)
+
+ # validation predictions using the extracted workflow
+  first_validation_predictions <- augment(trained_wf, new_data = validation_data)
+  
+  
+  
+metrics_by_fold <- collect_metrics(tune_res, summarize = FALSE)  # fold-level
 saveRDS(metrics_by_fold,  "tilefish_metrics_by_fold.Rds")
 write_rds(metrics_by_fold, file=here("results","ranger", glue("Tilefish_folding_metrics_by_fold{tuning_vintage}.Rds")))
 
@@ -280,7 +326,9 @@ print(final_cm)
 
 # Validation Dataset
 
-validation_data_preds <- augment(first_tilefish_model, validation_data)
+
+validation_data_preds <- augment(trained_wf, validation_data)
+
 
 cal_gg <- validation_data_preds %>% 
   cal_plot_windowed(
@@ -483,5 +531,5 @@ rCalLoss<-100*CalLoss/ESPR_raw
 CalLoss
 rCalLoss
 
-
+}
 
