@@ -221,7 +221,7 @@ oos_unpredictable<-oos_data %>%
 
 
 # Read in calibrationmodel 
-calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
@@ -238,7 +238,7 @@ oos_predictable <- augment(final_fit,oos_predictable)
 
 oos_data_calibration_applied <-
   oos_predictable %>%
-  cal_apply(calibrate_iso)
+  cal_apply(calibrate_weighted_multinom)
 
 oos_data_calibration_applied <-oos_data_calibration_applied  %>%
   mutate(SEMESTER=as.numeric(as.character(semester))) %>%
@@ -370,7 +370,7 @@ ambitious_predictions <- augment(final_workflow,oos_data)
 
 ambitious_predictions_cal_applied <-
   ambitious_predictions %>%
-  cal_apply(calibrate_iso)
+  cal_apply(calibrate_weighted_multinom_)
 
 ambitious_predictions_cal_applied <-ambitious_predictions_cal_applied %>%
   mutate(SEMESTER=as.numeric(as.character(semester))) %>%
