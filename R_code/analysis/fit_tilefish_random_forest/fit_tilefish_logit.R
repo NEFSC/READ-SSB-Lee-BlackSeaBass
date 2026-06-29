@@ -42,6 +42,7 @@ library("vip")
 library("probably")
 library("discrim")
 library("betacal")
+library("janitor")
 
 
 #3d plots
@@ -331,6 +332,156 @@ p_cal <- ggplot(cal_data,
   )
 p_cal
 
+
+
+#Experiment with different methods of calibration.
+
+validation_clean <- validation_data_preds %>%
+  clean_names() %>%
+  drop_na(market_desc, pred_extra_large, pred_extra_small)
+
+
+# Beta
+calibrate_beta <- cal_estimate_beta(
+  validation_clean, 
+  truth = market_desc, 
+  estimate=pred_extra_large:pred_extra_small,
+  smooth = FALSE
+)
+
+#  Isotonic Calibration
+calibrate_iso <- cal_estimate_isotonic(
+  validation_clean, 
+  truth = market_desc, 
+  estimate=pred_extra_large:pred_extra_small,
+  smooth = FALSE
+)
+
+#  Multinomial Calibration
+calibrate_multinom <- cal_estimate_multinomial(janitor::clean_names(validation_clean)
+, truth=market_desc, estimate=pred_extra_large:pred_extra_small, smooth=FALSE)
+
+# final judging is done on the 'testing' dataset, not here.
+
+validation_data_isocalib_applied <-
+  validation_clean %>%
+  cal_apply(calibrate_iso)
+
+validation_data_betacalib_applied <-
+  validation_clean %>%
+  cal_apply(calibrate_beta)
+
+validation_data_multicalib_applied <-
+  validation_clean %>%
+  cal_apply(calibrate_multinom)
+
+
+
+
+#Isotonic calibration plot
+cal_gg <- validation_data_isocalib_applied %>%
+  cal_plot_windowed(
+    truth          = market_desc,
+    estimate       = c(`pred_extra_small`, `pred_small_kitten`, pred_medium, `pred_large_medium`, pred_large, `pred_extra_large`), 
+    step_size      = 0.025,
+    include_points = FALSE
+  )
+
+# Extract data from the ggplot internals
+cal_data <- cal_gg$data
+
+# --- 2. Build publication-ready faceted calibration plot ---
+iso_applied_window <- ggplot(cal_data,
+                             aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+iso_applied_window
+
+
+# Other calibrations
+
+#Multi
+multi_applied_window <- cal_plot_windowed(
+  validation_data_multicalib_applied, 
+  truth = market_desc, 
+  estimate = pred_extra_large:pred_extra_small, 
+  step_size = 0.05, 
+  include_points = FALSE
+)
+
+multi_applied_window
+
+
+beta_applied_window <- cal_plot_windowed(
+  validation_data_betacalib_applied, 
+  truth = market_desc, 
+  estimate = pred_extra_large:pred_extra_small, 
+  step_size = 0.05, 
+  include_points = FALSE
+)
+
+beta_applied_window
+
+
+# Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
+# (ESPR_raw - ESPR_cal)/ESPR_raw
+
+ESPR_raw<-validation_clean %>%
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  pull(.estimate)
+
+ESPR_caliso<-validation_data_isocalib_applied %>%
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  pull(.estimate)
+
+ESPR_calbeta<-validation_data_betacalib_applied %>%
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  pull(.estimate)
+
+ESPR_calmulti<-validation_data_multicalib_applied %>%
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  pull(.estimate)
+
+ESPR_raw
+ESPR_caliso
+ESPR_calbeta
+ESPR_calmulti
+
+CalLoss<-ESPR_raw-ESPR_caliso
+rCalLoss<-100*CalLoss/ESPR_raw
+
+CalLoss
+rCalLoss
 
 
 
