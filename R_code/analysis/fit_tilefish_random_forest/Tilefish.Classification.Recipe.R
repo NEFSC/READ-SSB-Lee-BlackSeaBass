@@ -20,7 +20,8 @@ Tile.Classification.Recipe <- Tile.Classification.Recipe %>%
     update_role(
       priceR_CPI, 
       mygear, 
-      lndlb, 
+      lndlb,
+      state,
       trip_level_tile,
       `LagSharePoundsExtra Large`,   
       `LagSharePoundsExtra Small`,  
