@@ -240,120 +240,36 @@ validation_metrics <-  bind_rows(
               case_weights = weighting)
 )
 validation_metrics
-```
-
-Log loss of the final fit is slightly better than that of the average of the individual folds. This is normal/reasonable, since it uses more data than each of the individual folds.  It's not so different that alarm bells go off.
 
 
-## Validation Diagnostics
+by_hand<-validation_preds %>%
+  uncount(lndlb)
 
-Look at the VIP, ROC, and PR curves
-
-```{r VIP, eval=FALSE}
-# Look at variable importance. I want to see all the predictors.
-# The scale is different from previous versions, because I switched the variable importance method in the Workflow/recipe to "Impurity Corrected."
-
-vi_data<-read_rds(file=here("results","ranger",glue("{vi_pattern}{finalfit_vintage}.Rds")))
-
-vi_data <- vi_data %>%
-  #slice_max(Importance, n = 20) %>% # top 20 only at single-column width
-  mutate(
-    Variable = forcats::fct_reorder(Variable, Importance),
-    Variable = forcats::fct_recode(Variable,
-      "Price Difference Jumbo" = "Price_Diff_J",
-      "Price Difference Large" = "Price_Diff_L",
-      "Price Difference Medium" = "Price_Diff_M",
-      "Dealer Propensity Small" = "LagSharePoundsSmall",
-      "Dealer Propensity Medium" = "LagSharePoundsMedium",
-      "Dealer Propensity Large" = "LagSharePoundsLarge",
-      "Dealer Propensity Jumbo" = "LagSharePoundsJumbo",
-      "Year" = "year",
-      "Stockarea Catch Jumbo" = "MA7_StockareaQJumbo",
-      "Stockarea Catch Large" = "MA7_StockareaQLarge",
-      "Stockarea Catch Medium" = "MA7_StockareaQMedium",
-      "Stockarea Catch Small" = "MA7_StockareaQSmall",
-      "State Catch Jumbo" = "MA7_StateQJumbo",
-      "State Catch Large" = "MA7_StateQLarge",
-      "State Catch Medium" = "MA7_StateQMedium",
-      "State Catch Small" = "MA7_StateQSmall",
-      "Gear Catch Jumbo" = "MA7_gearQJumbo",
-      "Gear Catch Large" = "MA7_gearQLarge",
-      "Gear Catch Medium" = "MA7_gearQMedium",
-      "Gear Catch Small" = "MA7_gearQSmall",
-      "Transaction Weight" = "lndlb",
-      "Stockarea Trips" = "MA7_stockarea_trips",
-      "State Trips" = "MA7_state_trips"
-      )
-    )
-
-
-
-p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y = Variable)) +
-  geom_col(fill = "#1B6CA8", width = 0.7) +
-  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
-  scale_x_continuous(
-    name   = "Mean Decrease in Accuracy",
-    expand = expansion(mult = c(0, 0.05))
-  ) +
-  scale_y_discrete(name = NULL) +
-  theme_bw(base_size = 9) +
-  theme(
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor   = element_blank(),
-    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
-    axis.text.y        = element_text(size = 7, colour = "grey20"),
-    axis.text.x        = element_text(size = 7, colour = "grey20"),
-    axis.title.x       = element_text(size = 8),
-    plot.margin        = margin(4, 6, 4, 4, "pt")
-  )
-p_vip
-# --- 3. Save at ICES JMS single-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("vip{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_vip,
-  width  = 84,
-  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
-  units  = "mm",
-  device = cairo_pdf
+uw_by_hand <-  bind_rows(
+  roc_auc(by_hand, truth = market_desc,
+          starts_with(".pred_")),
+  mn_log_loss(by_hand, truth = market_desc,
+              starts_with(".pred_")),
+  brier_class(by_hand, truth = market_desc,
+              starts_with(".pred_"))
 )
 
 
-
-p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
-  geom_col(fill = "#1B6CA8", width = 0.7) +
-  geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
-  scale_x_continuous(
-    name   = "Mean Decrease in Accuracy",
-    expand = expansion(mult = c(0, 0.05))
-  ) +
-  scale_y_discrete(name = NULL) +
-  theme_bw(base_size = 9) +
-  theme(
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor   = element_blank(),
-    panel.grid.major.x = element_line(colour = "grey88", linewidth = 0.3),
-    axis.text.y        = element_text(size = 7, colour = "grey20"),
-    axis.text.x        = element_text(size = 7, colour = "grey20"),
-    axis.title.x       = element_text(size = 8),
-    plot.margin        = margin(4, 6, 4, 4, "pt")
-  )
-
-# --- 3. Save at ICES JMS single-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("vipFULL{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_vip,
-  width  = 84,
-  height = 110,    # 20 bars fit cleanly; adjust in 5mm increments if needed
-  units  = "mm",
-  device = cairo_pdf
+UWvalidation_metrics <-  bind_rows(
+  roc_auc(validation_preds, truth = market_desc,
+          starts_with(".pred_")),
+  mn_log_loss(validation_preds, truth = market_desc,
+              starts_with(".pred_")),
+  brier_class(validation_preds, truth = market_desc,
+              starts_with(".pred_"))
 )
-
+UWvalidation_metrics
 
 
 ```
-Variable importance measures are the Prices and the Dealer proporption variables. 
+
+The model is tuned to brier classification. The weighted metric has a lower brier class, although that may not mean anything. 
+
 
 
 ```{r PR_Curve}
@@ -368,7 +284,7 @@ final_pr<-validation_preds %>%
   pr_curve(market_desc,  any_of(prob_names)) %>%
   autoplot()
 ggsave(here("results","ranger","final",glue("pr_curve{modeltype}{finalfit_vintage}.png")), plot=final_pr)
-
+# the weighted Curves will look more jagged (less smooth). that is because there are repeated observations that stack up, so things are less smooth
 final_prWeighted<-validation_preds %>%
   pr_curve(market_desc,  any_of(prob_names), case_weights=weighting) %>%
   autoplot()
@@ -454,6 +370,73 @@ ggsave(
 
 ```
 
+
+
+```{r uncounted_cal}
+uncounted_validation<-validation_preds %>%
+  mutate(lndlb2=lndlb)%>%
+  uncount(lndlb2)
+
+unc_val_split<-initial_split(uncounted_validation,
+                             prop=0.25,
+                             strata=market_desc)
+uv2<-training(unc_val_split) 
+
+cal_gg<-uv2 %>%
+  cal_plot_windowed(
+    truth          = market_desc,
+    estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
+    step_size      = 0.05,
+    include_points = FALSE
+  )
+
+cal_data <- cal_gg$data
+
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+p_cal
+
+```
+
+
+
+
+
 Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
 
 ```{r calibration_models}
@@ -473,21 +456,53 @@ calibrate_multinom <- cal_estimate_multinomial(validation_data,
                                         estimate=.pred_Jumbo:.pred_Small,
                                         smooth=TRUE)
 
-# weights <- validation_data$lndlb
-# 
-# calibrate_multinomW <- cal_estimate_multinomial(validation_data, 
-#                                         truth=market_desc, 
-#                                         estimate=.pred_Jumbo:.pred_Small,
-#                                         smooth=FALSE, parameters=NULL, weights=lndlb)
+
+```
+
+```{r Wcalibration_models, eval=FALSE}
+
+
+
+calibrate_weighted_multinom <- cal_estimate_multinomial(uv2, 
+                                        truth=market_desc, 
+                                        estimate=.pred_Jumbo:.pred_Small,
+                                        smooth=TRUE)
+
+write_rds(calibrate_weighted_multinom, file=here("results","ranger","final",glue(
+  "calibrate_W_multinom_{modeltype}{finalfit_vintage}.Rds")))
+
+
+```
+
+```{r apply_Weighted_calibration, eval=FALSE}
+# Apply the weighted calibration and pull the calibration gains.
+validation_data_Weighted_multicalib_applied <-
+  validation_data %>%
+  cal_apply(calibrate_weighted_multinom)
+
+ESPR_Wraw<-validation_data %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small,
+      case_weights = weighting) %>%
+  pull(.estimate)
+              
+
+ESPR_W_multi<-validation_data_Weighted_multicalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small,
+      case_weights = weighting) %>%
+  pull(.estimate)
+
+ESPR_Wraw
+ESPR_W_multi
+
+CalLoss<-ESPR_Wraw-ESPR_W_multi
+rCalLoss<-100*CalLoss/ESPR_Wraw
 
 
 ```
 
 
 
-
-
-```{r apply_calibration}
+```{r apply_uw_calibration}
 # This is fine for testing out things, but the final judging is done on the 'testing' dataset
 
 validation_data_isocalib_applied <-
@@ -504,7 +519,7 @@ validation_data_multicalib_applied <-
 
 
 # subesequent testing shows this is the best calibration, so we save it.
-write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+#write_rds(calibrate_iso, file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
 
 
 # Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
@@ -672,14 +687,23 @@ ggsave(
 #just a rough one
 beta_applied_window<-cal_plot_windowed(validation_data_betacalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
-ggsave(here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.png")), plot=beta_applied_window)
+
+beta_applied_window
+#ggsave(here("results","ranger","final",glue("cal_betavalidate_window{modeltype}{finalfit_vintage}.png")), plot=beta_applied_window)
 
 
 ```
 
 
+```{r weighted, eval=FALSE}
 
+cal_weighted_multi<-cal_plot_windowed(validation_data_Weighted_multicalib_applied,
+                  truth = market_desc, step_size = 0.05, include_points =FALSE)
 
+cal_weighted_multi
+#ggsave(here("results","ranger","final",glue("cal_wmulti_window{modeltype}{finalfit_vintage}.png")), plot=cal_weighted_multi)
+
+```
 
 
 ```{r ROC_Curve, eval=FALSE}
@@ -890,9 +914,6 @@ test_data_calibration_applied <-
   test_data %>%
   cal_apply(calibrate_multinom)
 
-# Plot the calibrated predictions
-# need to pub-ready this.
-
 
 
 
@@ -1017,7 +1038,85 @@ ggsave(
 
 ```
 
+# Apply weighted to the test dataset
 
+
+```{r apply_weighted_calibration}
+# apply the weighted calibraiton
+# Plot the calibrated predictions
+# need to pub-ready this.
+test_data_Weighted_calibration_applied <-
+  test_data %>%
+  cal_apply(calibrate_weighted_multinom)
+
+
+
+
+
+
+calibratedW<-cal_plot_windowed(test_data_Weighted_calibration_applied, truth = market_desc, step_size = 0.05,include_points=FALSE)
+
+calibratedW
+
+# Pub Ready Calibration
+# Extract data from the ggplot internals
+cal_data <- calibratedW$data
+
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = )+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+p_cal
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("calW_windowed_Wtesting{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cal,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+
+
+```
 
 
 ```{r pub_ready_test_ROC_calibrated}
@@ -1163,12 +1262,15 @@ ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{mod
 # (ESPR_raw - ESPR_cal)/ESPR_raw
 
 ESPR_raw<-test_data %>%
-  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small,
+          case_weights = weighting) %>%
   pull(.estimate)
 
 
+
 ESPR_cal<-test_data_calibration_applied %>%
-  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small,
+          case_weights = weighting) %>%
   pull(.estimate)
 
 ESPR_raw
