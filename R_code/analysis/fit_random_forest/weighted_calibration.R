@@ -376,7 +376,9 @@ test_preds<-predict_byhand(new_data=test_data,
                             ranger_fitted_model  = final_ranger_fit)
 
 test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
+
 test_class<-as_tibble(test_class) %>%
+  rename(.pred_class=value) %>%
   mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
   )
 
