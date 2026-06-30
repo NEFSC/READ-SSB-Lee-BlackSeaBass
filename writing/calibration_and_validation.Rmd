@@ -365,15 +365,15 @@ p_cal <- ggplot(cal_data,
   )
 p_cal
 # --- 3. Save at ICES JMS double-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("cal_windowed_{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_cal,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
+# ggsave(
+#   here("results", "ranger", "final",
+#        glue("cal_windowed_{modeltype}{finalfit_vintage}.pdf")),
+#   plot   = p_cal,
+#   width  = 84,
+#   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+#   units  = "mm",
+#   device = cairo_pdf
+# )
 
 
 ```
@@ -467,7 +467,7 @@ calibrate_multinom <- cal_estimate_multinomial(validation_data,
 
 ```
 
-```{r Wcalibration_models, eval=FALSE}
+```{r Wcalibration_models, eval=TRUE}
 
 calibrate_weighted_multinom <- cal_estimate_multinomial(uv2, 
                                         truth=market_desc, 
@@ -475,12 +475,12 @@ calibrate_weighted_multinom <- cal_estimate_multinomial(uv2,
                                         smooth=TRUE)
 
 write_rds(calibrate_weighted_multinom, file=here("results","ranger","final",glue(
-  "calibrate_W_multinom_{modeltype}{finalfit_vintage}.Rds")))
+  "calibrate_uncounted_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 
 ```
 
-```{r apply_Weighted_calibration, eval=FALSE}
+```{r apply_Weighted_calibration, eval=TRUE}
 # Apply the weighted calibration and pull the calibration gains.
 validation_data_Weighted_multicalib_applied <-
   validation_data %>%
@@ -617,19 +617,20 @@ iso_applied_window <- ggplot(cal_data,
   )
 iso_applied_window
 # --- 3. Save at ICES JMS double-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.pdf")),
-  plot   = iso_applied_window,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
+# ggsave(
+#   here("results", "ranger", "final",
+#        glue("cal_isovalidate_window{modeltype}{finalfit_vintage}.pdf")),
+#   plot   = iso_applied_window,
+#   width  = 84,
+#   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+#   units  = "mm",
+#   device = cairo_pdf
+# )
 ```
 
 ```{r other_calibs}
-
+# Apply the uncounted multinomial calibration.
+# At the end of the day, we don't like this calibration either, so we're not saving it to a pdf anymore.
 cal_gg <- validation_data_multicalib_applied %>%
   cal_plot_windowed(
     truth          = market_desc,
@@ -691,6 +692,7 @@ ggsave(
 
 ```{r beta}
 #just a rough one
+# we don't like the beta either, so we're not savig it to a pdef.
 beta_applied_window<-cal_plot_windowed(validation_data_betacalib_applied,
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
 
@@ -713,7 +715,7 @@ cal_weighted_multi
 
 
 ```{r ROC_Curve, eval=FALSE}
-
+# The ROC curves don't depend on calibration.  It should move out of this file.
 # Reciever operator curve (True positive vs False Positive) for the final model evaluated on the validation data
 final_roc<-validation_data_isocalib_applied %>%
   roc_curve(truth=market_desc, 
@@ -882,7 +884,9 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{m
 
 
 
+# Predictions on the test set
 
+## with calibration
 
 ```{r final_model_calibration}
 
@@ -915,11 +919,6 @@ test_data<-test_data%>%
 
 
 
-
-############ How well calibrated is the model? 
-# A: Better when calibrated - same pattern as training data.
-# Plot the "raw" predictions
-uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05,include_points=FALSE)
 
 #ggsave(here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.png")), plot=uncalibrated)
 #write_rds(uncalibrated, file=here("results","ranger","final",glue("validation_raw_{modeltype}{finalfit_vintage}.Rds")))
@@ -982,22 +981,28 @@ p_cal <- ggplot(cal_data,
   )
 p_cal
 # --- 3. Save at ICES JMS double-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("cal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_cal,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
+# ggsave(
+#   here("results", "ranger", "final",
+#        glue("cal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
+#   plot   = p_cal,
+#   width  = 84,
+#   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+#   units  = "mm",
+#   device = cairo_pdf
+# )
+```
 
+## Predictions on the test set without calibration
 
-
-
-
-# Pub Ready Calibration
+```{r noncalibrated}
 # Extract data from the ggplot internals
+
+
+############ How well calibrated is the model? 
+# A: Better when calibrated - same pattern as training data.
+# Plot the "raw" predictions
+uncalibrated<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.05,include_points=FALSE)
+
 uncal_data <- uncalibrated$data
 
 
@@ -1039,15 +1044,15 @@ p_uncal <- ggplot(uncal_data,
   )
 p_uncal
 # --- 3. Save at ICES JMS double-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("uncal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_uncal,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
+# ggsave(
+#   here("results", "ranger", "final",
+#        glue("uncal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
+#   plot   = p_uncal,
+#   width  = 84,
+#   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+#   units  = "mm",
+#   device = cairo_pdf
+# )
 
 
 
@@ -1116,15 +1121,15 @@ p_cal <- ggplot(cal_data,
   )
 p_cal
 # --- 3. Save at ICES JMS double-column specification ---
-ggsave(
-  here("results", "ranger", "final",
-       glue("calW_windowed_Wtesting{modeltype}{finalfit_vintage}.pdf")),
-  plot   = p_cal,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
+# ggsave(
+#   here("results", "ranger", "final",
+#        glue("calW_windowed_Wtesting{modeltype}{finalfit_vintage}.pdf")),
+#   plot   = p_cal,
+#   width  = 84,
+#   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+#   units  = "mm",
+#   device = cairo_pdf
+# )
 
 
 
@@ -1207,13 +1212,13 @@ p_facet <- ggplot(roc_data,
 
 p_facet
 # --- 5. Save at ICES JMS specifications ---
-ggsave(here("results","ranger","final",glue("testing_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facet,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
-
+# ggsave(here("results","ranger","final",glue("testing_calibrated_roc_curve{modeltype}{finalfit_vintage}.pdf")),
+#        plot   = p_facet,
+#        width  = 174,   # mm — double-column, suits 4 facets in a row
+#        height = 65,
+#        units  = "mm",
+#        device = cairo_pdf)
+# 
 
 
 
@@ -1248,13 +1253,13 @@ p_facetUW <- ggplot(roc_dataUW,
     axis.text        = element_text(size = 7, colour = "grey20"),
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
-p_facetUW
-ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{modeltype}{finalfit_vintage}.pdf")),
-       plot   = p_facetUW,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
-       units  = "mm",
-       device = cairo_pdf)
+# p_facetUW
+# ggsave(here("results","ranger","final",glue("testing_calibrated_UW_ROC_curve{modeltype}{finalfit_vintage}.pdf")),
+#        plot   = p_facetUW,
+#        width  = 174,   # mm — double-column, suits 4 facets in a row
+#        height = 65,
+#        units  = "mm",
+#        device = cairo_pdf)
 
 
 
@@ -1334,7 +1339,7 @@ test_predictions$modeltype<-modeltype
 test_predictions<-test_predictions %>%
   mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
 
-write_rds(test_predictions, file=here("results","ranger",glue("aggregate_test_predictions_{modeltype}{finalfit_vintage}.Rds")))
+ # write_rds(test_predictions, file=here("results","ranger",glue("aggregate_test_predictions_{modeltype}{finalfit_vintage}.Rds")))
 
 #test_predictions<-test_predictions %>%
 #  dplyr::filter(year %in% c(2021,2022,2023,2024))
@@ -1429,7 +1434,7 @@ nocal_predictions$modeltype<-modeltype
 nocal_predictions<-nocal_predictions%>%
   mutate(market_desc=fct_relevel(market_desc,"Jumbo","Large","Medium","Small")) 
 
-write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_predictions_{modeltype}{finalfit_vintage}.Rds")))
+# write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_predictions_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 

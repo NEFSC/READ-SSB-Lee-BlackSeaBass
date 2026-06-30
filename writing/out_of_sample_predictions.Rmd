@@ -130,6 +130,7 @@ here::i_am("writing/out_of_sample_predictions.Rmd")
 
 #handle model patterns
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
 
 
 
@@ -162,13 +163,16 @@ tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
-# My "final fit" bombed out because I didn't have drive space.  
-# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
-# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
-# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
-# finalfit_vintage<-max(finalfit_vintage)
+# Tuning, training, VI code guarantees that the finalfit and VI vintages are the same as the tuning vintages.  
 
 finalfit_vintage<-tuning_vintage
+VI_vintage<-tuning_vintage
+
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
+
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
@@ -193,14 +197,9 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 read in the final model, extract the recipe and the predictors. Read in the probabilty calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) wer excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
 
 ```{r load_final_model}
-
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
 
 final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
-
-
-# What the recipe
-classification_recipe<-extract_recipe(final_fit)
-
 
 # Read in the out-of-sample data
 # from data_prep.ml.R
@@ -231,7 +230,29 @@ Apply the final RF model to the data. Calibrate the probabilities
 
 ```{r Validation_predictions}
 # Apply the Final fit to the out of sample dataset that I feel confident about 
-oos_predictable <- augment(final_fit,oos_predictable)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+oos_preds<-predict_byhand(new_data=oos_predictable,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
+
+class <- colnames(oos_preds)[max.col(oos_preds, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
+
+class<-class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+# Bind cols
+oos_predictable<-bind_cols(oos_preds,oos_predictable)
+
+oos_predictable<-oos_predictable%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+
 
 
 # Apply calibration apply to the out-of-sample dataset
@@ -364,7 +385,30 @@ I refrained from making some predictions about the unclassifieds, because they a
 ```{r ambitious_predictions}
 
 # Apply the Final fit to the out of sample dataset 
-ambitious_predictions <- augment(final_workflow,oos_data)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+ambitious_predictions<-predict_byhand(new_data=oos_data,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
+
+class <- colnames(ambitious_predictions)[max.col(ambitious_predictions, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
+
+class<-class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+# Bind cols
+ambitious_predictions<-bind_cols(ambitious_predictions,oos_data)
+
+ambitious_predictions<-ambitious_predictions%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+
+
 
 # apply Calibration
 
