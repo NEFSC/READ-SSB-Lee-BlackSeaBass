@@ -50,8 +50,8 @@ The RF model was tuned with tune_random_forest_nocluster.R
 The RF model was trained with tune_random_forest_nocluster.R
 Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
 
-The model is calibrated with "calibration and validation.Rmd" (unweighted) and 
-weighted_calibration.R (weighted calibraiton)
+The model is calibrated with "calibration and validation.Rmd" (unweighted and not used) and 
+weighted_calibration.R (weighted calibration)
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
