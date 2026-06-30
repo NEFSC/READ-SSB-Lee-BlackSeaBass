@@ -130,11 +130,12 @@ final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tu
 # and original validation data.
 
 #predict
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
 validation_preds<-predict_byhand(new_data=validation_data,
                             prepped_recipe = prepped_recipe,
                             ranger_fitted_model  = final_ranger_fit)
 
-class <- colnames(test_predictions)[max.col(test_predictions, ties.method = "first")]
+class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
 class<-as_tibble(class) %>%
   rename(.pred_class=value) %>%
   mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
@@ -369,14 +370,22 @@ cal_uncounted_multi
 
 # Predict out-of-sample on the final test holdout.
 # Same predict_byhand / modal-class extraction / bind-back pattern as validation.
-
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
 test_preds<-predict_byhand(new_data=test_data,
                           prepped_recipe = prepped_recipe,
                             ranger_fitted_model  = final_ranger_fit)
 
 test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
 test_class<-as_tibble(test_class) %>%
-  rename(.pred_class=value)
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
+
+test_class<-test_class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+
+
 
 # Bind cols
 test_data<-bind_cols(test_class,test_preds,test_data)

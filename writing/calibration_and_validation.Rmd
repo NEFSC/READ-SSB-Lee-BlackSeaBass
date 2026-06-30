@@ -215,7 +215,7 @@ validation_preds<-predict_byhand(new_data=validation_data,
                             prepped_recipe = prepped_recipe,
                             ranger_fitted_model  = final_ranger_fit)
 
-class <- colnames(test_predictions)[max.col(test_predictions, ties.method = "first")]
+class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
 class<-as_tibble(class) %>%
   rename(.pred_class=value) %>%
   mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
@@ -469,8 +469,6 @@ calibrate_multinom <- cal_estimate_multinomial(validation_data,
 
 ```{r Wcalibration_models, eval=FALSE}
 
-
-
 calibrate_weighted_multinom <- cal_estimate_multinomial(uv2, 
                                         truth=market_desc, 
                                         estimate=.pred_Jumbo:.pred_Small,
@@ -565,7 +563,7 @@ rCalLoss
 
 
 
-```{r plot_iso_calib}
+```{r plot_iso_calib, eval=FALSE}
 # Pub read isotonic calibration
 
 # Calibration should fix this.
@@ -889,6 +887,7 @@ ggsave(here("results","ranger","final",glue("validation_calibrated_UWroc_curve{m
 ```{r final_model_calibration}
 
 # Predict Out of Sample on the testing holdout.
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
 
 test_preds<-predict_byhand(new_data=test_data,
                           prepped_recipe = prepped_recipe,
@@ -897,6 +896,12 @@ test_preds<-predict_byhand(new_data=test_data,
 test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
 test_class<-as_tibble(test_class) %>%
   rename(.pred_class=value)
+
+test_class<-test_class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+
 
 # Bind cols
 test_data<-bind_cols(test_class,test_preds,test_data)
