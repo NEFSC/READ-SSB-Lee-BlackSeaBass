@@ -895,7 +895,9 @@ test_preds<-predict_byhand(new_data=test_data,
 
 test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
 test_class<-as_tibble(test_class) %>%
-  rename(.pred_class=value)
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
 
 test_class<-test_class %>%
   mutate(.pred_class=factor(.pred_class)) %>%
