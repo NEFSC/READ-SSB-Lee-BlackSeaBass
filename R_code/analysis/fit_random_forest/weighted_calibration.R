@@ -134,10 +134,16 @@ validation_preds<-predict_byhand(new_data=validation_data,
                             prepped_recipe = prepped_recipe,
                             ranger_fitted_model  = final_ranger_fit)
 
-class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
+class <- colnames(test_predictions)[max.col(test_predictions, ties.method = "first")]
 class<-as_tibble(class) %>%
-  rename(.pred_class=value)
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
 
+class<-class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
 # Bind cols
 validation_preds<-bind_cols(validation_preds,validation_data)
 
