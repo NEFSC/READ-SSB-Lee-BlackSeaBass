@@ -442,7 +442,7 @@ if(save.fig=='y'){
 
 
 
-
+cat("figure1.R completed.")
 
 
 

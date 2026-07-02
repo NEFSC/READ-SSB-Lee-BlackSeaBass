@@ -50,11 +50,12 @@ The RF model was tuned with tune_random_forest_nocluster.R
 The RF model was trained with tune_random_forest_nocluster.R
 Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
 
-The model is calibrated with "calibration and validation.Rmd"
+The model is calibrated with "calibration and validation.Rmd" (unweighted and not used) and 
+weighted_calibration.R (weighted calibration)
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
-* final_fit makes ROC curves for the best tuned model and final model
+* tuning_diagnostics.Rmd makes ROC curves for the best tuned model and final model
 * figures are made with
 * figure1 
 * figure2 (windows only)
@@ -639,33 +640,44 @@ kable(
 
 
 ```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Real (2023Q1 USD) Price Frequencies by market categories, 2013-2024."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 ```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 ```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning"}
+# need to rebuild
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 ```{r vip,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
-knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
+
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
+#updated July 2
+knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_testing_nocluster{pred_vintage}.pdf"),glue("cal_Wmultinom_testingnocluster{pred_vintage}.pdf") ) ) )
 ```
 
 
-```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership on the test set. Probabilty calibration does not change the ROC curve"}
+# need to rebuild
 knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 <!---This is slightly different than the standard method in which observations are assigned to the class with the highest probability.  --->
 ```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
 
 ```{r out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -691,6 +703,8 @@ knitr::include_graphics(here("results", "ranger", "final",
 ### Pre-calibration ROC curve{-}
 
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='p', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
+# Need to rebuild 
+
 knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
@@ -807,11 +821,15 @@ here(("writing","predictions_heatmaps.Rmd")
 --->
 
 ```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A confusion matrix for the calibrated model. Transactions assigned to a market category based on class with the highest predicted probability."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{pred_vintage}.pdf")))
 ```
 
-A confusion matrix for the calibrated model, done on "soft" predictions. 
-```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated.  "}
+A confusion matrix for the calibrated model transactions, done on "soft" predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated to generate aggregate transactions."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
 ```
 
@@ -821,6 +839,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref(fig:ambitious-out-of-sample-preds) predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
 ```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```

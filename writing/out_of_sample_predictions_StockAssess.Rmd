@@ -20,14 +20,11 @@ params:
     - TS_nocluster
 ---
 
-# Summary and Housekeeping
+# What this does 
 
+This code does out of sample predictions on a slightly different dataset than the "out_of_sample_predictions.Rmd."  
 
-Calibration and Validation
-
-1. Read in the finalized model 
-2. Calibrate probabilities using a 'testing sample'
-3. Validate on a validation sample. 
+The estimation dataset includes some observations that are landed in our region but are from the South Atlantic stock. These must be excluded for the GARFO managed stock.  The data are re-coded using ``predictions_data_prep_ml.R``  The outputs of those files are run here
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
@@ -54,6 +51,7 @@ The model is finalized with final_fit and calibrated with "calibration and valid
  
  --->
 ```{r global_options, include=FALSE}
+search_type<-"Advanced"
 
 modeltype<-params$modeltype
 
@@ -122,31 +120,18 @@ if (runClass %in% c('Local', 'Windows')){
 } else if (runClass %in% c('Container','DynamicContainer')){ 
 					  
 												
-  my.parallel.threads<-2
+	my.parallel.threads<-1											
   
 }
-my.ranger.threads<-7
-
-here::i_am("writing/out_of_sample_predictions_SA.Rmd")
+my.ranger.threads<-22
 
 
-# You've estimated a few difference models, this sets the 
-if (modeltype=="standard"){
-  data_pattern<-"data_split"
-  tuning_pattern<-"BSB_ranger_tune"
-  final_pattern<-"BSB_ranger_results"
-} else if (modeltype=="nocluster"){
-  data_pattern<-"nocluster_data_split"
-  tuning_pattern<-"BSB_ranger_nocluster_tune"
-  final_pattern<-"BSB_ranger_nocluster_results"
-} else if (modeltype=="TS_nocluster"){
-  data_pattern<-"nocluster_TS_data_split"
-  tuning_pattern<-"BSB_ranger_TS_nocluster_tune"
-  final_pattern<-"BSB_ranger_TS_nocluster_results"
-}else {
-  stop("Unknown modeltype")
-}
+here::i_am("writing/out_of_sample_predictions_StockAssess.Rmd")
 
+#handle model patterns
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
+	  
 
 
 
@@ -167,18 +152,29 @@ descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
 
 
+
+
+
+data_vintage_string<-list.files(here("results","ranger"), pattern=glob2rx(glue("{data_pattern}*Rds")))
+data_vintage_string<-gsub(data_pattern,"",data_vintage_string)
+data_vintage_string<-gsub(".Rds","",data_vintage_string)
+data_vintage_string<-max(data_vintage_string)
+
+
 tuning_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{tuning_pattern}*Rds")))
 tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
+# Tuning, training, VI code guarantees that the finalfit and VI vintages are the same as the tuning vintages.  
+
 finalfit_vintage<-tuning_vintage
+VI_vintage<-tuning_vintage
 
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
 
-raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("PRED_BSB_unclassified_dataset*Rds"))
-raw_oos_data_vintage_string<-gsub("PRED_BSB_unclassified_dataset","",raw_oos_data_vintage_string)
-raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
-raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
@@ -187,7 +183,10 @@ vintage_string<-gsub("BSB_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
 
-#have to read in the combined dataset to get the state levels properly done.
+raw_oos_data_vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("PRED_BSB_unclassified_dataset*Rds"))
+raw_oos_data_vintage_string<-gsub("PRED_BSB_unclassified_dataset","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
+raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 combined_dataset<-read_rds(file=here("data_folder","main","commercial",glue("BSB_original_combined_dataset{vintage_string}.Rds")))
 
 
@@ -201,19 +200,22 @@ read in the final model, extract the recipe and the predictors. Read in the prob
 ```{r load_final_model}
 
 
-final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
 
 
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
+					  
+										   
 
-# And the recipe
-extract_recipe(final_fit)
+				
+						 
 
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
+																	  
+								 
 
-num_preds<-nrow(preds)
+					  
+
+final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+
 
 
 # Read in the out-of-sample data
@@ -248,7 +250,7 @@ oos_unpredictable<-oos_data %>%
 
 
 # Read in calibrationmodel 
-calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
@@ -258,14 +260,38 @@ Apply the final RF model to the data. Calibrate the probabilities
 
 ```{r Validation_predictions}
 # Apply the Final fit to the out of sample dataset that I feel confident about 
-oos_predictable <- augment(final_workflow,oos_predictable)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+oos_preds<-predict_byhand(new_data=oos_predictable,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
+
+class <- colnames(oos_preds)[max.col(oos_preds, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
+
+class<-class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+# Bind cols
+oos_predictable<-bind_cols(oos_preds,oos_predictable)
+oos_predictable<-bind_cols(class,oos_predictable)
+
+oos_predictable<-oos_predictable%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+
+
 
 
 # Apply calibration apply to the out-of-sample dataset
 
 oos_data_calibration_applied <-
   oos_predictable %>%
-  cal_apply(calibrate_iso)
+  cal_apply(calibrate_weighted_multinom)
 
 oos_data_calibration_applied <-oos_data_calibration_applied  %>%
   mutate(SEMESTER=as.numeric(as.character(semester))) %>%
@@ -390,14 +416,39 @@ I refrained from making some predictions about the unclassifieds, because they a
 
 ```{r ambitious_predictions}
 
+
 # Apply the Final fit to the out of sample dataset 
-ambitious_predictions <- augment(final_workflow,oos_data)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+ambitious_predictions<-predict_byhand(new_data=oos_data,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
+
+classA <- colnames(ambitious_predictions)[max.col(ambitious_predictions, ties.method = "first")]
+classA<-as_tibble(classA) %>%
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+  )
+
+classA<-classA %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+  )
+# Bind cols
+ambitious_predictions<-bind_cols(ambitious_predictions,oos_data)
+ambitious_predictions<-bind_cols(classA, ambitious_predictions)
+
+ambitious_predictions<-ambitious_predictions%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+
+
 
 # apply Calibration
 
 ambitious_predictions_cal_applied <-
   ambitious_predictions %>%
-  cal_apply(calibrate_iso)
+  cal_apply(calibrate_weighted_multinom)
 
 ambitious_predictions_cal_applied <-ambitious_predictions_cal_applied %>%
   mutate(SEMESTER=as.numeric(as.character(semester))) %>%
