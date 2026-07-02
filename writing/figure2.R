@@ -393,3 +393,6 @@ lapply(seq_along(len.all.yrbin), function(x) {
   
   
 })
+
+cat("figure2.R completed.")
+
