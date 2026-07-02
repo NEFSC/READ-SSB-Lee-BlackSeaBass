@@ -1,11 +1,12 @@
 ###############################################################################
 # Purpose: 	Final Data preparation for stock assessment
+
 # The original data prep included some landings that are not in the North or South stock
 # They are in from the South Atlantic stock. It is appropriate to include them in the 
 # training model (they are landed at similar dealers and are part of the 'market')
 # However, we need to exclude them from the model-to-assessment pipeline. 
 
-# This code does that.
+# This code does that by recoding the stockarea/stock_abbrev column
 
 
 # Inputs:
@@ -61,7 +62,7 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 # Directories 
 ###############################################################################
-here::i_am("R_code/data_extraction_processing/processing/data_prep_ml.R")
+here::i_am("R_code/data_extraction_processing/processing/predictions_data_prep_ml.R")
 
 #traverse over to the DataPull repository
 mega_dir<-dirname(here::here())
