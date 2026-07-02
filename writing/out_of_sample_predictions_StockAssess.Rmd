@@ -126,7 +126,7 @@ if (runClass %in% c('Local', 'Windows')){
 my.ranger.threads<-22
 
 
-here::i_am("writing/out_of_sample_predictions_SA.Rmd")
+here::i_am("writing/out_of_sample_predictions_StockAssess.Rmd")
 
 #handle model patterns
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
