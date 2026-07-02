@@ -878,6 +878,7 @@ if (run_this==1){
 }
 
 
+cat("weighted_calibration.R completed successfully.")
 
 
 
