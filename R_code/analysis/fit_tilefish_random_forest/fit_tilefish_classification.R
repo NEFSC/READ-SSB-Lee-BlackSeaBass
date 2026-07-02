@@ -343,7 +343,7 @@ cal_data <- cal_gg$data
 
 
 
-# --- 2. Build publication-ready faceted calibration plot ---
+# Build publication-ready faceted calibration plot ---
 p_cal <- ggplot(cal_data,
                 aes(x = predicted_midpoint, y = event_rate)) +
   # perfect calibration reference line
@@ -501,6 +501,61 @@ beta_applied_window <- cal_plot_windowed(
 beta_applied_window
 
 
+#BETA might look better- extra analysis
+roc_dataUW <- validation_data_betacalib_applied %>% roc_curve(truth = market_desc, pred_extra_large:pred_extra_small)
+
+roc_dataUW %>% 
+  autoplot()
+
+auc_data <- validation_data_betacalib_applied %>% 
+  roc_auc(
+    truth = market_desc, 
+    pred_extra_large:pred_extra_small,      
+    estimator = "macro"
+  )
+
+roc_data <- validation_data_betacalib_applied %>% 
+  roc_curve(
+    truth = market_desc, 
+    pred_extra_large:pred_extra_small       
+  )
+
+p_facet <- ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) + 
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) + 
+  facet_wrap(~ .level, ncol = 3) +                         # Changed to 3 columns to balance 6 panels nicely
+  scale_colour_manual(values = class_colours) + 
+  scale_x_continuous( 
+    name = "1 \u2212 Specificity (False Positive Rate)", 
+    limits = c(0, 1), 
+    breaks = seq(0, 1, 0.25), 
+    expand = expansion(mult = 0.01) 
+  ) + 
+  scale_y_continuous( 
+    name = "Sensitivity (True Positive Rate)", 
+    limits = c(0, 1), 
+    breaks = seq(0, 1, 0.25), 
+    expand = expansion(mult = 0.01) 
+  ) + 
+  coord_equal() + 
+  theme_bw(base_size = 9) + 
+  theme( 
+    strip.background = element_rect(fill = "grey92", colour = "grey40"), 
+    strip.text = element_text(size = 8, face = "bold"), 
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3), 
+    panel.grid.minor = element_blank(), 
+    axis.title = element_text(size = 8), 
+    axis.text = element_text(size = 7, colour = "grey20"), 
+    plot.margin = margin(4, 6, 4, 4, "pt") 
+  )
+
+# Print the plot
+print(p_facet)
+
+
+
+
+
 # Compute the Calibration Loss (from Ferrer and Ramos "Evaluating Posterior Probabilities")
 # (ESPR_raw - ESPR_cal)/ESPR_raw
 
@@ -532,4 +587,264 @@ CalLoss
 rCalLoss
 
 }
+
+
+# Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
+
+# training workflow into testing data, does it look good with random forest and probabilities.
+
+test_data_preds <- augment(trained_wf, new_data = test_data)
+
+#Clean names to match lowercase 
+test_clean <- test_data_preds %>% 
+  janitor::clean_names() %>% 
+  drop_na(market_desc, pred_extra_large:pred_extra_small)
+
+
+# Applied pre-trained beta calibration tool to the test data
+test_data_calibration_applied <- test_clean %>% 
+  cal_apply(calibrate_beta)
+
+# Extracted calibrated ggplot window metrics
+calibrated <- cal_plot_windowed(
+  test_data_calibration_applied, 
+  truth = market_desc, 
+  estimate = pred_extra_large:pred_extra_small,
+  step_size = 0.05,
+  include_points = FALSE
+)
+
+calibrated
+
+cal_data <- calibrated$data
+
+#publication-ready faceted calibration plot
+p_cal_test_beta <- ggplot(cal_data, aes(x = predicted_midpoint, y = event_rate)) +
+  # Perfect calibration 45-degree reference line
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # Confidence bands (95% windows)
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#1B6CA8", alpha = 0.15) +
+  # Actual beta-calibrated performance curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  # Dynamically facets across your 6 tilefish market categories
+  facet_wrap(~ market_desc, ncol = 3) + 
+  scale_x_continuous(
+    name = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 7, colour = "grey20"),
+    plot.margin = margin(4, 6, 4, 4, "pt")
+  )
+
+# Display
+print(p_cal_test_beta)
+
+
+
+#publication ready curves on uncalibrated
+uncal_data <- uncalibrated$data
+
+# Plot the "raw" uncalibrated predictions for comparison
+uncalibrated <- cal_plot_windowed(
+  test_clean, 
+  truth = market_desc,
+  estimate = pred_extra_large:pred_extra_small,
+  step_size = 0.05,
+  include_points = FALSE
+)
+uncalibrated
+
+
+# 2. Build publication-ready faceted calibration plot for raw predictions
+p_uncal <- ggplot(uncal_data, aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) + 
+  # Set to 3 columns to balance your 6 tilefish market categories cleanly
+  facet_wrap(~ market_desc, ncol = 3) + 
+  scale_x_continuous(
+    name = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 7, colour = "grey20"),
+    plot.margin = margin(4, 6, 4, 4, "pt")
+  )
+
+# Explicitly print the plot to your active viewer session
+print(p_uncal)
+
+
+# ROC CALIBRATED
+roc_dataUW <- test_data_calibration_applied %>% 
+  roc_curve(
+    truth = market_desc, 
+    pred_extra_large:pred_extra_small
+  )
+roc_dataUW %>% autoplot()
+
+
+# Area Under the ROC Curve (AUC) # does it mean it does a good job guessing? 
+auc_data <- test_data_calibration_applied %>% 
+  roc_auc(
+    truth = market_desc, 
+    pred_extra_large:pred_extra_small, 
+    estimator = "macro"
+  )
+auc_data
+
+# 0.959 was the given value
+
+
+
+# 3. Colour palette adjusted exactly for your 6 tilefish market categories
+# Note: Level names match the exact string names inside the .level column of roc_dataUW
+class_colours <- c(
+  "Extra Small"   = "#7B3F9E", # purple
+  "Small Kitten"  = "#E05C2A", # burnt orange
+  "Medium"        = "#2E8B57", # sea green
+  "Large/Medium"  = "#D4AF37", # gold/dark yellow
+  "Large"         = "#1B6CA8", # deep blue
+  "Extra Large"   = "#C0392B"  # deep red
+)
+
+# 4. Build the unweighted multi-class ROC facet plot
+p_facetUW <- ggplot(roc_dataUW, aes(x = 1 - specificity, y = sensitivity)) + 
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) + 
+  geom_path(aes(colour = .level), linewidth = 0.8, show.legend = FALSE) + 
+  # Arranged in 3 columns to spread out your 6 market levels symmetrically into a 2x3 grid
+  facet_wrap(~ .level, ncol = 3) + 
+  scale_colour_manual(values = class_colours) + 
+  scale_x_continuous( 
+    name = "1 \u2212 Specificity (False Positive Rate)", 
+    limits = c(0, 1), 
+    breaks = seq(0, 1, 0.25), 
+    expand = expansion(mult = 0.01) 
+  ) + 
+  scale_y_continuous( 
+    name = "Sensitivity (True Positive Rate)", 
+    limits = c(0, 1), 
+    breaks = seq(0, 1, 0.25), 
+    expand = expansion(mult = 0.01) 
+  ) + 
+  coord_equal() + 
+  theme_bw(base_size = 9) + 
+  theme( 
+    strip.background = element_rect(fill = "grey92", colour = "grey40"), 
+    strip.text = element_text(size = 8, face = "bold"), 
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3), 
+    panel.grid.minor = element_blank(), 
+    axis.title = element_text(size = 8), 
+    axis.text = element_text(size = 7, colour = "grey20"), 
+    plot.margin = margin(4, 6, 4, 4, "pt") 
+  )
+
+# Explicitly print the ROC graphic to your viewing window
+print(p_facetUW)
+
+# calibration gains
+ESPR_raw <- test_clean %>% 
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>% 
+  pull(.estimate)
+
+ESPR_cal <- test_data_calibration_applied %>% 
+  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>% 
+  pull(.estimate)
+
+ESPR_raw
+ESPR_cal
+
+CalLoss <- ESPR_raw - ESPR_cal
+rCalLoss <- 100 * CalLoss / ESPR_raw
+
+# beta  calibration improves model fit a bit.
+CalLoss
+rCalLoss
+
+# raw model scored 0.6138704 and calibrated went down to 0.5619904
+# rCalLoss 8.45% improvement
+
+
+# Next steps-
+
+#make the calibrated predictions with train data
+# with calibration applied
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# mapping nespp4 codes, 2007
+# join key into lengths, explore combined datasets, explore 2007
+
+
+
+lengths <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2007.csv"))
+
+key <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_keyfile.csv"))
+
+
 
