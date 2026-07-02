@@ -44,8 +44,20 @@ Rscript -e "rmarkdown::render('writing/tuning_diagnostics.Rmd', output_format='h
 # out_of_sample_predictions
 Rscript -e "rmarkdown::render('writing/out_of_sample_predictions.Rmd', output_format='html_document')"
 
+# Reprocess the data for stock assessment
+Rscript --no-save --no-restore --verbose \
+   ./R_code/data_extraction_processing/processing/predictions_data_prep_for_stock_assessment.R \
+  2>&1 | stdbuf -oL -eL tee ./R_code/data_extraction_processing/processing/predictions_data_prep_for_stock_assessment.log
+
+# out_of_sample_predictions on the reprocessed data
+Rscript -e "rmarkdown::render('writing/out_of_sample_predictions_StockAssess.Rmd', output_format='html_document')"
+
+
 
 ########################
-# render the manuscript - you're not actually going to do this, but 
+# TO DO:
+#  change the image files to reflect new ones (vintage should get picked up automatically, but some files are different)
+#  Plot individual ROC curves from Tuning, final ROC curve on the Validation and Testing sets.
+#  render the manuscript - you're not actually going to do this, but 
 # Rscript -e "rmarkdown::render('writing/Economic_informed_stock_assessments.Rmd', output_format='pdf_document')"
 
