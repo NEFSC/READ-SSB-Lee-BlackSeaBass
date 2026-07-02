@@ -20,14 +20,9 @@ params:
     - TS_nocluster
 ---
 
-# Summary and Housekeeping
+# What this does  
+This code does out of sample predictions for the manuscript
 
-
-Calibration and Validation
-
-1. Read in the finalized model 
-2. Calibrate probabilities using a 'testing sample'
-3. Validate on a validation sample. 
 
 <!---- 
  The global_options chunk loads libraries, sets options, figures out if you're on a desktop or server, sets years, and sets graphing options
