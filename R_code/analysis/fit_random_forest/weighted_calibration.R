@@ -394,7 +394,6 @@ cal_weighted_multi
 
 
 rm(cal_weighted_multi)
-rm(uncounted_validation2)
 
 uncounted_validation_Weighted_multicalib_applied <-
   uncounted_validation %>%
