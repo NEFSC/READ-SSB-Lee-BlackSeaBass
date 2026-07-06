@@ -1,5 +1,37 @@
+# Code to perform the weighted calibration after fitting a random forest
+# this must be run after train_randomforest_nocluster.R in the pipeline 
 
 
+# Inputs
+# data_split  -- estimation dataset that was split into 3 parts (train, validation, test)
+# prepped_recipe -- the recipe after prep
+# final_ranger_fit -- the final trained model
+
+#
+# Outputs 
+#
+## Images 
+
+### calplot_raw_Weighted_window - Calibration plot on uncounted Uncalibrated **Validation** data. This is used to assess visually 
+###     if calibration is required. The dataset going into this plot is used to for probabiltiy calibration
+
+### calplot_Weighted_Valid - Post- Calibration plot on uncounted **Validation** data. This is used to assess visually 
+###    how well the calibration worked. 
+
+### cal_Wmultinom_testing- Calibration plot on uncounted, Calibrated **Testing** data. This is used to assess visually 
+###     how well the entire pipeline worked (Tune, Train, Calibrate) worked. 
+
+### uncal_windowed_testing  - Before Calibration plot on **Testing** data.  .Combine this with cal_Wmultinom_testing to understand how 
+###     well the calibration worked.
+
+
+
+## Datasets
+### calibrate_weighted_multinom - Multinomial weighted calibration with smooth=FALSE (fit with nnet)
+###    this is used to adjust all predictions after fitting the model  
+### aggregate_uncounted_calibrated_test_predictions - Predictions on the test set AFTER calibration
+###    includes predictions of transactions AND pounds
+### aggregate_nocal_predictions - Predictions on the test set WITHOUT/BEFORE calibration
 
 
 search_type<-"Advanced"
@@ -358,7 +390,11 @@ cal_weighted_multi<-cal_plot_windowed(validation_data_Weighted_multicalib_applie
                   truth = market_desc, step_size = 0.05, include_points =FALSE)
 
 cal_weighted_multi
+
+
+
 rm(cal_weighted_multi)
+rm(uncounted_validation2)
 
 uncounted_validation_Weighted_multicalib_applied <-
   uncounted_validation %>%
@@ -367,6 +403,62 @@ uncounted_validation_Weighted_multicalib_applied <-
 cal_uncounted_multi<-cal_plot_windowed(uncounted_validation_Weighted_multicalib_applied,
                                       truth = market_desc, step_size = 0.05, include_points =FALSE)
 cal_uncounted_multi
+
+
+cal_data <- cal_uncounted_multi$data
+
+
+
+# --- 2. Build publication-ready faceted calibration plot ---
+# Dashed diagonal = perfect calibration. Ribbon = CI on the observed event rate
+# within each window. Formatted to ICES JMS double-column spec.
+p_cal <- ggplot(cal_data,
+                aes(x = predicted_midpoint, y = event_rate)) +
+  # perfect calibration reference line
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", colour = "grey50", linewidth = 0.4) +
+  # confidence band
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#1B6CA8", alpha = 0.15) +
+  # calibration curve
+  geom_line(colour = "#1B6CA8", linewidth = 0.8) +
+  facet_wrap(~ market_desc, ncol = 2)+
+  scale_x_continuous(
+    name   = "Mean Predicted Probability",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name   = "Observed Event Rate",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    expand = expansion(mult = 0.01)
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    strip.background = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text       = element_text(size = 8, face = "bold"),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    axis.title       = element_text(size = 8),
+    axis.text        = element_text(size = 7, colour = "grey20"),
+    plot.margin      = margin(4, 6, 4, 4, "pt")
+  )
+p_cal
+
+# --- 3. Save at ICES JMS double-column specification ---
+ggsave(
+  here("results", "ranger", "final",
+       glue("calplot_Weighted_Valid{modeltype}{finalfit_vintage}.pdf")),
+  plot   = p_cal,
+  width  = 84,
+  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
+  units  = "mm",
+  device = cairo_pdf
+)
+
 
 # Predict out-of-sample on the final test holdout.
 # Same predict_byhand / modal-class extraction / bind-back pattern as validation.
