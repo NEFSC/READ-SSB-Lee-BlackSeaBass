@@ -187,7 +187,7 @@ prob_names<-colnames(train_data_uncount)
 prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
 prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
-roc_training_set<-test_data_uncount %>%
+roc_training_set<-train_data_uncount %>%
   roc_curve(truth=market_desc, 
             any_of(prob_names)
   ) %>% autoplot()
