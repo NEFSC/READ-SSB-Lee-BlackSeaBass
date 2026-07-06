@@ -43,6 +43,12 @@ Rscript -e "rmarkdown::render('writing/tuning_diagnostics.Rmd', output_format='h
 
 # out_of_sample_predictions
 Rscript -e "rmarkdown::render('writing/out_of_sample_predictions.Rmd', output_format='html_document')"
+# ROC curves on the training set and testing set
+Rscript --no-save --no-restore --verbose \
+   ./R_code/analysis/fit_random_forest/plot_ROC_curves.R \
+  2>&1 | stdbuf -oL -eL tee ./R_code/analysis/fit_random_forest/plot_ROC_curves.log
+
+
 
 # Reprocess the data for stock assessment
 Rscript --no-save --no-restore --verbose \
