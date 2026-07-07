@@ -196,11 +196,11 @@ roc_training_set<-train_data_uncount %>%
 roc_training_set
 
 
-# --- 5. Save at ICES JMS specifications ---
+# Save - 
 ggsave(here("results","ranger","tune",glue("roc_training_dataset_{modeltype}{finalfit_vintage}.pdf")),
        plot   = roc_training_set,
-       width  = 174,   # mm — double-column, suits 4 facets in a row
-       height = 65,
+       width  = 87,   # 
+       height = 87,
        units  = "mm",
        device = cairo_pdf)
 
@@ -292,7 +292,7 @@ p_facet <- ggplot(roc_data,
                   aes(x = 1 - specificity, y = sensitivity)) +
   geom_abline(slope = 1, intercept = 0,
               linetype = "dashed", colour = "grey50", linewidth = 0.4) +
-  geom_path(aes(colour = .level, group = interaction(.level, id)),
+  geom_path(aes(colour = .level, group = .level),
             linewidth = 0.8, alpha = 1, show.legend = FALSE) +
 #  geom_path(data = roc_mean,
  #        aes(colour = "grey92"),
