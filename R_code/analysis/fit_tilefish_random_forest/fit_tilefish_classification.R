@@ -134,8 +134,25 @@ best_param_file_name<-glue("tilefish_best_parameters{tuning_vintage}.Rds")
 final_fit_file_name<-glue("tilefish_final{tuning_vintage}.Rds")
 vi_file_name<-glue("tilefish_vi{tuning_vintage}.Rds")
 
+
+
+
+# Define colours for graphing
+class_colours <- c(
+  "Extra Small"   = "#7B3F9E", # purple
+  "Small Kitten"  = "#E05C2A", # burnt orange
+  "Medium"        = "#2E8B57", # sea green
+  "Large Medium"  = "#D4AF37", # gold/dark yellow
+  "Large"         = "#1B6CA8", # deep blue
+  "Extra Large"   = "#C0392B"  # deep red
+)
+
+
+
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{vintage_string}.Rds")))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{vintage_string}.Rds"))
+) %>% 
+  mutate(market_desc = gsub("[/-]", " ", market_desc))
 
 set.seed(4587315)
 
@@ -298,9 +315,18 @@ cat("Tuning done")
 # Look at the ROC curve, PR curve, and Confusion Matrix to evaluate model fit on training data.
 # 1.probability names from the training predictions- plot the top 20- pending
 
+
+
 prob_names <- colnames(first_train_predictions)
 prob_names <- grep("^\\.pred_", prob_names, value = TRUE)
 prob_names <- grep("^\\.pred_class", prob_names, value = TRUE, invert = TRUE)
+
+
+
+
+clean_prob_names <- prob_names %>% 
+  stringr::str_replace("^\\.", "") %>% 
+  janitor::make_clean_names()
 
 
 
@@ -333,7 +359,7 @@ validation_data_preds <- augment(trained_wf, validation_data)
 cal_gg <- validation_data_preds %>% 
   cal_plot_windowed(
     truth          = market_desc, 
-    estimate       = c(`.pred_Extra Small`, `.pred_Small Kitten`, .pred_Medium, `.pred_Large/Medium`, .pred_Large, `.pred_Extra Large`), 
+    estimate       = c(`.pred_Extra Small`, `.pred_Small Kitten`, .pred_Medium, `.pred_Large Medium`, .pred_Large, `.pred_Extra Large`), 
     step_size      = 0.025, 
     include_points = FALSE
   )
@@ -381,19 +407,31 @@ p_cal <- ggplot(cal_data,
 p_cal
 
 
-
 #Experiment with different methods of calibration.
 
 validation_clean <- validation_data_preds %>%
   clean_names() %>%
-  drop_na(market_desc, pred_extra_large, pred_extra_small)
+  drop_na(
+    market_desc, 
+    pred_extra_large, pred_extra_small, pred_large, 
+    pred_large_medium, pred_medium, pred_small_kitten
+  )
+
+cal_estimates <- c(
+  "pred_extra_large", 
+  "pred_extra_small", 
+  "pred_large", 
+  "pred_large_medium", 
+  "pred_medium", 
+  "pred_small_kitten"
+)
 
 
 # Beta
 calibrate_beta <- cal_estimate_beta(
   validation_clean, 
   truth = market_desc, 
-  estimate=pred_extra_large:pred_extra_small,
+  estimate= cal_estimates,
   smooth = FALSE
 )
 
@@ -401,13 +439,13 @@ calibrate_beta <- cal_estimate_beta(
 calibrate_iso <- cal_estimate_isotonic(
   validation_clean, 
   truth = market_desc, 
-  estimate=pred_extra_large:pred_extra_small,
+  estimate= cal_estimates,
   smooth = FALSE
 )
 
 #  Multinomial Calibration
 calibrate_multinom <- cal_estimate_multinomial(janitor::clean_names(validation_clean)
-, truth=market_desc, estimate=pred_extra_large:pred_extra_small, smooth=FALSE)
+, truth=market_desc, estimate= cal_estimates,, smooth=FALSE)
 
 # final judging is done on the 'testing' dataset, not here.
 
@@ -430,7 +468,7 @@ validation_data_multicalib_applied <-
 cal_gg <- validation_data_isocalib_applied %>%
   cal_plot_windowed(
     truth          = market_desc,
-    estimate       = c(`pred_extra_small`, `pred_small_kitten`, pred_medium, `pred_large_medium`, pred_large, `pred_extra_large`), 
+    estimate       = cal_estimates, 
     step_size      = 0.025,
     include_points = FALSE
   )
@@ -482,7 +520,7 @@ iso_applied_window
 multi_applied_window <- cal_plot_windowed(
   validation_data_multicalib_applied, 
   truth = market_desc, 
-  estimate = pred_extra_large:pred_extra_small, 
+  estimate = cal_estimates, 
   step_size = 0.05, 
   include_points = FALSE
 )
@@ -493,7 +531,7 @@ multi_applied_window
 beta_applied_window <- cal_plot_windowed(
   validation_data_betacalib_applied, 
   truth = market_desc, 
-  estimate = pred_extra_large:pred_extra_small, 
+  estimate = cal_estimates, 
   step_size = 0.05, 
   include_points = FALSE
 )
@@ -502,23 +540,44 @@ beta_applied_window
 
 
 #BETA might look better- extra analysis
-roc_dataUW <- validation_data_betacalib_applied %>% roc_curve(truth = market_desc, pred_extra_large:pred_extra_small)
+exact_pred_cols <- c(
+  "pred_extra_large", 
+  "pred_extra_small", 
+  "pred_large", 
+  "pred_large_medium", 
+  "pred_medium", 
+  "pred_small_kitten"
+)
 
-roc_dataUW %>% 
-  autoplot()
 
-auc_data <- validation_data_betacalib_applied %>% 
-  roc_auc(
-    truth = market_desc, 
-    pred_extra_large:pred_extra_small,      
-    estimator = "macro"
-  )
-
+# 1. Generate the ROC Curve 
 roc_data <- validation_data_betacalib_applied %>% 
   roc_curve(
     truth = market_desc, 
-    pred_extra_large:pred_extra_small       
+    all_of(exact_pred_cols)
   )
+
+roc_data %>% autoplot()
+
+
+# auc and roc
+auc_data <- validation_data_betacalib_applied %>% 
+  roc_auc(
+    truth = market_desc, 
+    all_of(exact_pred_cols), 
+    estimator = "macro"
+  )
+
+auc_data
+
+
+
+
+
+
+
+
+
 
 p_facet <- ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) + 
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) + 
@@ -560,19 +619,19 @@ print(p_facet)
 # (ESPR_raw - ESPR_cal)/ESPR_raw
 
 ESPR_raw<-validation_clean %>%
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>%
   pull(.estimate)
 
 ESPR_caliso<-validation_data_isocalib_applied %>%
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>%
   pull(.estimate)
 
 ESPR_calbeta<-validation_data_betacalib_applied %>%
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>%
   pull(.estimate)
 
 ESPR_calmulti<-validation_data_multicalib_applied %>%
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>%
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>%
   pull(.estimate)
 
 ESPR_raw
@@ -595,28 +654,30 @@ rCalLoss
 
 test_data_preds <- augment(trained_wf, new_data = test_data)
 
-#Clean names to match lowercase 
-test_clean <- test_data_preds %>% 
-  janitor::clean_names() %>% 
-  drop_na(market_desc, pred_extra_large:pred_extra_small)
+test_data_preds_clean <- test_data_preds %>% 
+  janitor::clean_names()
+
+test_data_calibration_applied <- test_data_preds_clean %>% 
+  probably::cal_apply(calibrate_beta)
 
 
-# Applied pre-trained beta calibration tool to the test data
-test_data_calibration_applied <- test_clean %>% 
-  cal_apply(calibrate_beta)
 
-# Extracted calibrated ggplot window metrics
+
+
+
 calibrated <- cal_plot_windowed(
-  test_data_calibration_applied, 
-  truth = market_desc, 
-  estimate = pred_extra_large:pred_extra_small,
+  test_data_calibration_applied,
+  truth = market_desc,
+  estimate = all_of(exact_pred_cols), 
   step_size = 0.05,
   include_points = FALSE
 )
 
+
 calibrated
 
 cal_data <- calibrated$data
+
 
 #publication-ready faceted calibration plot
 p_cal_test_beta <- ggplot(cal_data, aes(x = predicted_midpoint, y = event_rate)) +
@@ -658,20 +719,24 @@ print(p_cal_test_beta)
 
 
 #publication ready curves on uncalibrated
-uncal_data <- uncalibrated$data
+
 
 # Plot the "raw" uncalibrated predictions for comparison
 uncalibrated <- cal_plot_windowed(
-  test_clean, 
+  test_data_preds,
   truth = market_desc,
-  estimate = pred_extra_large:pred_extra_small,
   step_size = 0.05,
   include_points = FALSE
 )
 uncalibrated
 
+uncal_data <- uncalibrated$data
 
-# 2. Build publication-ready faceted calibration plot for raw predictions
+
+
+
+
+#Build publication-ready faceted calibration plot for raw predictions
 p_uncal <- ggplot(uncal_data, aes(x = predicted_midpoint, y = event_rate)) +
   # perfect calibration reference line
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50", linewidth = 0.4) +
@@ -709,11 +774,16 @@ p_uncal <- ggplot(uncal_data, aes(x = predicted_midpoint, y = event_rate)) +
 print(p_uncal)
 
 
+
+
+
+
+
 # ROC CALIBRATED
 roc_dataUW <- test_data_calibration_applied %>% 
   roc_curve(
     truth = market_desc, 
-    pred_extra_large:pred_extra_small
+    all_of(exact_pred_cols)
   )
 roc_dataUW %>% autoplot()
 
@@ -722,7 +792,7 @@ roc_dataUW %>% autoplot()
 auc_data <- test_data_calibration_applied %>% 
   roc_auc(
     truth = market_desc, 
-    pred_extra_large:pred_extra_small, 
+    all_of(exact_pred_cols), 
     estimator = "macro"
   )
 auc_data
@@ -731,16 +801,7 @@ auc_data
 
 
 
-# 3. Colour palette adjusted exactly for your 6 tilefish market categories
-# Note: Level names match the exact string names inside the .level column of roc_dataUW
-class_colours <- c(
-  "Extra Small"   = "#7B3F9E", # purple
-  "Small Kitten"  = "#E05C2A", # burnt orange
-  "Medium"        = "#2E8B57", # sea green
-  "Large/Medium"  = "#D4AF37", # gold/dark yellow
-  "Large"         = "#1B6CA8", # deep blue
-  "Extra Large"   = "#C0392B"  # deep red
-)
+# Level names match the exact string names inside the .level column of roc_dataUW
 
 # 4. Build the unweighted multi-class ROC facet plot
 p_facetUW <- ggplot(roc_dataUW, aes(x = 1 - specificity, y = sensitivity)) + 
@@ -776,13 +837,14 @@ p_facetUW <- ggplot(roc_dataUW, aes(x = 1 - specificity, y = sensitivity)) +
 # Explicitly print the ROC graphic to your viewing window
 print(p_facetUW)
 
+
 # calibration gains
-ESPR_raw <- test_clean %>% 
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>% 
+ESPR_raw <- test_data_preds_clean %>% 
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>% 
   pull(.estimate)
 
 ESPR_cal <- test_data_calibration_applied %>% 
-  mn_log_loss(market_desc, pred_extra_large:pred_extra_small) %>% 
+  mn_log_loss(market_desc, all_of(exact_pred_cols)) %>% 
   pull(.estimate)
 
 ESPR_raw
@@ -794,51 +856,17 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 # beta  calibration improves model fit a bit.
 CalLoss
 rCalLoss
-
 # raw model scored 0.6138704 and calibrated went down to 0.5619904
 # rCalLoss 8.45% improvement
 
 
-# Next steps-
-
-#make the calibrated predictions with train data
-# with calibration applied
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Need to work on this more, I have the machine confused with the different names .pred vs pred and lower case letters
+# I predict out of sample on my 'test' dataset with the calibration applied
 
 # mapping nespp4 codes, 2007
-# join key into lengths, explore combined datasets, explore 2007
+# join key into lengths, explore combined datasets, explore 2007 and min-yang sent another year to look out.
 
 
 
