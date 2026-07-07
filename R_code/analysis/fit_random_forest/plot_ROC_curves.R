@@ -195,7 +195,8 @@ roc_training_set<-train_data_uncount %>%
 
 roc_training_set
 
-
+# as expected, this roc is very optimistic. It's an absolute perfect fit and an example
+# of why an RF needs be validated on a holdout. 
 # Save - 
 ggsave(here("results","ranger","tune",glue("roc_training_dataset_{modeltype}{finalfit_vintage}.pdf")),
        plot   = roc_training_set,
