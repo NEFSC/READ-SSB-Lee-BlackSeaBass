@@ -119,7 +119,7 @@ if (search_type == "Initial") {
 if (search_type == "Advanced") {
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
+#     mtry = mtry(range = c(10L, 35L)),   # override upper bound after finalization
       min_n=min_n(range = c(10L, 300L))  # minimum points in a leaf nodee
     )
   
