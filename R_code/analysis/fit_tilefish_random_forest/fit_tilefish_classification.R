@@ -16,6 +16,7 @@
 ###############################################################################  
 
 library("here")
+library(pander)
 
 # load tidyverse and related
 library("tidyverse")
@@ -863,16 +864,137 @@ rCalLoss
 
 
 # Need to work on this more, I have the machine confused with the different names .pred vs pred and lower case letters
-# I predict out of sample on my 'test' dataset with the calibration applied
+# I predict out of sample on my 'test' dataset with the calibration applied- I can't figure it out yet--- true vs predictions on (transactions,lndlb, % errors)
 
-# mapping nespp4 codes, 2007
+
+
+
+
+
+
+
+
+
+
+# mapping nespp4 codes, 2007 and 2015
 # join key into lengths, explore combined datasets, explore 2007 and min-yang sent another year to look out.
 
 
-
-lengths <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2007.csv"))
+seven <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2007.csv"))
 
 key <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_keyfile.csv"))
+
+fifteen <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2015.csv"))
+
+
+# Need to combine my categories
+key <- key %>%
+mutate (NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4), # Forces both 4463 and 4464 to become 4463
+    
+# combined categories
+MARKET_DESC = case_when(
+  MARKET_DESC == "MIXED OR UNSIZED"          ~ "Unclassified",
+  MARKET_DESC == "UNCLASSIFIED"              ~ "Unclassified",
+  MARKET_DESC == "LARGE"                     ~ "Large",
+  MARKET_DESC == "MEDIUM OR SELECT"          ~ "Medium",
+  MARKET_DESC == "SMALL"                     ~ "Small Kitten",
+  MARKET_DESC == "KITTENS"                   ~ "Small Kitten",
+  MARKET_DESC == "EXTRA LARGE"               ~ "Extra Large",
+  MARKET_DESC == "EXTRA SMALL"               ~ "Extra Small",
+  MARKET_DESC == "LARGE-MEDIUM (NOT MIXED)"  ~ "Large Medium",
+  TRUE                                       ~ MARKET_DESC
+)) %>% distinct(NESPP4, .keep_all = TRUE)
+
+print(key)
+
+
+#2007 dataset observations and matching
+seven_summary <- seven %>%
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>%
+  left_join(key, by = "NESPP4") %>%
+  group_by(NESPP4, MARKET_DESC) %>%
+  summarize(number_specimens = sum(NUMLEN), avg_length = mean(LENGTH))
+
+print(seven_summary)
+#Average length of unclassified is 50.6 cm, they can be between Small Kitten (41.1cm) and Medium (52.2cm)
+# Might include one or two large (74.6cm)? 
+
+
+#distribution summary min vs max lengths to see actual distribution
+
+distribution_seven <- seven %>%
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>% 
+   left_join(key, by = "NESPP4") %>%
+  group_by(MARKET_DESC) %>% 
+  summarize(
+    min_len    = min(LENGTH, na.rm = TRUE),
+    max_len    = max(LENGTH, na.rm = TRUE),
+    median_len = median(LENGTH, na.rm = TRUE),
+    .groups    = "drop")
+
+# nicer table
+pander(distribution_seven)
+
+#histogram
+seven %>%
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>%
+  left_join(key, by = "NESPP4") %>% 
+  ggplot(aes(x = LENGTH, fill = MARKET_DESC, weight = NUMLEN)) + 
+  geom_histogram(binwidth = 5, color = "black") + labs(y = "Number of Specimens")
+
+
+
+
+# 2015 data
+#2015 dataset observations
+fifteen_summary <- fifteen %>%
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>%
+  left_join(key, by = "NESPP4") %>%
+  group_by(NESPP4, MARKET_DESC) %>%
+  summarize(number_specimens = sum(NUMLEN), avg_length = mean(LENGTH))
+
+print(fifteen_summary)
+
+# Unclassified average length is 34.9cm
+# They can be between Extra Small (38.6cm) and Small Kitten (44.0cm)
+
+distribution_fifteen <- fifteen %>%
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>% 
+  left_join(key, by = "NESPP4") %>%
+  group_by(MARKET_DESC) %>% 
+  summarize(
+    min_len    = min(LENGTH, na.rm = TRUE),
+    max_len    = max(LENGTH, na.rm = TRUE),
+    median_len = median(LENGTH, na.rm = TRUE),
+    .groups    = "drop")
+#nicer table
+pander(distribution_fifteen)
+
+# simple histogram
+
+fifteen %>% 
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>% 
+  left_join(key, by = "NESPP4") %>% 
+  ggplot(aes(x = LENGTH, fill = MARKET_DESC, weight = NUMLEN)) +
+  geom_histogram(binwidth = 5, color = "black") + 
+  labs(y = "Number of Specimens")
+
+#fifteen and seven into same data table , facet grid by year and market _desc.
+
+combined_data <- bind_rows(
+  seven %>% mutate(YEAR = "Seven"),
+  fifteen %>% mutate(YEAR = "Fifteen"))
+
+# plot
+combined_data %>% 
+  mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>% 
+  left_join(key, by = "NESPP4") %>% 
+  ggplot(aes(x = LENGTH, fill = MARKET_DESC, weight = NUMLEN)) + 
+  geom_histogram(binwidth = 5, color = "black") + 
+  scale_y_continuous(breaks = seq(0, 5000, 100)) + 
+  labs(y = "Number of Specimens") + 
+  facet_grid(YEAR ~ MARKET_DESC)
+
 
 
 
