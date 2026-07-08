@@ -14,7 +14,7 @@
 # assign roles to predictors, outcome, groups, and weights
 BSB.Classification.Recipe <- recipe(train_data) %>%
   update_role(market_desc, new_role = "outcome")%>%
-  update_role(c(myl_id), new_role = "ID variable") %>%
+ # update_role(c(myl_id), new_role = "ID variable") %>%
   update_role(c(mygear,stockarea, state, year, month, semester, lndlb, grade_desc, trip_level_BSB, shore, nofederal, catch_share), new_role = "predictor")
 
 # State-level daily Landings on "other" trips, by market category  
@@ -58,9 +58,8 @@ BSB.Classification.Recipe <-BSB.Classification.Recipe %>%
 # You can't center the factor variables
 # RF doesn't benefit from normalization, so all I'm going to do is remove any 
 # zero variance predictors that might be hanging around. 
-BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
-  step_novel() %>%
-  step_zv(all_predictors())
+#BSB.Classification.Recipe <- BSB.Classification.Recipe %>% 
+#  step_zv(all_predictors())
 
 
 recipe_summary<-BSB.Classification.Recipe %>%

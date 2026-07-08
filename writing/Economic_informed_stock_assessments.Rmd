@@ -41,21 +41,26 @@ output:
  <!---- 
 Summary and Housekeeping
 
-I did my data processing with  ``\stata_code\data_extraction_processing\extraction\commercial\00_cams_extraction.do`` and ``00_extraction_wrapper.do``
-And a final round of data processing with data_prep_ml.R (run 3/13)
+Data extraction is handled in the "DataPull" repository. 
+Data processing was ported to R and handled with 
 
-The RF model was fit with "estimate_randomforest_nocluster.R", which has a few dependencies, mostly for the recipe and workflow.
-The model is finalized with final_fit and calibrated with "calibration and validation.Rmd"
+R_code/data_extraction_processing/processing/commercial\00_commercial_processing_wrapper.R
+
+The RF model was tuned with tune_random_forest_nocluster.R
+The RF model was trained with tune_random_forest_nocluster.R
+Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
+
+The model is calibrated with "calibration and validation.Rmd" (unweighted and not used) and 
+weighted_calibration.R (weighted calibration)
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
-* final_fit makes ROC curves for the best tuned model and final model
+* tuning_diagnostics.Rmd makes ROC curves for the best tuned model and final model
 * figures are made with
 * figure1 
 * figure2 (windows only)
 * predictions_heatmap
 * out_of_sample_predictions.Rmd makes out of sample predictions.
-* calibration_and_validation - VIP
 
 renders on windows, but not on my container (missing endnotes.sty from that tex install)
 
@@ -279,7 +284,9 @@ Single classification trees suffer from poor external validity; a tree grown to 
 
 Like many machine learning models, random forests have hyperparameters which must be exogenously supplied. Results can be sensitive to these choices; models are typically tuned by searching for an optimal set of parameters using a subset of data and the selected parameters are validate model on a holdout sample.  Averaging methods, including Random forest models, are also known to be underconfident; high probabilities are understimated and low probabilities are overestimated.  This occurs because the model averaging process in which individual trees are aggregated into random forests averages away extreme values.  Calibration through an auxiliary model, is often necessary after fitting a random forest [@Niculescu-Mizil2005; @Kull2017; @Ojeda2023; @Barreada2024; @Ferrer2025].
 
-Our model training procedure attempts to account for these idiosyncracies of Random Forest models. We split our dataset three ways; we use 70% of our dataset to tune the model hyperparameters, 15% to calibrate probabilities, and 15% to validate the model. We grow 500 trees when tuning the model and when training the final model.  The number of randomly selected predictors (*mtry*) is tuned over in nearly all Random Forest applications. Simulation studies by @Barreada2024 suggest tuning over the minimum node size (*min.n*) when using random forests in probability models. We tune over these two hyperparameters by performing a 10-fold cross validation study. We grid search over the reasonable starting values of the two parameters.^[The initial grid search used a space filling grid and searched 24 points on $mtry \in (5,35)$ and $min_n \in (5,100)$.  Preliminary analysis showed that the optimal $mtry$ was well above 5 and that a local optimal might be at 100, therefore we adjusted the ranges to (10,35) and (10,300) respectively, and changed the grid size to evaluate 120 points.]  We supplemented the initial grid search by performing the bayesian tuning described by @Shahriari2016.  Our cross-validation was stratified by market category to ensure that the proportion of each class in the folds approximately matched the initial compositions. We selected the optimal pair of hyperparameters that had the smallest log loss criterion function averaged over the ten folds. For each fold, log loss is computed as: 
+Our model training procedure attempts to account for these idiosyncracies of Random Forest models. We split our dataset into three parts; we use we use 80% of our dataset to train the model, 5% to calibrate probabilities, and 15% to validate the model.  To tune the model, select 6.25% of the training sample (5% of the total dataset).  We grow 200 trees during the tuning process;  the number of randomly selected predictors (*mtry*) is tuned over in nearly all Random Forest applications. Simulation studies by @Barreada2024 suggest tuning over the minimum node size (*min.n*) when using random forests in probability models. We tune over these two hyperparameters by performing a 10-fold cross validation study. We grid search over the reasonable starting values of the two parameters.^[The initial grid search used a space filling grid and searched 60 points on $mtry \in (5,35)$ and $min_n \in (5,100)$.] 
+
+Our cross-validation was stratified by market category to ensure that the proportion of each class in the folds approximately matched the initial compositions. We selected the optimal pair of hyperparameters that had the smallest log loss criterion function averaged over the ten folds. For each fold, log loss is computed as: 
 
 \begin{equation}
 \label{logloss1}
@@ -287,7 +294,7 @@ LogLoss = - \sum_{i=i}^N Y_{ik} ln(Pr_{ik})
 \end{equation}
 where $i$ indexes observations, $k$ indexes classes, $Y_{ik}=1$ if observation $i$ is a member of class $k$, and $Pr_{ik}$ is the predicted probability that observation $i$ is a member of class $k$.
 
-After selecting the optimal hyperparamters, we refit the model on the entire 70% tuning dataset.  We use the fitted model to predict class membership for the 15% calibration sample. We visually assess whether the model is well-calibrated using commonly used calibration plots [@Ojeda2023; @Barreada2024]. We also use the Relative Calibration loss methods described in [@Ferrer2025] to assess whether calibration is necessary (it is) and to select among isotonic, beta, and multinomial calibration methods.
+After selecting the optimal model, we train the final model on the full 80% of the training dataset and grow 500 trees at this step.  We use the trained model to predict class membership for the 5% calibration sample. We visually assess whether the model is well-calibrated using commonly used calibration plots [@Ojeda2023; @Barreada2024]. We also use the Relative Calibration loss methods described in [@Ferrer2025] to assess whether calibration is necessary (it is) and to select among isotonic, beta, and multinomial calibration methods.
 
 We apply the the trained model and the probability calibration routine to the final 15% of our data as a final validation, and validation results are based on the calibrated probabilities. After training the model and calibrating probabilities, we predict out of sample on the Unclassified Landings.  We use the trained model to predict the probability of class memembership and aggregate the corresponding live weight to the year-, market category-, and subregion level.  We then convert these adjusted landings to an age structure and compare it with the traditional age structure. The random forest model is fit in R using the ``ranger`` package; we use  ``tidymodels`` packages to facilitate tuning, training, and out-of-sample predicting.  
 
@@ -298,7 +305,12 @@ We use Catch Accounting and Monitoring System (CAMS)^[Documentation at https://a
 
 Black Sea Bass may be caught by firms without a federal fishing permit and sold to dealers without a federal dealer permit.  In some states, firms without a federal permit can fish for black sea bass in state waters (within 3 miles of land) and sell it to fish dealers who do not have a federal permit.  These sales are also in our data and CAMS imputes both statistical area (area adjacent to landing port) and gear used when missing. 
 
-Our observational units are these allocated sales transactions.  In the exploratory analysis (the hedonic model presented in Table \ref{HedonicMarketCats}) and the Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers.].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is not predicting transaction, it is to obtain a prediction of aggregate weights.  Frequency weighting affects our methods in a few ways. We use log-loss as the criterion function for tuning and calibration; the log-loss function is modified to weight each observation by pounds landed. During the fitting of the individual trees, observations are drawn with replacement in proportion to their frequency weight. This results in bootstrap samples which more closely resemble the frequency weighted data instead of the raw, unweighted data.
+Our observational units are these allocated sales transactions.  In the exploratory analysis (the hedonic model presented in Table \ref{HedonicMarketCats}) and the Random Forest, we frequency weight the observations by the landed weight in pounds^[We use pounds, instead of kilograms, because the data are reported in integer pounds, and frequency weighting requires integers.].  This treats our observations as if they were repeated observations of the sale of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is not predicting transaction, it is to obtain a prediction of aggregate weights.  While random forest models in the tidyverse ecosystem support case weights, none fully supports our interpretation of frequency weighting, therefore we overcome the problem with brute force. 
+
+Because our observations are properly viewed as repeated observations of pounds, we can simply expand our data, producing a large dataset with "pounds landed" copies of each row.  During the stages when we split data and create folds, we ensure that each original observation is placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 40M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data. 
+
+
+# 
 
 Economic theory described in the theoretical model and on-the-ground subject-matter expertise (the black sea bass stock assessment and commercial fishery) guide explanatory factors, factor engineering, selection of data, and validation procedures [@Mullainathan2017]. The dependent variable is the market category. Machine learning algorithms can often benefit from preprocessing data and factor engineering. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the greatest decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  Unlike many other machine learning models, Random Forest models are scale invariant; explanatory factors do not need to be centered at zero or scaled to have similar variances. 
 
@@ -628,33 +640,44 @@ kable(
 
 
 ```{r length-histograms,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Length and Real (2023Q1 USD) Price Frequencies by market categories, 2013-2024."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 ```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 ```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning"}
+# need to rebuild
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
 ```
 
 ```{r vip,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an isotonic regression (right panel)."}
-knitr::include_graphics(here("results","ranger","final", c(glue("cal_windowed_nocluster{pred_vintage}.pdf"),glue("cal_isovalidate_windownocluster{pred_vintage}.pdf") ) ) )
+
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
+#updated July 2
+knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_testing_nocluster{pred_vintage}.pdf"),glue("cal_Wmultinom_testingnocluster{pred_vintage}.pdf") ) ) )
 ```
 
 
-```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Calibrated ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated before construcing the ROC curve."}
+```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership on the test set. Probabilty calibration does not change the ROC curve"}
+# need to rebuild
 knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 <!---This is slightly different than the standard method in which observations are assigned to the class with the highest probability.  --->
 ```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
 
 ```{r out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
@@ -680,6 +703,8 @@ knitr::include_graphics(here("results", "ranger", "final",
 ### Pre-calibration ROC curve{-}
 
 ```{r rocFinal,echo=FALSE,out.width="70%",fig.show='p', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
+# Need to rebuild 
+
 knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
 ```
 
@@ -796,11 +821,15 @@ here(("writing","predictions_heatmaps.Rmd")
 --->
 
 ```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="A confusion matrix for the calibrated model. Transactions assigned to a market category based on class with the highest predicted probability."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{pred_vintage}.pdf")))
 ```
 
-A confusion matrix for the calibrated model, done on "soft" predictions. 
-```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated.  "}
+A confusion matrix for the calibrated model transactions, done on "soft" predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated to generate aggregate transactions."}
+#verified july 2 (no code change needed)
+
 knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
 ```
 
@@ -810,6 +839,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref(fig:ambitious-out-of-sample-preds) predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
 ```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
+#verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```

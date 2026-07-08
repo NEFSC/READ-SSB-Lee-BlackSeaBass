@@ -42,6 +42,7 @@ Construct hard and soft predictive heatmaps.  Hard will go into the Appendix, so
  
  --->
 ```{r global_options, include=FALSE}
+search_type<-"Advanced"
 
 modeltype<-params$modeltype
 
@@ -118,6 +119,7 @@ here::i_am("writing/predictions_heatmap.Rmd")
 
 #handle model patterns
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
 
 
 
@@ -149,13 +151,19 @@ tuning_vintage<-gsub(tuning_pattern,"",tuning_vintage)
 tuning_vintage<-gsub(".Rds","",tuning_vintage)
 tuning_vintage<-max(tuning_vintage)
 
-# My "final fit" bombed out because I didn't have drive space.  
-# finalfit_vintage<-list.files(here("results","ranger"), pattern=glob2rx(glue("{final_pattern}*Rds")))
-# finalfit_vintage<-gsub(final_pattern,"",finalfit_vintage)
-# finalfit_vintage<-gsub(".Rds","",finalfit_vintage)
-# finalfit_vintage<-max(finalfit_vintage)
+# Tuning, training, VI code guarantees that the finalfit and VI vintages are the same as the tuning vintages.  
 
 finalfit_vintage<-tuning_vintage
+VI_vintage<-tuning_vintage
+
+
+final_fit_file_name<-glue("{final_pattern}{tuning_vintage}.Rds")
+vi_file_name<-glue("{vi_pattern}{tuning_vintage}.Rds")
+prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
+
+
+vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
+
 
 vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_estimation_dataset*Rds"))
 
@@ -188,11 +196,9 @@ train_data <- training(data_split)
 
 validation_data <- validation(data_split)
 
-source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
-search_type<-"Initial"
+#source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
-
-source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
+#source(here("R_code","analysis","fit_random_forest","BSB.Workflow.Setup.R"))
 
 
 ```
@@ -204,36 +210,11 @@ read in the final model, extract the recipe and the predictors, extract the pred
 
 ```{r load_final_model}
 
-final_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
+prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
 
+final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tuning_vintage}.Rds")))
 
-# What is the workflow
-final_workflow<-extract_workflow(final_fit)
-
-# And the recipe
-extract_recipe(final_fit)
-
-preds<-final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>%
- dplyr::filter(role=="predictor")
-
-num_preds<-nrow(preds)
-
-final_predictions<-final_fit %>%
-  collect_predictions()
-
-# pull the probability names
-prob_names<-colnames(predictions) 
-prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
-prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
-
-
-# look at the fit metrics
-final_fit_metrics<-final_fit %>%
-  collect_metrics()
-final_fit_metrics
-
-# all.metrics %>%
-#   dplyr::filter(.config==best_config) 
+# What the recipe
 
 ```
 
@@ -253,16 +234,55 @@ Make the heat maps (confusion matrices).
 ```{r Validation_predictions}
 # Load in the validation data
 
-test_data <- augment(final_workflow,test_data)
+################################################################################
+# Generate class-probability predictions on the validation set via the custom
+# predict_byhand() wrapper (applies prepped_recipe before calling ranger).
+# The modal predicted class is extracted by finding the column with the highest
+# probability for each row, then bound back alongside the raw probabilities
+# and original validation data.
+
+#predict
+test_predictions<-predict_byhand(new_data=test_data,
+                            prepped_recipe = prepped_recipe,
+                            ranger_fitted_model  = final_ranger_fit)
+
+class <- colnames(test_predictions)[max.col(test_predictions, ties.method = "first")]
+class<-as_tibble(class) %>%
+  rename(.pred_class=value) %>%
+  mutate(.pred_class=str_remove(.pred_class,".pred_" ) # Removes all matches
+)
+
+class_levels <- c("Jumbo", "Large", "Medium", "Small")
+
+class<-class %>%
+  mutate(.pred_class=factor(.pred_class)) %>%
+  mutate(.pred_class=fct_relevel(.pred_class,class_levels)
+         )
+
+# Bind cols
+test_predictions<-bind_cols(test_predictions,test_data)
+test_predictions<-bind_cols(class,test_predictions)
+
+test_predictions<-test_predictions%>%
+  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+# pull the probability names
+prob_names<-colnames(test_predictions) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
+
+
+# all.metrics %>%
+#   dplyr::filter(.config==best_config) 
+
 
 ```
 
 
-```{r calibration_models}
+```{r load_calibration}
 # load in the calibration model
 
-calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_iso_{modeltype}{finalfit_vintage}.Rds")))
-
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 
 ```
@@ -272,9 +292,9 @@ calibrate_iso<-readr::read_rds(file=here("results","ranger","final",glue("calibr
 ```{r apply_calibration}
 # apply to the test dataset
 
-test_data_isocalib_applied <-
-  test_data %>%
-  cal_apply(calibrate_iso)
+test_data_calib_applied <-
+  test_predictions %>%
+  cal_apply(calibrate_weighted_multinom)
 
 ```
 
@@ -284,14 +304,19 @@ Make confusion matrix using the "conf_mat" function.
 
 Extract the data from that object and do some things to make it pub-ready.
 
-```{r heatmap}
-# Make a pub ready heatmap
-cm <- conf_mat(test_data_isocalib_applied, truth = market_desc, estimate = .pred_class)
 
+```{r HeatmapHardPredictions}
+# Make a pub ready heatmap based on the "hard" prediction (contained in .pred_class)
+# These are "transaction-level, hard predictions" 
+# the conf_mat object is not pub ready, so I've added some extra bits to make it look nice
+
+# Pull the raw numbers and stick in a dataframe
+cm <- conf_mat(test_data_calib_applied, truth = market_desc, estimate = .pred_class)
 cm_table <- as.data.frame(cm$table)
 # Define desired order
 class_levels <- c("Jumbo", "Large", "Medium", "Small")
 
+# Construct proportions
 cm_norm <- cm_table %>%
   group_by(Truth) %>%
   mutate(Prop = Freq / sum(Freq)) %>%
@@ -301,6 +326,7 @@ cm_norm <- cm_table %>%
     Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
   )
 
+# Plot
 p_cm <- ggplot(cm_norm, aes(x = Prediction, y = Truth, fill = Prop)) +
   geom_tile(colour = "white", linewidth = 0.8) +
   geom_text(
@@ -350,23 +376,23 @@ ggsave(
   
 ```
 
+
 Same as previous, but make my own predictions based on the probability weights instead of using the default .class_pred.  
 
 
-```{r soft_prediction_conf_matrix}
-soft_predictions<-test_data_isocalib_applied %>%
+```{r HeatmapSoftPredictions}
+
+# do "soft" predictions of Transactions by aggregating the predicted probabilities
+soft_predictionUW<-test_data_calib_applied %>%
   group_by(market_desc) %>%
   summarise(Prediction_Jumbo=sum(.pred_Jumbo),
          Prediction_Large=sum(.pred_Large),
          Prediction_Medium=sum(.pred_Medium),
-         Prediction_Small=sum(.pred_Small),
-         Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
-         Predlbs_Large=sum(.pred_Large*lndlb),
-         Predlbs_Medium=sum(.pred_Medium*lndlb),
-         Predlbs_Small=sum(.pred_Small*lndlb)
-         )
-soft_predictionUW <- soft_predictions %>%
-  select(c(market_desc, starts_with("Prediction"))) %>%
+         Prediction_Small=sum(.pred_Small)
+      )
+
+# Reshape
+soft_predictionUW <- soft_predictionUW %>%
   pivot_longer(
     cols = c(Prediction_Jumbo, Prediction_Large, Prediction_Medium, Prediction_Small),
     names_to = "Prediction",
@@ -378,6 +404,7 @@ soft_predictionUW <-soft_predictionUW %>%
 
 class_levels <- c("Jumbo", "Large", "Medium", "Small")
 
+# compute proportions
 sofc_cm <- soft_predictionUW %>%
   group_by(Truth) %>%
   mutate(Prop = Freq / sum(Freq)) %>%
@@ -386,7 +413,7 @@ sofc_cm <- soft_predictionUW %>%
     Prediction = factor(Prediction, levels = class_levels),
     Truth      = factor(Truth,      levels = rev(class_levels))  # reversed for y-axis
   )
-
+# plot
 p_softcm <- ggplot(sofc_cm, aes(x = Prediction, y = Truth, fill = Prop)) +
   geom_tile(colour = "white", linewidth = 0.8) +
   geom_text(
@@ -437,9 +464,19 @@ ggsave(
 
 
 ```{r weighted_soft_conf_mat}
+# do "soft" predictions of pounds by aggregating the predicted probabilities*lndlb
 
-soft_predictionW <- soft_predictions %>%
-  select(c(market_desc, starts_with("Predlbs_"))) %>%
+soft_predictionW<-test_data_calib_applied %>%
+  group_by(market_desc) %>%
+     summarise(Predlbs_Jumbo=sum(.pred_Jumbo*lndlb),
+         Predlbs_Large=sum(.pred_Large*lndlb),
+         Predlbs_Medium=sum(.pred_Medium*lndlb),
+         Predlbs_Small=sum(.pred_Small*lndlb)
+     )
+
+
+# reshape
+soft_predictionW <- soft_predictionW %>%
   pivot_longer(
     cols = c(Predlbs_Jumbo, Predlbs_Large, Predlbs_Medium, Predlbs_Small),
     names_to = "Prediction",
@@ -448,7 +485,7 @@ soft_predictionW <- soft_predictions %>%
   )
 
 
-
+# rename columns, use metric tons
 soft_predictionW <-soft_predictionW %>%
   rename(Truth=market_desc ) %>%
   mutate(metric_tons=pounds/lbs_per_mt)
@@ -532,7 +569,7 @@ ggsave(
 
 
 ```{r save_the_predictions}
-regional_predictions<-test_data_isocalib_applied %>%
+regional_predictions<-test_data_calib_applied %>%
   ungroup()%>%
   group_by(market_desc, year, stockarea,semester) %>%
   summarise(Prediction_Jumbo=sum(.pred_Jumbo),
@@ -544,38 +581,15 @@ regional_predictions<-test_data_isocalib_applied %>%
          Predlbs_Medium=sum(.pred_Medium*lndlb),
          Predlbs_Small=sum(.pred_Small*lndlb),
          True_lbs=sum(lndlb),
-         True_transactions=n()
-         )%>%
-  ungroup()
+         True_transactions=n(),
+         .groups="drop_last"
+  )
 
 
 write_rds(regional_predictions, file=here("results","ranger",glue("soft_testing_predictions_{modeltype}{pred_vintage}.Rds")))
 
 ```
 
-```{r save_the_predictions}
-# create a fake dataset with the structure of the out of sample predictions for Emily.
-mockup <-regional_predictions %>%
-  select(year,semester, stockarea, starts_with("Predlbs"))
-
-  
-  
-mock2<-  mockup %>%
-      pivot_longer(
-        cols = c(starts_with("Predlbs")),
-        names_to = "Market.Comb",
-        values_to = "lbs",
-        names_prefix="Predlbs_"
-      ) %>%
-  mutate(lbs=lbs/lbs_per_mt)%>%
-  rename(metric_tons=lbs)
-
-write_rds(mock2, file=here("results","ranger",glue("mockup_predictions_{modeltype}{pred_vintage}.Rds")))
-
-
-  
-  
-```
 <!---
 \newpage
 --->
