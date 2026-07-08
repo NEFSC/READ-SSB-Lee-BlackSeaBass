@@ -31,7 +31,6 @@ library("nnet")
 library("knitr")
 library("kableExtra")
 library("viridis")
-library("conflicted")
 library("plotly")
 library("htmlwidgets")
 library("nnet")
@@ -43,10 +42,8 @@ library("probably")
 library("discrim")
 library("betacal")
 library("janitor")
+library("conflicted")
 
-
-#3d plots
-library("plotly")
 
 
 #deal with conflicts
@@ -245,6 +242,10 @@ tune_res <- tune_grid(
   metrics=class_and_probs_metrics
 )
 message("Grid Tuning Finished at", Sys.time())
+
+
+
+
 
 best_paramsA <- tune_res %>%
   select_best(metric = "brier_class")
