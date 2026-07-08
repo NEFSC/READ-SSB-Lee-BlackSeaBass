@@ -330,14 +330,14 @@ write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tile
 # KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
-  filter(market_desc=="Unclassified") 
+  filter(market_desc %in% c("Large/Medium","Large Medium", "Unclassified"))
 
 write_rds(unclassified_dataset, file=here("data_folder","main","tilefish",glue("tilefish_unclassified_dataset{out_data_string}.Rds")))
 
 # put everything else in a dataset
 # discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
-  filter(market_desc!="Unclassified") %>%
+  filter(!market_desc %in% c("Large/Medium","Large Medium", "Unclassified")) %>%
   filter(mark_in==1) %>%
   select(-c("mark_in", "flag_in"))
 
