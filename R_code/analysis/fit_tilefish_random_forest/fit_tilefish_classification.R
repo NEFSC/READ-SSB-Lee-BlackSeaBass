@@ -262,7 +262,7 @@ p<- plot_ly(tune_metrics,
             colorscale="Hot",
             reversescale=TRUE
 )
-saveWidget(p, here("results","ranger","tune",glue("tilefish_mn_log_loss_{tuning_pattern}{tuning_vintage}.html")), selfcontained = TRUE)
+saveWidget(p, here("results","ranger","tune",glue("tilefish_mn_log_loss_{tuning_vintage}.html")), selfcontained = TRUE)
 rm(p)
 
 
