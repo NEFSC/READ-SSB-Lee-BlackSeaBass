@@ -32,7 +32,6 @@ library("nnet")
 library("knitr")
 library("kableExtra")
 library("viridis")
-library("conflicted")
 library("plotly")
 library("htmlwidgets")
 library("nnet")
@@ -44,10 +43,8 @@ library("probably")
 library("discrim")
 library("betacal")
 library("janitor")
+library("conflicted")
 
-
-#3d plots
-library("plotly")
 
 
 #deal with conflicts
@@ -246,6 +243,30 @@ tune_res <- tune_grid(
   metrics=class_and_probs_metrics
 )
 message("Grid Tuning Finished at", Sys.time())
+
+# Save the tuning results to an interactive html widget that we can use to explore
+# tuning.  Low loss is good, so we want to be at the low point.  
+tune_metrics<-tune_res  %>%
+  collect_metrics() %>%
+  filter(.metric == "mn_log_loss") %>%
+  select(mean, mtry, min_n) %>%
+  rename(mn_log_loss=mean)
+
+
+p<- plot_ly(tune_metrics, 
+            x = ~mtry, 
+            y = ~min_n, 
+            z = ~mn_log_loss,
+            type = "mesh3d", 
+            intensity=~mn_log_loss,
+            colorscale="Hot",
+            reversescale=TRUE
+)
+saveWidget(p, here("results","ranger","tune",glue("tilefish_mn_log_loss_{tuning_pattern}{tuning_vintage}.html")), selfcontained = TRUE)
+rm(p)
+
+
+
 
 best_paramsA <- tune_res %>%
   select_best(metric = "brier_class")
