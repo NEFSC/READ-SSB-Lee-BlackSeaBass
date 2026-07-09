@@ -114,9 +114,18 @@ lbs_per_mt<-2204.62
 
 # for reproducibility
 #############################################################################
-my_images<-here("images")
-descriptive_images<-here("images","descriptive")
-exploratory_images<-here("images","exploratory")
+
+# create a results and images directory just for tilefish
+dir.create(here("results","tilefish"), showWarnings=FALSE)
+dir.create(here("images","tilefish"), showWarnings=FALSE)
+dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE))
+dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE))
+
+my_images<-here("images", "tilefish")
+descriptive_images<-here("images","tilefish", "descriptive")
+exploratory_images<-here("images","tilefish", "exploratory")
+
+
 vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_estimation_dataset*Rds"))
 vintage_string<-gsub("tilefish_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
@@ -198,7 +207,7 @@ train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
-readr::write_rds(data_split, file=here("results","ranger",data_save_name))
+readr::write_rds(data_split, file=here("results","tilefish",data_save_name))
 
 nrow(train_data)
 nrow(test_data)
@@ -244,6 +253,15 @@ tune_res <- tune_grid(
   metrics=class_and_probs_metrics
 )
 message("Grid Tuning Finished at", Sys.time())
+
+# save the tuning results
+write_rds(tune_res, file=here("results","tilefish", tune_file_name))
+
+# metrics by fold
+metrics_by_fold <- collect_metrics(tune_res, summarize = FALSE)  # fold-level
+write_rds(metrics_by_fold, file=here("results","tilefish", glue("Tilefish_folding_metrics_by_fold{tuning_vintage}.Rds")))
+
+
 
 # Save the tuning results to an interactive html widget that we can use to explore
 # tuning.  Low loss is good, so we want to be at the low point.  
@@ -306,7 +324,8 @@ first_tilefish_model <-
   final_wf %>%
   last_fit(data_split, metrics=class_and_probs_metrics)
 
-write_rds(first_tilefish_model, file=here("results","ranger",final_fit_file_name))
+write_rds(first_tilefish_model, file=here("results","tilefish",final_fit_file_name))
+message("Final model fit and saved")
 
 
 
@@ -333,15 +352,10 @@ if (run_this==1){
   # using train data
 first_train_predictions <- augment(trained_wf, new_data = train_data)
 
- # validation predictions using the extracted workflow
-  first_validation_predictions <- augment(trained_wf, new_data = validation_data)
-  
-  
-  
-metrics_by_fold <- collect_metrics(tune_res, summarize = FALSE)  # fold-level
-saveRDS(metrics_by_fold,  "tilefish_metrics_by_fold.Rds")
-write_rds(metrics_by_fold, file=here("results","ranger", glue("Tilefish_folding_metrics_by_fold{tuning_vintage}.Rds")))
 
+  message("Validation predictions done")
+  
+    
 #rm(metrics_by_fold)
 
 
@@ -350,7 +364,6 @@ system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
 message("CPU logger stopped")
 
 
-cat("Tuning done")
 
 
 # how well the model fits the training data.
@@ -371,6 +384,7 @@ clean_prob_names <- prob_names %>%
   janitor::make_clean_names()
 
 
+message("Creating model fit figures")
 
 # 2. PR Curve
 final_pr <- first_train_predictions %>%
