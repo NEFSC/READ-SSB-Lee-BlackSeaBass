@@ -16,7 +16,7 @@
 ###############################################################################  
 
 library("here")
-library(pander)
+library("pander")
 
 # load tidyverse and related
 library("tidyverse")
@@ -155,6 +155,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",gl
 set.seed(4587315)
 
 
+
 # trim out the extra factor levels from market_desc.
 estimation_dataset<-estimation_dataset %>%
   mutate(market_desc=fct_drop(market_desc))%>%
@@ -273,17 +274,23 @@ best_paramsA <- tune_res %>%
 
 best_paramsA
 
-final_spec <- tune_spec %>%
-  finalize_model(best_paramsA) %>%
+
+
+final_spec <- rand_forest(
+  trees = 500,
+  mtry = tune(),
+  min_n = tune(),
+) %>%
+  finalize_model(best_paramsA) %>% 
   set_engine("ranger",
-             num.threads = !!my.ranger.sequential.threads, 
-             na.action = "na.learn", 
-             respect.unordered.factors = "order",
-             importance = "impurity_corrected", # While I'd prefer permutation, that relies on OOB. Impurity corrected is better.  
-             oob.error = FALSE,          # Kept OFF 
-             keep.inbag = FALSE,         # Kept OFF to save memory
-             probability = TRUE, 
-             write.forest = TRUE)
+             num.threads=!!my.ranger.sequential.threads, 
+             na.action="na.learn", 
+             respect.unordered.factors="order",
+             importance="impurity_corrected", # default, but I don't need importance for tuning.
+             oob.error = FALSE, # not used.
+             keep.inbag=FALSE, # default, but explicit 
+             probability = TRUE, # set to a probability model
+             write.forest=TRUE) # default, but explicit
 
 
 
@@ -300,6 +307,19 @@ first_tilefish_model <-
   last_fit(data_split, metrics=class_and_probs_metrics)
 
 write_rds(first_tilefish_model, file=here("results","ranger",final_fit_file_name))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
