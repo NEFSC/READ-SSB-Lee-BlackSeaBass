@@ -5,7 +5,7 @@
 #   - camsid_specific_cleaned_
 #   - daily_ma
 #   - state_ma
-
+#   - sorted levels in a descending way, putting lg/med at the end.
 
 # Outputs:
 #   - estimation_dataset.Rds Ready for estimation
@@ -14,7 +14,6 @@
 ###############################################################################
 # Packages 
 ###############################################################################
-
 
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
@@ -322,6 +321,15 @@ combined_dataset<-combined_dataset %>%
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(starts_with("LagSharePounds"), is.na))
+
+
+
+
+combined_dataset <- combined_dataset %>%
+  mutate(market_desc = fct_relevel(market_desc, "Extra Large", "Large",
+                                   "Medium", "Small Kitten", "Extra Small",
+                                   "Large Medium", "Unclassified"))
+
 
 write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tilefish_original_combined_dataset{out_data_string}.Rds")))
 
