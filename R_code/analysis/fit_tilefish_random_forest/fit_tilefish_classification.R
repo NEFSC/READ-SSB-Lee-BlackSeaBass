@@ -114,11 +114,18 @@ lbs_per_mt<-2204.62
 
 # for reproducibility
 #############################################################################
-my_images<-here("images")
-descriptive_images<-here("images","descriptive")
-exploratory_images<-here("images","exploratory")
-# create a results directory just for tilefish
-dir.create(here("results","tilefish", showWarnings=FALSE))
+
+# create a results and images directory just for tilefish
+dir.create(here("results","tilefish"), showWarnings=FALSE)
+dir.create(here("images","tilefish"), showWarnings=FALSE)
+dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE))
+dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE))
+
+my_images<-here("images", "tilefish")
+descriptive_images<-here("images","tilefish", "descriptive")
+exploratory_images<-here("images","tilefish", "exploratory")
+
+
 vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_estimation_dataset*Rds"))
 vintage_string<-gsub("tilefish_estimation_dataset","",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
