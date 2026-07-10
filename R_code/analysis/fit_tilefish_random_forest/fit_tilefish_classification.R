@@ -118,8 +118,8 @@ lbs_per_mt<-2204.62
 # create a results and images directory just for tilefish
 dir.create(here("results","tilefish"), showWarnings=FALSE)
 dir.create(here("images","tilefish"), showWarnings=FALSE)
-dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE))
-dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE))
+dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE)
+dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE)
 
 my_images<-here("images", "tilefish")
 descriptive_images<-here("images","tilefish", "descriptive")
@@ -281,7 +281,7 @@ p<- plot_ly(tune_metrics,
             colorscale="Hot",
             reversescale=TRUE
 )
-saveWidget(p, here("results","ranger","tune",glue("tilefish_mn_log_loss_{tuning_vintage}.html")), selfcontained = TRUE)
+saveWidget(p, here("results","tilefish",glue("tilefish_tune_mn_log_loss_{tuning_vintage}.html")), selfcontained = TRUE)
 rm(p)
 
 
@@ -292,7 +292,7 @@ best_paramsA <- tune_res %>%
 
 best_paramsA
 
-
+# finalize model by picking the best model hyperparameters
 
 final_spec <- rand_forest(
   trees = 500,
@@ -300,22 +300,26 @@ final_spec <- rand_forest(
   min_n = tune(),
 ) %>%
   finalize_model(best_paramsA) %>% 
+  set_mode("classification") %>%
   set_engine("ranger",
              num.threads=!!my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
-             importance="impurity_corrected", # default, but I don't need importance for tuning.
+             importance="impurity", #
              oob.error = FALSE, # not used.
              keep.inbag=FALSE, # default, but explicit 
              probability = TRUE, # set to a probability model
              write.forest=TRUE) # default, but explicit
 
+final_wf <-
+  workflow() %>%
+  add_model(final_spec) %>% 
+  add_recipe(Tile.Classification.Recipe) 
 
 
 
-# finalize model by picking the best model hyperparameters
-final_wf  <-    tilefish.multi.tuning.Workflow %>%
-  update_model(final_spec)
+
+
 set.seed(132564)
 
 # Final model fitting on the full training dataset 
@@ -415,7 +419,7 @@ validation_data_preds <- augment(trained_wf, validation_data)
 cal_gg <- validation_data_preds %>% 
   cal_plot_windowed(
     truth          = market_desc, 
-    estimate       = c(`.pred_Extra Small`, `.pred_Small Kitten`, .pred_Medium, `.pred_Large Medium`, .pred_Large, `.pred_Extra Large`), 
+    estimate       = c(`.pred_Extra Small`, `.pred_Small Kitten`, .pred_Medium, .pred_Large, `.pred_Extra Large`), 
     step_size      = 0.025, 
     include_points = FALSE
   )
@@ -470,14 +474,13 @@ validation_clean <- validation_data_preds %>%
   drop_na(
     market_desc, 
     pred_extra_large, pred_extra_small, pred_large, 
-    pred_large_medium, pred_medium, pred_small_kitten
+    pred_medium, pred_small_kitten
   )
 
 cal_estimates <- c(
   "pred_extra_large", 
   "pred_extra_small", 
   "pred_large", 
-  "pred_large_medium", 
   "pred_medium", 
   "pred_small_kitten"
 )
@@ -600,7 +603,6 @@ exact_pred_cols <- c(
   "pred_extra_large", 
   "pred_extra_small", 
   "pred_large", 
-  "pred_large_medium", 
   "pred_medium", 
   "pred_small_kitten"
 )
@@ -701,7 +703,6 @@ rCalLoss<-100*CalLoss/ESPR_raw
 CalLoss
 rCalLoss
 
-}
 
 
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690

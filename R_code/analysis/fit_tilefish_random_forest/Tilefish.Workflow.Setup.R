@@ -103,13 +103,13 @@ if (search_type == "Initial") {
   
   finalized_params<-finalized_params %>%
     update(
-      mtry = mtry(range = c(5L, 35L)),   # override upper bound after finalization
+      mtry = mtry(range = c(1L, npredict)),   # override upper bound after finalization
       min_n=min_n(range = c(5L, 100))  # minimum points in a leaf node
     )
   
   rf_grid <- grid_space_filling(
     finalized_params,   
-    size = 24                    # number of grid points for initial exploration
+    size = 60                    # number of grid points for initial exploration
   )
 }
 

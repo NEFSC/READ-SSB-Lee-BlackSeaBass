@@ -28,10 +28,8 @@ Tile.Classification.Recipe <- Tile.Classification.Recipe %>%
       `OtherQ_Medium`, 
       `OtherQ_Small Kitten`,
       `OtherQ_Extra Small`,
-      `LagSharePoundsExtra Large`,   
-      `LagSharePoundsExtra Small`,  
+      `LagSharePoundsExtra Large`,
       LagSharePoundsLarge,          
-      `LagSharePoundsLarge/Medium`,       
       LagSharePoundsMedium,               
       `LagSharePoundsSmall Kitten`,      
       `LagSharePoundsExtra Small`, new_role = "predictor" )
