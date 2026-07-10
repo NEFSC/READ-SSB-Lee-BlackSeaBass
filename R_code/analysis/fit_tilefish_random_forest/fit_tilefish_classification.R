@@ -66,7 +66,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -390,24 +390,33 @@ clean_prob_names <- prob_names %>%
 
 message("Creating model fit figures")
 
-# 2. PR Curve
+# PR Curve
 final_pr <- first_train_predictions %>%
   pr_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
-print(final_pr)
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_pr_curve_{modeltype}_{tuning_vintage}.png")), 
+  plot = final_pr)
+
 
 # 3. ROC Curve
-final_roc <- first_train_predictions %>%
+train_roc <- first_train_predictions %>%
   roc_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
-print(final_roc)
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_roc_curvetrain_{modeltype}_{tuning_vintage}.png")), 
+  plot = train_roc)
 
 # 4.  Confusion Matrix
 final_cm <- first_train_predictions %>%
   conf_mat(truth = market_desc, estimate = .pred_class) %>%
   autoplot(type = "heatmap")
 
-print(final_cm)
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_confusion_matrix_{modeltype}_{tuning_vintage}.png")), 
+  plot = final_cm)
 
 
 # Validation Dataset
@@ -465,6 +474,18 @@ p_cal <- ggplot(cal_data,
     plot.margin      = margin(4, 6, 4, 4, "pt")
   )
 p_cal
+
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_p_cal_{modeltype}_{tuning_vintage}.png")), 
+  plot = p_cal)
+
+
+
+
+
+
+
 
 
 #Experiment with different methods of calibration.
@@ -573,6 +594,12 @@ iso_applied_window <- ggplot(cal_data,
 iso_applied_window
 
 
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_iso_calibration_{modeltype}_{tuning_vintage}.png")), 
+  plot = iso_applied_window)
+
+
+
 # Other calibrations
 
 #Multi
@@ -586,6 +613,12 @@ multi_applied_window <- cal_plot_windowed(
 
 multi_applied_window
 
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_multi_calibration_{modeltype}_{tuning_vintage}.png")), 
+  plot = multi_applied_window)
+
+
+
 
 beta_applied_window <- cal_plot_windowed(
   validation_data_betacalib_applied, 
@@ -597,6 +630,10 @@ beta_applied_window <- cal_plot_windowed(
 
 beta_applied_window
 
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_beta_calibration_{modeltype}_{tuning_vintage}.png")), 
+  plot = beta_applied_window)
 
 #BETA might look better- extra analysis
 exact_pred_cols <- c(
@@ -615,10 +652,14 @@ roc_data <- validation_data_betacalib_applied %>%
     all_of(exact_pred_cols)
   )
 
-roc_data %>% autoplot()
+roc_plot <- autoplot(roc_data)
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{modeltype}_{tuning_vintage}.png")), 
+  plot = roc_plot)
 
 
-# auc and roc
+# auc
 auc_data <- validation_data_betacalib_applied %>% 
   roc_auc(
     truth = market_desc, 
@@ -627,12 +668,6 @@ auc_data <- validation_data_betacalib_applied %>%
   )
 
 auc_data
-
-
-
-
-
-
 
 
 
@@ -666,10 +701,11 @@ p_facet <- ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) +
     plot.margin = margin(4, 6, 4, 4, "pt") 
   )
 
-# Print the plot
-print(p_facet)
+# save the plot
 
-
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("validation_facet_{modeltype}_{tuning_vintage}.png")), 
+  plot = p_facet)
 
 
 
@@ -697,14 +733,16 @@ ESPR_caliso
 ESPR_calbeta
 ESPR_calmulti
 
-CalLoss<-ESPR_raw-ESPR_caliso
-rCalLoss<-100*CalLoss/ESPR_raw
+CalLoss <- ESPR_raw - ESPR_calbeta
+rCalLoss <- 100 * CalLoss / ESPR_raw
+
 
 CalLoss
 rCalLoss
 
 }
 
+# Beta boosted model probabilty accuracy by 3.78%. Other calibrations were not very good.
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
 
 # training workflow into testing data, does it look good with random forest and probabilities.
@@ -719,9 +757,6 @@ test_data_calibration_applied <- test_data_preds_clean %>%
 
 
 
-
-
-
 calibrated <- cal_plot_windowed(
   test_data_calibration_applied,
   truth = market_desc,
@@ -730,8 +765,13 @@ calibrated <- cal_plot_windowed(
   include_points = FALSE
 )
 
-
 calibrated
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("calibration_applied_{modeltype}_{tuning_vintage}.png")), 
+  plot = calibrated)
+
+
 
 cal_data <- calibrated$data
 
@@ -770,10 +810,10 @@ p_cal_test_beta <- ggplot(cal_data, aes(x = predicted_midpoint, y = event_rate))
     plot.margin = margin(4, 6, 4, 4, "pt")
   )
 
-# Display
-print(p_cal_test_beta)
-
-
+#save
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_facet_{modeltype}_{tuning_vintage}.png")), 
+  plot = p_cal_test_beta)
 
 #publication ready curves on uncalibrated
 
@@ -827,10 +867,10 @@ p_uncal <- ggplot(uncal_data, aes(x = predicted_midpoint, y = event_rate)) +
     plot.margin = margin(4, 6, 4, 4, "pt")
   )
 
-# Explicitly print the plot to your active viewer session
-print(p_uncal)
-
-
+# save
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_pubready_facet_{modeltype}_{tuning_vintage}.png")), 
+  plot = p_uncal)
 
 
 
@@ -842,7 +882,13 @@ roc_dataUW <- test_data_calibration_applied %>%
     truth = market_desc, 
     all_of(exact_pred_cols)
   )
-roc_dataUW %>% autoplot()
+
+roc_plot2 <- autoplot(roc_dataUW)
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot{modeltype}_{tuning_vintage}.png")), 
+  plot = roc_plot2)
+
 
 
 # Area Under the ROC Curve (AUC) # does it mean it does a good job guessing? 
@@ -854,9 +900,7 @@ auc_data <- test_data_calibration_applied %>%
   )
 auc_data
 
-# 0.959 was the given value
-
-
+# 0.960 was the given value
 
 # Level names match the exact string names inside the .level column of roc_dataUW
 
@@ -891,9 +935,11 @@ p_facetUW <- ggplot(roc_dataUW, aes(x = 1 - specificity, y = sensitivity)) +
     plot.margin = margin(4, 6, 4, 4, "pt") 
   )
 
-# Explicitly print the ROC graphic to your viewing window
-print(p_facetUW)
+#SAVE
 
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_facet_ROC_{modeltype}_{tuning_vintage}.png")), 
+  plot = p_facetUW)
 
 # calibration gains
 ESPR_raw <- test_data_preds_clean %>% 
@@ -913,23 +959,8 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 # beta  calibration improves model fit a bit.
 CalLoss
 rCalLoss
-# raw model scored 0.6138704 and calibrated went down to 0.5619904
-# rCalLoss 8.45% improvement
-
-
-
-
-# Need to work on this more, I have the machine confused with the different names .pred vs pred and lower case letters
-# I predict out of sample on my 'test' dataset with the calibration applied- I can't figure it out yet--- true vs predictions on (transactions,lndlb, % errors)
-
-
-
-
-
-
-
-
-
+# raw model scored 0.0170562 and calibrated went down to 0.5619904
+# rCalLoss 3.33% improvement
 
 
 # mapping nespp4 codes, 2007 and 2015
@@ -1042,7 +1073,8 @@ combined_data <- bind_rows(
   fifteen %>% mutate(YEAR = "Fifteen"))
 
 # plot
-combined_data %>% 
+
+combinedplot <- combined_data %>% 
   mutate(NESPP4 = if_else(NESPP4 == 4464, 4463, NESPP4)) %>% 
   left_join(key, by = "NESPP4") %>% 
   ggplot(aes(x = LENGTH, fill = MARKET_DESC, weight = NUMLEN)) + 
@@ -1051,6 +1083,18 @@ combined_data %>%
   labs(y = "Number of Specimens") + 
   facet_grid(YEAR ~ MARKET_DESC)
 
+# Save the plot 
+ggsave(
+  filename = here("images", "tilefish", "exploratory", 
+                  glue("2007vs2015_lengths_plot_{modeltype}_{tuning_vintage}.png")), 
+  plot = combinedplot,
+  width = 12,
+  height = 8,
+  dpi = 300
+)
+
+
+message("Successfully ran")
 
 
 
