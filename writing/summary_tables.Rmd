@@ -1,0 +1,536 @@
+---
+title: 'Economic Informed Stock Assessments: Using Prices to Understand the Length of Fish'
+authors:
+  - name: Min-Yang Lee
+keywords: 
+  - Hedonic Prices
+  - Age structure
+  -  Stock assessment
+bibliography: "PricesInStockAssessment.bib"
+link-citations: yes
+header-includes:
+- \usepackage{float}
+- \usepackage{pdflscape}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{makecell}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+output:
+  bookdown::pdf_book:
+    base_format: rticles::oup_article
+    keep_tex: yes
+    toc: False
+    fig_caption: yes
+    pandoc_args: [ "--csl", "ices-journal-of-marine-science.csl" ]
+
+
+---
+
+
+```{r global_options, include=FALSE}
+
+library("foreign")
+library("here")
+library("tidyverse")
+library("tidymodels")
+library("scales")
+library("knitr")
+library("lubridate")
+library("kableExtra")
+library("haven")
+library("mapview")
+library("sf")
+library("htmltools")
+here::i_am("writing/Economic_informed_stock_assessments.Rmd")
+# pak::pak("adletaw/captioner")
+library("captioner")
+library("glue")
+fig_nums <- captioner(prefix= "Figure")
+
+#############################################################################
+#knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+#knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+#											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+#############################################################################
+my_images<-here("images")
+
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+# Read in statistical areas
+stat_areas_location<-here("data_folder","external","shapefiles","Statistical_Areas_2010.shp")
+stat_areas <- st_read(dsn = stat_areas_location)
+
+#trim out some stat areas that I don't care about.
+stat_areas<-stat_areas %>%
+  dplyr::filter(Id>=460) %>% # Canada
+   dplyr::filter(Id<=711) %>% # SERO
+  dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
+
+
+options(scipen=0)
+lbs_per_kg<-2.20462
+lbs_per_mt<-lbs_per_kg*1000
+
+imagefolder<-here("images")
+finalfit_vintage<-"2026-03-16"
+
+data_vintage_string<-finalfit_vintage
+pred_vintage<-finalfit_vintage
+
+# this was created with data_prep_ml.Rmd
+data_split<-readr::read_rds(file=here("results","ranger",glue("nocluster_data_split{pred_vintage}.Rds")))
+
+train_data <- training(data_split)
+test_data <- testing(data_split)
+validation_data <- validation(data_split)
+
+```
+
+<!---
+MA7_StockareaQJumbo  
+MA7_StockareaQLarge  
+MA7_StockareaQMedium 
+MA7_StockareaQSmall  
+MA7_StateQJumbo      
+MA7_StateQLarge      
+MA7_StateQMedium     
+MA7_StateQSmall      
+MA7_gearQJumbo       
+MA7_gearQLarge       
+MA7_gearQMedium      
+MA7_gearQSmall       
+MA7_stockarea_trips  
+MA7_state_trips      
+--->
+
+
+```{r setup-tables, include=FALSE}
+
+vars_to_rescale <- c("priceR_CPI",
+                     "lndlb",
+                     "trip_level_BSB",
+                     "StateOtherQJumbo",     
+                     "StateOtherQLarge",    
+                     "StateOtherQMedium",   
+                     "StateOtherQSmall",  
+                     "StockareaOtherQJumbo", 
+                     "StockareaOtherQLarge",
+                     "StockareaOtherQMedium",
+                     "StockareaOtherQSmall",
+                     "MA7_StockareaQJumbo",
+                     "MA7_StockareaQLarge",  
+                     "MA7_StockareaQMedium", 
+                     "MA7_StockareaQSmall",
+                     "MA7_StateQJumbo",      
+                     "MA7_StateQLarge",      
+                     "MA7_StateQMedium",     
+                     "MA7_StateQSmall",      
+                     "MA7_gearQJumbo",      
+                     "MA7_gearQLarge",       
+                     "MA7_gearQMedium",      
+                     "MA7_gearQSmall")      
+
+
+
+estimation_dataset<-rbind(test_data, train_data, validation_data)
+
+#remove the hardhat fweight declaration and add a noweights=1 columnn to make it easier to generate the unweighted columns.
+estimation_dataset<-estimation_dataset %>%
+  mutate(
+    weighting = as.numeric(weighting),
+    noweights=1)
+
+estimation_dataset<-estimation_dataset %>%
+  mutate(
+    across(
+      all_of(vars_to_rescale),
+      ~ .x / lbs_per_kg,
+      .names = "{.col}_kg"
+    )
+  )
+
+# --- Weighted SD (frequency weights, Bessel-corrected) ---
+weighted_sd <- function(x, w) {
+  valid <- complete.cases(x, w)
+  x <- x[valid]
+  w <- w[valid]
+  xbar <- weighted.mean(x, w)
+  sqrt(sum(w * (x - xbar)^2) / (sum(w) - 1))
+}
+
+# --- Variable definitions ---
+cont_vars <- list(
+  priceR_CPI_kg = "Real Price per kg(Real 2023 USD)",
+  lndlb_kg        = "Transaction Size (kg)",
+  trip_level_BSB_kg = "Trip landings of Black Sea Bass (kg)",
+  Price_Diff_J  = "Price Difference Relative to Jumbo",
+  Price_Diff_L  = "Price Difference Relative to Large",
+  Price_Diff_M  = "Price Difference Relative to Medium",
+  LagSharePoundsJumbo  = "Dealer Propensity to purchase Jumbo ", 
+  LagSharePoundsLarge  = "Dealer Propensity to purchase Large", 
+  LagSharePoundsMedium = "Dealer Propensity to purchase Medium", 
+  LagSharePoundsSmall  = "Dealer Propensity to purchase Small"  
+  )
+
+cont_vars2<-list(
+  StateOtherQJumbo_kg  ="Daily Landings in the state of Jumbo",    
+  StateOtherQLarge_kg  ="Daily Landings in the state of Large",      
+  StateOtherQMedium_kg  ="Daily Landings in the state of Medium",      
+  StateOtherQSmall_kg   ="Daily Landings in the state of Small",    
+  StockareaOtherQJumbo_kg ="Daily Landings from the stockarea of Jumbo",   
+  StockareaOtherQLarge_kg  ="Daily Landings from the stockarea of Large",   
+  StockareaOtherQMedium_kg  ="Daily Landings from the stockarea of Medium",   
+  StockareaOtherQSmall_kg ="Daily Landings from the stockarea of Small",
+  MA7_StateQJumbo_kg  ="Landings in the state of Jumbo (7 day average)",    
+  MA7_StateQLarge_kg  ="Landings in the state of Large (7 day average)",      
+  MA7_StateQMedium_kg  ="Landings in the state of Medium (7 day average)",      
+  MA7_StateQSmall_kg   ="Landings in the state of Small (7 day average)",    
+  MA7_StockareaQJumbo_kg ="Landings from the stockarea of Jumbo (7 day average)",   
+  MA7_StockareaQLarge_kg  ="Landings from the stockarea of Large (7 day average)",   
+  MA7_StockareaQMedium_kg  ="Landings from the stockarea of Medium (7 day average)",   
+  MA7_StockareaQSmall_kg ="Landings from the stockarea of Small (7 day average)",   
+  MA7_gearQJumbo_kg ="Landings by the same gear of Jumbo (7 day average)",   
+  MA7_gearQLarge_kg  ="Landings by the same gear of Large (7 day average)",   
+  MA7_gearQMedium_kg  ="Landings by the same gear of Medium (7 day average)",   
+  MA7_gearQSmall_kg ="Landings by the same gear of Small (7 day average)",   
+  MA7_stockarea_trips  ="Trips to the stockarea (7 day average)",
+  MA7_state_trips      ="Trips landing in state (7 day average)"
+  )
+
+cat_vars_time_geo <- list(
+  month = "Month",
+  year  = "Year",
+  state = "State"
+)
+
+cat_vars_method <- list(
+  mygear      = "Gear",
+  stockarea   = "Stock Area",
+  grade_desc  = "Grade",
+  catch_share = "Management System",          
+  shore       = "Caught from Shore",         
+  stateonlyF   = "Only State Permitted",
+  semester    = "Semester",
+  stockarea   = "Stock Area"
+)
+
+# --- Market description level order; month labels ---
+
+mkt_levels <- c("Jumbo", "Large", "Medium", "Small")
+month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+estimation_dataset <- estimation_dataset %>%
+  mutate(
+    market_desc = factor(market_desc, levels = mkt_levels),
+    month       = factor(month_labels[month], levels = month_labels),
+    shoreF      = factor(shore, levels = c(0, 1), labels = c("No", "Yes")),
+    stateonlyF  = factor(nofederal, levels = c(0, 1), labels = c("No", "Yes"))
+
+  )
+```
+
+\newpage
+
+```{r tbl-cont-A, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# --- Continuous variable table ---
+
+compute_cont_group <- function(data, var, wt) {
+  data %>%
+    group_by(market_desc) %>%
+    summarise(
+      mean_val = weighted.mean(.data[[var]], .data[[wt]], na.rm = TRUE),
+      sd_val   = weighted_sd(.data[[var]], .data[[wt]]),
+      .groups  = "drop"
+    ) %>%
+    mutate(cell = sprintf("\\makecell{%.2f \\\\ (%.2f)}", mean_val, sd_val))
+}
+
+compute_cont_total <- function(data, var, wt) {
+  m <- weighted.mean(data[[var]], data[[wt]], na.rm = TRUE)
+  s <- weighted_sd(data[[var]], data[[wt]])
+  sprintf("\\makecell{%.2f \\\\ (%.2f)}", m, s)
+}
+
+cont_rows <- lapply(names(cont_vars), function(v) {
+  grp <- compute_cont_group(estimation_dataset, v, "weighting")
+  tot <- compute_cont_total(estimation_dataset, v, "weighting")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+Weighted_cont_table <- bind_rows(cont_rows)
+Weighted_cont_table_notot <- Weighted_cont_table %>%
+  select(-Total)
+
+
+
+################################################################################
+# UNWEIGHTED TABLE
+cont_rowsUW <- lapply(names(cont_vars), function(v) {
+  grp <- compute_cont_group(estimation_dataset, v, "noweights")
+  tot <- compute_cont_total(estimation_dataset, v, "noweights")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+UnWeighted_cont_table <- bind_rows(cont_rowsUW)
+UnWeighted_cont_table_notot <- UnWeighted_cont_table %>%
+  select(-Total)
+#This will be printed in the appendix
+################################################################################
+
+```
+
+
+
+
+```{r print-tbl-cont-weightedA, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+knitr::kable(
+  Weighted_cont_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  escape   = FALSE,
+  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
+  align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Market Category" = 4),
+    bold = TRUE
+  ) 
+
+```
+
+
+
+
+\newpage
+
+```{r build-tbl-contB, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# --- Continuous variable table ---
+
+cont_rows2 <- lapply(names(cont_vars2), function(v) {
+  grp <- compute_cont_group(estimation_dataset, v, "weighting")
+  tot <- compute_cont_total(estimation_dataset, v, "weighting")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars2[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+Weighted_cont_table2 <- bind_rows(cont_rows2)
+Weighted_cont_table2_notot <- Weighted_cont_table2 %>%
+  select(-Total)
+
+
+################################################################################
+# UNWEIGHTED TABLE
+cont_row2sUW <- lapply(names(cont_vars2), function(v) {
+  grp <- compute_cont_group(estimation_dataset, v, "noweights")
+  tot <- compute_cont_total(estimation_dataset, v, "noweights")
+
+  grp %>%
+    select(market_desc, cell) %>%
+    pivot_wider(names_from = market_desc, values_from = cell) %>%
+    mutate(Variable = cont_vars2[[v]], Total = tot) %>%
+    select(Variable, all_of(mkt_levels), Total)
+})
+
+UnWeighted_cont_table2 <- bind_rows(cont_row2sUW)
+UnWeighted_cont_table2_notot <- UnWeighted_cont_table2 %>%
+  select(-Total)
+#This will be printed in the appendix
+################################################################################
+
+```
+
+
+
+
+```{r print-tbl-cont-weightedB, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+
+
+knitr::kable(
+  Weighted_cont_table2_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  escape   = FALSE,
+  caption  = "Summary statistics AAA (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
+  align    = c("l", rep("c", ncol(Weighted_cont_table2_notot) - 1)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 1, "Market Category" = 4),
+    bold = TRUE
+  ) 
+
+```
+
+
+
+
+
+
+That is amazing.I'm adding some text here too!
+\newpage
+
+
+```{r build-tbl-cat-time, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# --- Categorical table 1: Month and Year ---
+
+compute_cat_group <- function(data, var, wt) {
+  data %>%
+    group_by(market_desc, .data[[var]]) %>%
+    summarise(w = sum(.data[[wt]], na.rm = TRUE), .groups = "drop") %>%
+    group_by(market_desc) %>%
+    mutate(pct = sprintf("%.1f", 100 * w / sum(w))) %>%
+    ungroup() %>%
+    select(market_desc, level = all_of(var), pct)
+}
+
+compute_cat_total <- function(data, var, wt) {
+  data %>%
+    group_by(.data[[var]]) %>%
+    summarise(w = sum(.data[[wt]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(pct = sprintf("%.1f", 100 * w / sum(w))) %>%
+    rename(level = all_of(var)) %>%
+    select(level, pct)
+}
+
+build_cat_table <- function(data, var_list, wt) {
+  rows <- lapply(names(var_list), function(v) {
+    grp <- compute_cat_group(data, v, wt)
+    tot <- compute_cat_total(data, v, wt)
+
+    wide <- grp %>%
+      pivot_wider(names_from = market_desc, values_from = pct) %>%
+      left_join(tot %>% rename(Total = pct), by = "level") %>%
+      mutate(
+        level    = as.character(level),
+        Variable = ifelse(row_number() == 1, var_list[[v]], ""),
+        level    = paste0("\\quad ", level)
+      ) %>%
+      select(Variable, Level = level, all_of(mkt_levels), Total)
+
+    wide
+  })
+  bind_rows(rows)
+}
+
+cat_vars_time_geo_table <- build_cat_table(estimation_dataset, cat_vars_time_geo, "weighting")
+cat_vars_time_geo_table_notot <-cat_vars_time_geo_table %>%
+  select(-Total)
+
+################################################################################
+# UNWEIGHTED TABLE
+UWcat_vars_time_geo_table <- build_cat_table(estimation_dataset, cat_vars_time_geo, "noweights")
+UWcat_vars_time_geo_table_notot <-UWcat_vars_time_geo_table %>%
+  select(-Total)
+
+#This will be printed in the appendix
+################################################################################
+```
+
+
+
+```{r print-tbl-cat-time, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+
+knitr::kable(
+  cat_vars_time_geo_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  longtable=FALSE,
+  escape   = FALSE,
+  caption  = "Percentage distribution of year, month, and state of landing variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total landings.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  align    = c("l", "l", rep("c", ncol(cat_vars_time_geo_table_notot) - 2)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width    = FALSE, # required to avoid tabu breakage
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 2, "Market Category" = 4),
+    bold = TRUE
+  )
+```
+
+
+That is amazing.I'm adding some text ehre, somthing 
+\newpage
+
+```{r build-tbl-cat-geo, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+# --- Categorical table 2: State and Stock Area ---
+
+cat_method_table <- build_cat_table(estimation_dataset, cat_vars_method, "weighting")
+cat_method_table_notot <-cat_method_table %>%
+  select(-Total)
+
+################################################################################
+# UNWEIGHTED TABLE
+UWcat_method_table <- build_cat_table(estimation_dataset, cat_vars_method, "noweights")
+UWcat_method_table_notot <-UWcat_method_table %>%
+  select(-Total)
+
+#This will be printed in the appendix
+################################################################################
+```
+
+
+
+```{r print-tbl-cat-geo, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+knitr::kable(
+  cat_method_table_notot,
+  format   = "latex",
+  booktabs = TRUE,
+  longtable=FALSE,
+  escape   = FALSE,
+  caption  = "Percentage distribution of production variables by market description. Transactions are frequency weighted by landed pounds therefore the figures can be interpreted as the percentage of total.  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  align    = c("l", "l", rep("c", ncol(cat_method_table_notot) - 2)),
+  linesep  = ""
+) %>%
+  kable_styling(
+    latex_options = c("hold_position"),
+    full_width    = FALSE,
+    font_size     = 9
+  ) %>%
+  add_header_above(
+    c(" " = 2, "Market Description" = 4),
+    bold = TRUE
+  )
+```
