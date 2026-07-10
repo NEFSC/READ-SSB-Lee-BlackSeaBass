@@ -1,0 +1,1 @@
+this is a place to put data for stock assessment models. You might also prefer to put it in the intermediate folder.
