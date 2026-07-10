@@ -66,7 +66,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Prototype"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -703,7 +703,7 @@ rCalLoss<-100*CalLoss/ESPR_raw
 CalLoss
 rCalLoss
 
-
+}
 
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
 
