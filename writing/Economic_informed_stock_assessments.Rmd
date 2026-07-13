@@ -46,12 +46,14 @@ Data processing was ported to R and handled with
 
 R_code/data_extraction_processing/processing/commercial\00_commercial_processing_wrapper.R
 
+I've tried to put the entire pipelein into "R_code/analysis/batch_RF_run.sh"
+
 The RF model was tuned with tune_random_forest_nocluster.R
 The RF model was trained with tune_random_forest_nocluster.R
 Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
 
-The model is calibrated with "calibration and validation.Rmd" (unweighted and not used) and 
-weighted_calibration.R (weighted calibration)
+The model is calibrated with "writing/calibration and validation.Rmd" (unweighted and not used) and 
+"/R_code/analysis/weighted_calibration.R" (weighted calibration)
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
