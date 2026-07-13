@@ -370,8 +370,8 @@ ESPR_W_multi<-validation_data_Weighted_multicalib_applied %>%
       case_weights = weighting) %>%
   pull(.estimate)
 
-message("Brier score, uncalibrated:  ", ESPR_Wraw)
-message("Brier score, calibrated:  ", ESPR_W_multi)
+message("Validation Set Brier score, uncalibrated:  ", ESPR_Wraw)
+message("Validation Set Brier score, calibrated:  ", ESPR_W_multi)
 
 
 CalLoss<-ESPR_Wraw-ESPR_W_multi
@@ -379,7 +379,6 @@ rCalLoss<-100*CalLoss/ESPR_Wraw
 
 message("Relative, change (%):  ", round(rCalLoss, 2))
 
-rCalLoss
 rm(ESPR_Wraw, ESPR_W_multi, CalLoss, rCalLoss)
 
 # Windowed calibration plot on the calibrated validation predictions, for
@@ -458,6 +457,10 @@ ggsave(
   device = cairo_pdf
 )
 
+message("Finished creating weighted calibration plot")
+
+
+message("Final predictions on test set")
 
 # Predict out-of-sample on the final test holdout.
 # Same predict_byhand / modal-class extraction / bind-back pattern as validation.
@@ -524,6 +527,7 @@ calibrated
 cal_data <- calibrated$data
 
 
+message("Plotting results of test set  with calibration")
 
 # --- 2. Build publication-ready faceted calibration plot ---
 # Calibrated test predictions. Same theme/formatting as validation plot above.
@@ -576,6 +580,7 @@ ggsave(
 
 
 
+message("Plotting results of test set  without calibration")
 
 # Pub Ready Calibration
 # Extract data from the ggplot internals
@@ -634,6 +639,7 @@ ggsave(
 
 
 
+message("Computing Brier on the test set")
 
 # Brier score comparison on the test holdout: raw vs. calibrated predictions.
 # CalLoss = absolute reduction in Brier score; rCalLoss = relative reduction (%).
@@ -649,8 +655,6 @@ ESPR_cal<-test_data_calibration_applied %>%
           case_weights = weighting) %>%
   pull(.estimate)
 
-ESPR_raw
-ESPR_cal
 
 CalLoss<-ESPR_raw-ESPR_cal
 rCalLoss<-100*CalLoss/ESPR_raw
@@ -658,6 +662,15 @@ rCalLoss<-100*CalLoss/ESPR_raw
 #this shows how much the calibration improve the brier score.
 CalLoss
 rCalLoss
+
+message("Test Set Brier score, uncalibrated:  ", ESPR_Wraw)
+message("Test Set Brier score, calibrated:  ", ESPR_cal)
+
+message("Relative, change (%):  ", round(rCalLoss, 2))
+
+
+message("Aggregating Predictions from the test set")
+
 
 ##################PREDICT ####################################
 ##################PREDICT ####################################
@@ -799,10 +812,10 @@ write_rds(nocal_predictions, file=here("results","ranger",glue("aggregate_nocal_
 
 
 
-
+# not run 
 run_this<-0
 if (run_this==1){
-  
+
   # weighted multinomial calibration
   # Fit a smooth multinomial calibration model on the 25% uncounted validation
   # subsample (uv2). cal_estimate_multinomial jointly recalibrates probabilities
