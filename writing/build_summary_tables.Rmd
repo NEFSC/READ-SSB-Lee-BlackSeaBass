@@ -12,14 +12,24 @@ estimation_dataset <- bind_rows(
   validation(data_split) %>% mutate(partition = "validation"),
   testing(data_split)    %>% mutate(partition = "test")
 )
+estimation_dataset<-estimation_dataset %>%
+  mutate(weighting = as.integer(lndlb))
 
-oos<-oos_data %>%
-  mutate(weighting = frequency_weights(weighting))
+
+oos<-oos_data  %>%
+  mutate(weighting = as.integer(lndlb))
 
 estimation_dataset<-bind_rows(
   estimation_dataset,
   oos
 )
+
+# cleanup rare UNC states and UNC grades
+estimation_dataset<-estimation_dataset %>%
+  filter(!is.na(grade_desc)) %>%
+  filter(!state %in% c("CN","ME","SC"))%>%
+  mutate(state=fct_drop(state))
+
 vars_to_rescale <- c("lndlb",
                      "trip_level_BSB",
                      "StateOtherQJumbo",     
