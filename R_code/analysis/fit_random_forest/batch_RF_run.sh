@@ -38,12 +38,12 @@ set -o pipefail
 Rscript -e "rmarkdown::render('writing/predictions_heatmap.Rmd', output_format='html_document')"
 
 
-# tuning_diagnostics heatmap
+# tuning_diagnostics (Fold-level ROC curves)
 Rscript -e "rmarkdown::render('writing/tuning_diagnostics.Rmd', output_format='html_document')"
 
 # out_of_sample_predictions
 Rscript -e "rmarkdown::render('writing/out_of_sample_predictions.Rmd', output_format='html_document')"
-# ROC curves on the training set and testing set
+# ROC curves from the Trained model, computed on the training set and testing set
 Rscript --no-save --no-restore --verbose \
    ./R_code/analysis/fit_random_forest/plot_ROC_curves.R \
   2>&1 | stdbuf -oL -eL tee ./R_code/analysis/fit_random_forest/plot_ROC_curves.log
