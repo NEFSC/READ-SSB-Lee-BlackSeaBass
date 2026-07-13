@@ -55,7 +55,7 @@ weighted_calibration.R (weighted calibration)
 
 
 Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
-* tuning_diagnostics.Rmd makes ROC curves for the best tuned model and final model
+* tuning_diagnostics.Rmd makes fold-level ROC curves for the best tuned model and final model
 * figures are made with
 * figure1 
 * figure2 (windows only)
@@ -127,9 +127,9 @@ lbs_per_kg<-2.20462
 lbs_per_mt<-lbs_per_kg*1000
 
 imagefolder<-here("images")
-finalfit_vintage<-"2026-03-16"
+finalfit_vintage<-"2026-06-15"
 
-data_vintage_string<-finalfit_vintage
+data_vintage_string<-"2026-05-28"
 pred_vintage<-finalfit_vintage
 
 
@@ -166,10 +166,6 @@ ambitious_aggregate_oos_predictions<-readRDS(here("data_folder","predictions",pa
 
 # Introduction
 
-<!--- Include the next 2 child documents.   --->
-```{r, child=here("writing", c("summary.Rmd")),  eval=FALSE}
-```
-
 From 2014-2024, no fish in the Unclassified market category of Black Sea Bass (*Centropristis striata*) landed from the south subunit were  measured by portside biosamplers in the Northeast United States.  From 2020-2024, no Unclassified fish in the north region were measured either.  This left a gap in the data necessary to  to construct the age-structure of commercial landings, itself a crucial input to the quantitative stock assessments in the Northeast United States. The stock assessment enterprise in the Northeast U.S. has a series of business  rules for handling gaps that arise when certain market categories are not sampled or under-sampled. In this article, we describe an approach that harnesses the information contained in the price of fish to fill this data gap.  The intuition is straightforward: when the demand for  fish depends on individual body size, the equilibrium market price provides a signal about individual fish size.  
 
 In the Northeast US, commercial fishing vessels catch fish and sell their landed fish to dealers. The catch is sorted
@@ -179,10 +175,6 @@ Otoliths are collected and aged from a subset of measured fish. For black sea ba
 As part of our exploratory data analysis, we estimate a hedonic model to confirm that prices vary by market category. We tune, train, and validate a random forest model that classifies sales transactions into one of the four primary market categories. Our ultimate goal is to improve the stock assessment enterprise by including more information about the true size of un-measured "Unclassified" fish. This requires  predictions of the Unclassified fish to be aggregated to the year-stock unit level and the accuracy of an individual prediction is of no interest.  We use the model to predict out-of-sample on Unclassified fish and compare the resulting price-informed age structure to the baseline age-structure constructed using methods identical to the most recent stock assessment.
 
 # Background
-
-<!--- Include the next 2 child documents.   --->
-```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=FALSE}
-```
 
 ## Catching, Classifying, and Selling  Fish
 
@@ -310,7 +302,6 @@ Our observational units are these allocated sales transactions.  In the explorat
 Because our observations are properly viewed as repeated observations of pounds, we can simply expand our data, producing a large dataset with "pounds landed" copies of each row.  During the stages when we split data and create folds, we ensure that each original observation is placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 40M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data. 
 
 
-# 
 
 Economic theory described in the theoretical model and on-the-ground subject-matter expertise (the black sea bass stock assessment and commercial fishery) guide explanatory factors, factor engineering, selection of data, and validation procedures [@Mullainathan2017]. The dependent variable is the market category. Machine learning algorithms can often benefit from preprocessing data and factor engineering. Missing values for predictors are handled by splitting the data as if they didn't exist, assigning the observations with missing values to each nodes, and selecting the node that has the greatest decrease in impurity.  We treat factors variables as "unordered" and follow the implementation method described in @Hastie2009.  Unlike many other machine learning models, Random Forest models are scale invariant; explanatory factors do not need to be centered at zero or scaled to have similar variances. 
 
@@ -651,7 +642,7 @@ knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color
 ```
 ```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning"}
 # need to rebuild
-knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nocluster{pred_vintage}.pdf")))
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_selected_nocluster{pred_vintage}.pdf")))
 ```
 
 ```{r vip,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
@@ -662,13 +653,13 @@ knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred
 
 ```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
 #updated July 2
-knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_testing_nocluster{pred_vintage}.pdf"),glue("cal_Wmultinom_testingnocluster{pred_vintage}.pdf") ) ) )
+knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_testingnocluster{pred_vintage}.pdf"),glue("cal_Wmultinom_testingnocluster{pred_vintage}.pdf") ) ) )
 ```
 
 
 ```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership on the test set. Probabilty calibration does not change the ROC curve"}
-# need to rebuild
-knitr::include_graphics(here("results","ranger","final", glue("testing_calibrated_roc_curvenocluster{pred_vintage}.pdf")))
+# Updated july 13
+knitr::include_graphics(here("results","ranger","tune", glue("roc_testing_dataset_nocluster{pred_vintage}.pdf")))
 ```
 <!---This is slightly different than the standard method in which observations are assigned to the class with the highest probability.  --->
 ```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
@@ -700,15 +691,14 @@ knitr::include_graphics(here("results", "ranger", "final",
 
 ## Additional Model fit and diagnostics{-}
 
-### Pre-calibration ROC curve{-}
+###  ROC curve from Tuning {-}
 
-```{r rocFinal,echo=FALSE,out.width="70%",fig.show='p', fig.align='center',fig.cap="ROC Curves for thee final model with calibration."}
-# Need to rebuild 
+We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. This figure illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
 
-knitr::include_graphics(here("results","ranger","final", glue("validation_nocal_roc_curvenocluster{pred_vintage}.pdf")))
+```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning, optimal but not selected hyperparameters"}
+# Updated July 13
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nonselected_nocluster{pred_vintage}.pdf")))
 ```
-
-The pre-calibration ROC curve is similar to the individual tuning curves (Figure  \@ref(fig:rocFinal)), suggesting that the tuning stage did not overfit the model.
 
 
 ### Pre-calibration confusion matrix and aggregate predictions{-}
