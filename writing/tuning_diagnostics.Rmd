@@ -26,13 +26,9 @@ params:
 
 # Summary and Housekeeping
 
-
- My "final fit" bombed out because I didn't have drive space.  This is code to
- 
 1. Read in the tune result and eyeball them.
-2. Pick the best set of tuning parameters.
-3. Fit a final model. 
-4. make some figures that characterize the hyperparamter tuning process.
+2. I didn't use the 'best' set of tuning params, but the 2nd best. 
+3. make some figures that characterize the hyperparamter tuning process.
 
 
 
@@ -129,7 +125,7 @@ if (runClass %in% c('Local', 'Windows')){
 }
 my.ranger.threads<-7
 
-here::i_am("writing/final_fit.Rmd")
+here::i_am("writing/tuning_diagnostics.Rmd")
 
 source(here("R_code","analysis","helpers","modeltype_patterns.R"))
 source(here("R_code","analysis","helpers","predict_byhand.R"))
@@ -275,6 +271,7 @@ roc_data<-trained_predictions %>%
   group_by(id) %>%
   roc_curve(truth=market_desc, 
             any_of(prob_names)
+  )
 
 # --- 3. Colour palette — four classes ---
 class_colours <- c(
@@ -344,14 +341,6 @@ roc_mean_best_config <- roc_data_best_config %>%
   group_by(.level, specificity) %>%
   summarise(sensitivity = mean(sensitivity), .groups = "drop")
 
-
-# --- 3. Colour palette — four classes ---
-class_colours <- c(
-  "Jumbo"  = "#1B6CA8",   # deep blue
-  "Large"  = "#E05C2A",   # burnt orange
-  "Medium" = "#2E8B57",   # sea green
-  "Small"  = "#7B3F9E"    # purple
-)
 
 # --- 4. Build the figures ---
 p_facet <- ggplot(roc_data_best_config,
