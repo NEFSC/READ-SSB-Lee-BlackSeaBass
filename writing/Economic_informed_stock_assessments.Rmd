@@ -681,12 +681,10 @@ knitr::include_graphics(here("results", "ranger", "final",
 
 # Appendix{-}
 
-```
-{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
+```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
 
-```
-{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
+```{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
 ```
 
 
@@ -830,7 +828,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 
 In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref(fig:ambitious-out-of-sample-preds) predicts for all observations, *including* from dealers that exhibit little variation in prices.
 
-```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a" }
+```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a prediction." }
 #verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
