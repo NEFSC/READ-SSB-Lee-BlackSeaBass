@@ -697,7 +697,7 @@ knitr::include_graphics(here("results", "ranger", "final",
 
 We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. This figure illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
 
-```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning, optimal but not selected hyperparameters"}
+```{r rocTuneNotSelected,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning, optimal but not selected hyperparameters"}
 # Updated July 13
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nonselected_nocluster{pred_vintage}.pdf")))
 ```
