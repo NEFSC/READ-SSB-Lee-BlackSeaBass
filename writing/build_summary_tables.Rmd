@@ -16,6 +16,12 @@ estimation_dataset<-estimation_dataset %>%
   mutate(weighting = as.integer(lndlb))
 
 
+estimation_dataset_topline<-estimation_dataset %>%
+  group_by(market_desc) %>%
+  summarise(total_mt=sum(as.integer(lndlb)/lbs_per_mt),
+            transaction=n())
+
+
 oos<-oos_data  %>%
   mutate(weighting = as.integer(lndlb))
 
