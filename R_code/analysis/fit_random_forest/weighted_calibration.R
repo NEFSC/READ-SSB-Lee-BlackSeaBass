@@ -643,7 +643,7 @@ message("Computing Brier on the test set")
 
 # Brier score comparison on the test holdout: raw vs. calibrated predictions.
 # CalLoss = absolute reduction in Brier score; rCalLoss = relative reduction (%).
-ESPR_raw<-test_data %>%
+ESPR_Wraw<-test_data %>%
   brier_class(market_desc,.pred_Jumbo:.pred_Small,
           case_weights = weighting) %>%
   pull(.estimate)
@@ -657,7 +657,7 @@ ESPR_cal<-test_data_calibration_applied %>%
 
 
 CalLoss<-ESPR_raw-ESPR_cal
-rCalLoss<-100*CalLoss/ESPR_raw
+rCalLoss<-100*CalLoss/ESPR_Wraw
 
 #this shows how much the calibration improve the brier score.
 CalLoss
