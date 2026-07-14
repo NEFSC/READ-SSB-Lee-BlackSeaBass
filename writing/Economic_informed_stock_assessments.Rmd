@@ -162,7 +162,7 @@ train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
-best_param_file_name<-glue("{best_param_pattern}{tuning_vintage}.Rds")
+best_param_file_name<-glue("{best_param_pattern}{pred_vintage}.Rds")
 
 aggregate_oos_predictions<-readRDS(here("data_folder","predictions",paste0("out_of_sample_predictions_YRS_nocluster",pred_vintage, ".Rds")))
 
@@ -182,7 +182,7 @@ tm<-fold_results  %>%
   summarise(mt=mean(.estimate), .groups="drop_last")%>%
   arrange(mt)
 
-bets_two_params<-tm[1:2,] %>%
+best_two_params<-tm[1:2,] %>%
   select(-mt)
 rm(fold_results)
 
@@ -269,7 +269,7 @@ In this research, we use the transaction level prices to make inferences about t
 
 The existence of a competitive market for black sea bass is critical to our ability to use prices to infer market category.  It ensures that the prices capture all relevant quality information and that there is a single price^[All identical goods will sell at the same price; therefore observations of identical goods with different prices *suggest* that some conditions of a competitive market are absent [@Lamont2003].  Variations of the law of one price that account for heterogenous goods, informational assymmetries [@Salop1982], and different data availability have been proposed and tested statistically [@Asche1999; @Nielsen2009; @Pettersen2018].].  We provide intuition behind the law of one price through contradiction.  A dealer that offers less than the market equilibrium price will purchase no fish because fishing firms would sell to another dealer.  A dealer that offers greater than the market equilibrium price will purchase all the fish and this "too high" price becomes the new equilibrium price.
 
-Many conditions are required for a perfectly competitive market to produce a single price. It requires many small buyers and small sellers, no vertical integration, no transactions costs, and complete information.  Markets with many small buyers and small sellers ensures that no individual can influence the equilibrium price.  No vertical integration ensures that all trades are true arms-length transactions.  A lack of transactions costs means that completing a sale and looking for a counterparty is costless, this enables firms to search for the best price.  Complete information assures that all buyers and sellers know the quality attributes of every lot of fish and the preferences of all the other agents.  Under these conditions, the market prices encapsulate all relevant information.  <!--- We also assume there is no vertical integration between dealers and vessels: a dealer and a fishing vessel is not owned by the same firm and there is no "forward" contracting in which buyers and sellers agree in advance on a price. 
+Many conditions are required for a perfectly competitive market to produce a single price. It requires many small buyers and small sellers, no vertical integration, no transactions costs, and complete information.  Markets with many small buyers and small sellers ensures that no individual can influence the equilibrium price.  No vertical integration ensures that all trades are true arms-length transactions.  A lack of transactions costs means that completing a sale and looking for a counterparty is costless, this enables buyers and sellers to search for the best price.  Complete information assures that all buyers and sellers know the quality attributes of every lot of fish and the preferences of all the other agents.  Under these conditions, the market prices encapsulate all relevant information.  <!--- We also assume there is no vertical integration between dealers and vessels: a dealer and a fishing vessel is not owned by the same firm and there is no "forward" contracting in which buyers and sellers agree in advance on a price. 
 A simple theoretical model sketch can provide guidance about explanatory factors that belong in the model. --->
 
 To build intuition for our model, we temporarily make a few further assumptions. First, with the exception of market category, we assume that all fish are identical.  Second, dealers face a downstream customer with a perfectly elastic demand for each market category. Together, this implies constant prices  for each market category, regardless of the quantity landed and delivered to the market. Third, we assume there are two  categories of fish: Jumbo and Large. The downstream consumers strictly prefer Jumbo to Large, so the market equilibrium price of Jumbo is strictly greater than the equilibrium price of Large: $p^J > p^L$.  Finally, the Unclassified category is exactly that, an unknown composite of fish with $\alpha_i$ as the proportion of transaction $i$ composed of Jumbo. 
@@ -310,11 +310,11 @@ estimation_dataset_topline
 3 Medium         5211.      137054
 4 Small           632.       39852
 --->
-Our model training procedure attempts to account for the idiosyncracies of Random Forest models and our data. The number of randomly selected predictors (*mtry*) is tuned over in nearly all Random Forest applications. Simulation studies by @Barreada2024 suggest tuning over the minimum node size (*min.n*) when using random forests in probability models.  The observational units in our estimation dataset are the 545,000 transactions representing 20,217 metric tons (44.6 million pounds) of black sea bass.  We treat the transactions as repeated observations of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is not predicting transactions, it is to obtain a prediction of aggregate weights.  While random forest models in the *tidyverse* ecosystem support case weights, none fully supports our interpretation of frequency weighting, therefore we overcome the problem with brute force.
+Our model training procedure attempts to account for the idiosyncracies of Random Forest models and our data. The number of randomly selected predictors (*mtry*) is tuned over in nearly all Random Forest applications. Simulation studies by @Barreada2024 suggest tuning over the minimum node size (*min.n*) when using random forests in probability models.  The observational units in our estimation dataset are the 545,000 transactions representing 20,217 metric tons (44.6 million pounds) of black sea bass.  We treat the transactions as repeated observations of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is not predicting transactions, it is to obtain a prediction of aggregate weights.  While random forest models in the *tidyverse* ecosystem support case weights, none fully supports our interpretation of frequency weighting, therefore we overcome the problem with brute force by expanding our data to large dataset with *pounds landed* copies of each row.
 
-We simply expand our data, producing a large dataset with "pounds landed" copies of each row.  During all stages when we split data and create folds, we ensure that all pound from a transaction are placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 44M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data.  We split our dataset into three parts; we use we use 80% of our dataset to train the model, 5% to calibrate probabilities, and 15% to validate the model.  We use 6.25% of the training sample (5% of the total dataset) to tune the model hyperparameters (just over 2.2 million rows from over 27,000 unique transactions).
+During all stages when we split data and create folds, we ensure that all pound from a transaction are placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 44M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data.  We split our dataset into three parts; we use we use 80% of our dataset to train the model, 5% to calibrate probabilities, and 15% to validate the model.  We use 6.25% of the training sample (5% of the total dataset) to tune the model hyperparameters (just over 2.2 million rows from over 27,000 unique transactions).
 
-We tune over these two hyperparameters by performing a 10-fold cross validation study. We grid search over the reasonable starting values of the two parameters.^[An initial grid search used a space filling grid and searched 24 points on $mtry \in (1,XX)$ and $min_n \in (50,50000)$. The inital tuning results showed a relatively smooth surface and suggested the optimal $mtry<25$ and the optimal $min_n<2000$.  A refined grid search was conducted over $mtry \in (8,32)$ and $min_n \in (10,2500)$].  We grow 200 trees during the tuning process.
+We tune over these two hyperparameters by performing a 10-fold cross validation study. We grid search over the reasonable starting values of the two parameters.^[An initial grid search used a space filling grid and searched 24 points on $mtry \in (1,XX)$ and $min_n \in (50,50000)$. The initial tuning results showed a relatively smooth surface and suggested the optimal $mtry<25$ and the optimal $min_n<2000$.  A refined grid search was conducted over $mtry \in (8,32)$ and $min_n \in (10,2500)$].  We grow 200 trees during the tuning process.  Tuning over a small part of our dataset risks identifying a suboptimal pair of hyperparameters, we draw a second, independent tuning set and tune again to verify the initial results. 
 
 Our cross-validation folds are stratified by market category to ensure that the proportion of each class in the folds approximately matched the initial compositions.  We used the Brier Score, averaged over the ten folds, as the criterion function for tuning.
 
@@ -382,28 +382,23 @@ The calibration steps find moderate gain from multinomial calibration, and the v
 
 ## Tuning and Calibration results
 
-In-sample ROC curves from tuning are quite similar across folds and the initial steepness indicates the tuned random forest can distinguish between the four principal market categories (Figure  \@ref(fig:rocTune)).  The random forest model performs exceedingly well for the small market category, despite the small market category being relatively rare in the data. The model performs worst at classifying the Large market category; Figure \@ref(fig:length-histograms) illustrates the relatively high degree of overlap between the prices of Large with its neighboring Medium and Jumbo market categories.  
+In-sample ROC curves from tuning are similar across folds and the initial steepness indicates the tuned random forest can distinguish between the four principal market categories (Figure  \@ref(fig:rocTune)).  Despite the small market category being relatively rare in the data, the random forest does quite well at distinguishing small's from other categories. The model performs worst at classifying the Large market category; Figure \@ref(fig:length-histograms) illustrates the relatively high degree of overlap between the prices of Large with its neighboring Medium and Jumbo market categories.  
 
 The VIP confirms that the three price variables are the most important in predicting market category (Figure \@ref(fig:vip)) and the four measures designed to capture the Dealer propensities to purchase particular categories are the next most important factors.
 
-The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The multinomial regression used to calibrate predictions improves the Brier Score on the Test (Equation \ref{brierscore}) by approximately 57\% (from 0.118 to 0.049).
-
-#need to check the 
-
+The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The multinomial regression used to calibrate predictions improves the Brier Score on the Calibration set (Equation \ref{brierscore}) by approximately 89\% (from 0.0104 to 0.0011).
 
 ## Validation Results
 
-After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we validate model performance by predicting class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model. 
+After tuning the hyperparameters, training a final model, and estimating an auxiliary calibration model, we validate model performance by predicting class membership for the holdout sample.  These figures illustate out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model^[Note that the tuning is performed on 5\% of the dataset, but final model training uses 80\% of the data. Therefore, simply by using much more data, we expect model fit to be improve dramatically.].   The multinomial regression used to calibrate predictions improves the Brier Score on the Test Set (Equation \ref{brierscore}) by approximately 59\% (from 0.118 to 0.049).
 
-
-We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).   For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 72\% of Jumbo, 64\% of Large, 71\% of Medium, and 55\% of Small landings. Reassuringly, the model mis-predictions frequently offset.  Consider the true "Jumbo" market category. The Random Forest incorrectly classified 204mt of Jumbo as Large, 48mt as Medium, and 5mt as Small.  However, this is almost perfectly offset by the 204mt of true Large, 35mt of true Medium, and 4mt of true Small that are incorrectly classified as Jumbo.  Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions) illustrate that the Calibrated Random Forest predictions are quite accurate at the transaction level and predicting weights by market category.  
-
+We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).   For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 82\% of Jumbo, 77\% of Large, 80\% of Medium, and 723\% of Small landings. Reassuringly, the model mis-predictions, in off diagonal terms, frequently offset.  Consider the true "Jumbo" market category. Our  Random Forest incorrectly classified 164 mt of Jumbo as Large, 22 mt as Medium, and 1mt as Small.  However, this is offset by the 128 mt of true Large, 17 mt of true Medium, and 1 mt of true Small that are incorrectly classified as Jumbo.  Table \@ref(tab:weighted-predictions) illustrate the aggregate accuracy of the Calibrated Random Forest predictions are quite accurate at predicting weights by market category.  Somewhat surprisingly, Table \@ref(tab:transaction-predictions) illustrates that the trained model is better at predicting aggregate transactions than weights.
 
 #  Out of Sample Predictions
 
-We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  Figure \@ref(fig:out-of-sample-preds) illustrates graphically. In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Therefore, we refrain from attempting to classifying those types of observations and simply include them as "Unclassified".  
+We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Figures \@ref(fig:out-of-sample-preds) illustrates graphically predictions when we refrain from predicting market category for similar observations. Figure \@ref(fig:ambitious-out-of-sample-preds) requires all unclassified transactions to be predicted into another market category. 
 
-We convert the landings of these observations into a length structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
+We convert the landings of these observations into an age structure and compare it to the "business as usual" treatment of unclassified fish.  These are summarised in Figure (or Table ) Y.  
 
 
 # Discussion
@@ -427,31 +422,21 @@ p&= \beta_1 p^J+ \beta_2 p^L + (1-\beta_1-\beta_2) \\\label{unknown2}
 Intuitively, observing a transaction price that falls between two market categories does not imply that a transaction is a linear combination of the two adjacent categories. This suggests that including other proxies for beyond just prices and factors that affect prices is necessary.
 --->
 
-
-
-Predicting out of sample is always difficult. We train the model on Classified observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost of sorting borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish. This could happen if classification is only done on by producers with high-quality products that also take better care of their fish after the catch. It could also happen if the extra handling needed to classify fish causes some damage and reduces quality.   We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.
-
-
-
-Our Random Forest model does very well at predicting observations and comparatively worse at weights (Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions)).  This is a bit surprising; by frequency weighting the bootstrap samples in the Random Forest we expected the opposite to occur.
+Predicting out of sample is always difficult. We train the model on Classified observations and then predict out of sample on Unclassified.  This is reasonable if, as we assume, Unclassifieds are a mix of different classes and an efficient market for fish exists. In particular, it assumes that the Unclassifieds can, and are, costlessly classified by the dealer and sold downstream.  This may not be true; it costs time to sort fish, although the marginal cost of sorting borne by the dealer may be minimal.  More troublingly, the Unclassifieds may be systematically different from the Classified fish.  This could happen if classification is only done on by producers with high-quality products that also take better care of their fish after the catch. It could also happen if the extra handling needed to classify fish causes some damage and reduces quality.  We attempt to control for those possible differences by including explanatory factors that may be correlated with quality, and therefore prices, in the model.  There are two covariate shifts that are worth noting: Unclassifieds are more likely to be landed in New York and Delaware (Table  \@ref(tab:print-tbl-cat-timeA)) and landed by state-only permitted firms  (Table  \@ref(tab:print-tbl-cat-methodA)).
 
 We use a Random Forest model as a probability machine.  This is a well-known and easy to implement approach. However, the Random Forest does not account for the ordinal relationship between the size classes. Although there is overlap in the length distributions (a particular Jumbo fish might be smaller than a Large), the size categories themselves are ordered, and "Learning to Rank" models may fit better. Alternatively, an alternative loss function used during tuning and traing that penalizes near misses (A Jumbo classified as a Large) less severely than bad ones (A Jumbo classified as a Small) may also improve our aggregate predictions without switching to a different model.
 
+In addition to the above caveats, one other is warranted. Black Sea Bass prices are approximately monotone in size; larger fish have higher prices.  Using prices as an additional source of information would be difficult if there were a non-monotone relationship between size and prices.  If, after conditioning for other factors that influence prices, buyers were willing to pay high prices for both Jumbo and Small fish, then using prices to predict market category would likely assign high priced transactions to these two categories. This could produce poor downstream predictions. 
+
+Our Random Forest model does very well at predicting observations and comparatively worse at weights (Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions)).  This is a bit surprising; because we expand our data to treat a landed pound of fish as the observational unit, we expected the opposite to occur.
+
 ## Extensions
 
-We view this as a reasonable method for generally filling in gaps in historical data.  In addition to the above caveats, one other is warranted. Black Sea Bass prices are approximately monotone in size; larger fish have higher prices.  Using prices as an additional source of information would be difficult if there were a non-monotone relationship between size and prices.
+A common entry point for socioeconomic information is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004, @kleiven2022] or fleet composition[@vanpoorten2016]. Another entry point is as a source of information about catch [@Duplisea2018a,@Duplisea2018, @Gervasi2025].  In the United States, socioeconomic information has been used in fish stock assessments in limited ways. @chan2022 highlights five entry points for socioeconomic information in the stock assessment process: data collection, data processing, parameterizing stock assessment models, stock projections, and understanding effects of policies.  
 
-Investigate how to combine existing biosampling data with these pricing information (complement instead of substitute).
+This effort illustrates a novel method of using socioeconomic information in the data processing step of the stock assessment enterprise.  Economic information (prices) is used as a substitute for biological samples that were not collected. This method could easily be adapted to other stocks and species of fish when prices are routinely collected and those prices are the result of a competitive market. In the Northeast United States, this method can be applied using readily-available, historical data; it does not require costly collection or processing additional data.
 
-
-In the United States, socioeconomic information has been used in fish stock assessments in limited ways. @chan2022 highlights three entry points for  socioeconomic information in the stock assessment process: data collection, data processing, and parameterizing stock assessment models, stock projections, and understanding effects of policies.  This effort illustrates a novel method of using socioeconomic information in the data processing step.  It also suggests a method for optimizing the collection of portside sampling data. Collecting these data are costly and price information could be a substitute that allows this effort to be reallocated to other stocks and species. Candiates include difficult-to-sample categories when there is size overlap with neighboring categories, prices that depend approximately monotonically on size, and competitive markets for fish.  We specifically caution against forgoing age-sampling to  "end" market categories (Jumbo and Small in the case of Black Sea Bass).
-
-Principal-Agent problem in collecting samples. Contracting firm is paid by sample, firms try to maximize profits and individuals try to maximize utility. Collecting samples from "easy" locations is, by definition, easier and more profitable than meeting difficult requests.
-
-A common entry point is the standardization of Catch-per-Unit Effort metrics to account for changes due to technology [@walters1996, @maunder2004].  These are particularly important for fisheries which do not have fishery independent data collections.  Recently, @vanpoorten2016 illustrate how entry and exit can shape selectivity and @kleiven2022 illustrate how accounting for changing technology impacted abundance estimates for European lobster.
-
-Social science information can be another source of information about catch. Semi-structured interviews with fishing industry participants found that true catch of redfish (*Sebastes mentella*) was at least twice as high as the officially reported catch, which was used to select from competing stock assessment models [@duplisea2018a,@duplisea2018b]. @Gervasi2025 illustrate how similar methods can be used for Gulf Red Snapper in the Southeast United States.
- 
+More ambitiously, it also suggests a method for optimizing the collection of portside sampling data. Collecting these data are costly and price information could be a substitute that allows this effort to be reallocated to other stocks and species. Candidates include difficult-to-sample categories when there is size overlap with neighboring categories, prices that depend approximately monotonically on size, and competitive markets for fish.  We specifically caution against forgoing age-sampling to  "end" market categories (Jumbo and Small in the case of Black Sea Bass).
 
 # Conclusions
 
@@ -490,7 +475,7 @@ knitr::kable(
   format   = "latex",
   booktabs = TRUE,
   escape   = FALSE,
-  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
+  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total classified Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
   align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
   linesep  = ""
 ) %>%
@@ -530,8 +515,6 @@ knitr::kable(
 
 
 ```
-
-
 
 ```{r print-tbl-cat-methodA, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=TRUE}
 knitr::kable(
@@ -607,7 +590,7 @@ kable(
   booktabs  = TRUE,
   digits    = 0,
   caption  = "Calibrated Predictions using the Validation Sample (Transactions)",
-  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Aggregate Error Rate"),
   escape    = TRUE,         # allows LaTeX in cell content
   label     = "transaction-predictions"
 ) %>%
@@ -645,7 +628,7 @@ kable(
   booktabs  = TRUE,
   digits    = 0,
   caption  = "Calibrated Predictions using the Validation Sample (weights)",
-  col.names = c("Market Category", "Actual Metric Tons", "Predicted Metric Tons", "Error Rate"),
+  col.names = c("Market Category", "Actual Metric Tons", "Predicted Metric Tons", "Aggregate Error Rate"),
   escape    = TRUE,         # allows LaTeX in cell content
   label     = "weighted-predictions"
 ) %>%
@@ -676,7 +659,7 @@ knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("
 
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
-```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning"}
+```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Fold-level ROC curves from tuning on a 5% subsample of data"}
 # need to rebuild
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_selected_nocluster{pred_vintage}.pdf")))
 ```
@@ -693,7 +676,7 @@ knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_
 ```
 
 
-```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample.  The trained model is used to predict probabilty of class membership on the test set. Probabilty calibration does not change the ROC curve"}
+```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample after application of the trained Random Forest. Probability calibration does not change the shape of the ROC curve."}
 # Updated july 13
 knitr::include_graphics(here("results","ranger","tune", glue("roc_testing_dataset_nocluster{pred_vintage}.pdf")))
 ```
@@ -709,6 +692,11 @@ knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
 
+```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a prediction." }
+#verified july 2 (no code change needed)
+knitr::include_graphics(here("results", "ranger", "final",
+       glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
+```
 
 
 \clearpage
@@ -724,6 +712,18 @@ knitr::include_graphics(here("results", "ranger", "final",
 
 
 ## Additional Model fit and diagnostics{-}
+
+We tuned the model twice on two distinct subsamples of our data.  Two surprising results emerged. First, over the "Advanced" grid that we selected, the surface was relatively flat. Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$.  Second, our repeat tuning shows very similar results to the first one. 
+<!---look up best 
+"\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\TB_tuning_metrics_by_fold2026-06-15.Rds"
+"\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\tuning_metrics_by_fold06-15.Rds"
+-->
+
+```{r TwoTuningSurfaces,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Brier Score plotted against"}
+# Updated July 13
+knitr::include_graphics(here("results","ranger","tune",c(glue("brier_tuneA{pred_vintage}.png"), glue("brier_tuneA{pred_vintage}.png"))))
+```
+
 
 ###  ROC curve from Tuning {-}
 
@@ -858,15 +858,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 ```
 
 
-## Out of Sample Predictions{-}
 
-In our data cleaning step, we exclude certain observations from our estimation sample,  Figure \@ref(fig:ambitious-out-of-sample-preds) predicts for all observations, *including* from dealers that exhibit little variation in prices.
-
-```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a prediction." }
-#verified july 2 (no code change needed)
-knitr::include_graphics(here("results", "ranger", "final",
-       glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
-```
 
 
 
