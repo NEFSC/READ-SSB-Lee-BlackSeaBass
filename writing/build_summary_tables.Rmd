@@ -137,8 +137,8 @@ cat_vars_method <- list(
   mygear      = "Gear",
   stockarea   = "Stock Area",
   grade_desc  = "Grade",
-  catch_share = "Management System",          
-  shore       = "Caught from Shore",         
+  catch_shareF = "Catch Share",          
+  shoreF       = "Caught from Shore",         
   stateonlyF  = "Only State Permitted",
   semester    = "Semester"
 )
@@ -148,12 +148,14 @@ cat_vars_method <- list(
 mkt_levels <- c("Jumbo", "Large", "Medium", "Small","Unclassified")
 month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
  estimation_dataset4tables <-  estimation_dataset4tables %>%
   mutate(
     market_desc = factor(market_desc, levels = mkt_levels),
     month       = factor(month_labels[month], levels = month_labels),
-    shoreF      = factor(shore, levels = c(0, 1), labels = c("No", "Yes")),
-    stateonlyF  = factor(nofederal, levels = c(0, 1), labels = c("No", "Yes"))
+    shoreF      = factor(shore, levels = c(1, 0), labels = c("Yes", "No")),
+    catch_shareF= fct_recode(catch_share,  No="Non CatchShare", Yes="CatchShare"),
+    stateonlyF  = factor(nofederal, levels = c(1, 0), labels = c("Yes", "No"))
 
   )
 ```
