@@ -656,7 +656,7 @@ ESPR_cal<-test_data_calibration_applied %>%
   pull(.estimate)
 
 
-CalLoss<-ESPR_raw-ESPR_cal
+CalLoss<-ESPR_Wraw-ESPR_cal
 rCalLoss<-100*CalLoss/ESPR_Wraw
 
 #this shows how much the calibration improve the brier score.
