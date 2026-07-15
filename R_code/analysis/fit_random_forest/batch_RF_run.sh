@@ -55,8 +55,6 @@ Rscript --no-save --no-restore --verbose \
 
 ########################
 # TO DO:
-#  change the image files to reflect new ones (vintage should get picked up automatically, but some files are different)
-#  Plot individual ROC curves from Tuning, final ROC curve on the Validation and Testing sets.
 #  render the manuscript - you're not actually going to do this, but 
 # Rscript -e "rmarkdown::render('writing/Economic_informed_stock_assessments.Rmd', output_format='pdf_document')"
 
