@@ -50,13 +50,6 @@ Rscript --no-save --no-restore --verbose \
 
 
 
-# Reprocess the data for stock assessment
-Rscript --no-save --no-restore --verbose \
-   ./R_code/data_extraction_processing/processing/predictions_data_prep_for_stock_assessment.R \
-  2>&1 | stdbuf -oL -eL tee ./R_code/data_extraction_processing/processing/predictions_data_prep_for_stock_assessment.log
-
-# out_of_sample_predictions on the reprocessed data
-Rscript -e "rmarkdown::render('writing/out_of_sample_predictions_StockAssess.Rmd', output_format='html_document')"
 
 
 
