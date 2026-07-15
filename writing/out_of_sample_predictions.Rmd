@@ -203,11 +203,13 @@ oos_data<-readr::read_rds(file=here("data_folder","main","commercial",glue("BSB_
 #tack on original market_category and SPECIES_ITIS
 oos_data<-oos_data %>%
   mutate(original_market_category=market_desc,
-         SPECIES_ITIS="167687")
-
+         SPECIES_ITIS="167687") %>%
+  filter(STOCK_ABBREV %in% c("NORTH","SOUTH")) 
+  
+ #we dont' need to predict for the UNK obs. They are not in a stock area
 
 oos_predictable<-oos_data %>%
-  filter(mark_in==1) 
+  filter(mark_in==1)
 
 oos_unpredictable<-oos_data %>%
   filter(mark_in!=1) 
@@ -282,7 +284,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 # keep just a few columns
 oos_data_calibration_applied<-oos_data_calibration_applied %>%
-  select(c(year, stockarea, market_desc, original_market_category, SPECIES_ITIS, SEMESTER, weighting, livlb, any_of(prob_names), .pred_class))
+  select(c(year, STOCK_ABBREV, market_desc, original_market_category, SPECIES_ITIS, SEMESTER, weighting, livlb, any_of(prob_names), .pred_class))
 
 # predicted pounds per transaction in the validation dataset.
 # multiply the prediction by the live pounds to get predicted live pounds in each class. 
@@ -295,13 +297,13 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   })
 }
 
-# Sum up the predictions by year, market category, and stockarea. 
+# Sum up the predictions by year, market category, and STOCK_ABBREV. 
 YRS_predictions<-oos_data_calibration_applied %>%
-   group_by(year, stockarea,SEMESTER, original_market_category, SPECIES_ITIS) %>%
+   group_by(year, STOCK_ABBREV,SEMESTER, original_market_category, SPECIES_ITIS) %>%
    mutate(transactions=1) %>%
    summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
   ungroup() %>%
-    select(year,SEMESTER, stockarea, original_market_category, SPECIES_ITIS, starts_with("pred_"))
+    select(year,SEMESTER, STOCK_ABBREV, original_market_category, SPECIES_ITIS, starts_with("pred_"))
 
 #reshape to a tidy long format
 YRS_predictions<-  YRS_predictions %>%
@@ -320,7 +322,7 @@ oos_unpredictable<-oos_unpredictable %>%
 
 # get the unpredictables to the same format
 oos_Uncs<-oos_unpredictable %>%
-   group_by(year, stockarea,SEMESTER,original_market_category, SPECIES_ITIS ) %>%
+   group_by(year, STOCK_ABBREV,SEMESTER,original_market_category, SPECIES_ITIS ) %>%
    summarise(live_metric_tons=sum(livlb)/lbs_per_mt) %>%
    mutate(Market.Comb="Unclassified")
 
@@ -332,7 +334,7 @@ YRS_predictions<-YRS_predictions %>%
 # data quality check
 # ensure I have 1 observation per year-region-SEMESTER
 check1<-YRS_predictions %>%
-  group_by(year,SEMESTER,stockarea, Market.Comb, original_market_category, SPECIES_ITIS)%>%
+  group_by(year,SEMESTER,STOCK_ABBREV, Market.Comb, original_market_category, SPECIES_ITIS)%>%
   summarise(count=n()) %>%
   ungroup()%>%
   summarise(max=max(count))
@@ -342,11 +344,11 @@ stopifnot(check1==1)
 
 YRS_predictions<-YRS_predictions %>%
   mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small","Unclassified")) %>%
-  group_by(year,SEMESTER,stockarea, Market.Comb, original_market_category, SPECIES_ITIS)%>%
-  arrange(SPECIES_ITIS, year,SEMESTER,stockarea,original_market_category, Market.Comb)%>%
+  group_by(year,SEMESTER,STOCK_ABBREV, Market.Comb, original_market_category, SPECIES_ITIS)%>%
+  arrange(SPECIES_ITIS, year,SEMESTER,STOCK_ABBREV,original_market_category, Market.Comb)%>%
   ungroup() %>%
  mutate(YEAR = as.numeric(as.character(year)),
-           STOCK_ABBREV = toupper(stockarea),
+           STOCK_ABBREV = toupper(STOCK_ABBREV),
            MARKET_DESC = toupper(Market.Comb),
            MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
                                     MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
@@ -422,7 +424,7 @@ write_rds(ambitious_predictions_cal_applied, file=here("results","ranger",glue("
 
 # keep just a few columns
 ambitious_predictions_cal_applied<-ambitious_predictions_cal_applied %>%
-  select(c(year, stockarea, market_desc, SEMESTER, original_market_category, SPECIES_ITIS, weighting, livlb, any_of(prob_names), .pred_class))
+  select(c(year, STOCK_ABBREV, market_desc, SEMESTER, original_market_category, SPECIES_ITIS, weighting, livlb, any_of(prob_names), .pred_class))
 
 # predicted pounds per transaction in the validation dataset.
 # multiply the prediction by the landed pounds to get predicted pounds in each class. 
@@ -434,13 +436,13 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   })
 }
 
-# Sum up the predictions by year, market category, and stockarea. 
+# Sum up the predictions by year, market category, and STOCK_ABBREV. 
 ambitious_YRS_predictions<-ambitious_predictions_cal_applied %>%
-   group_by(year, stockarea,SEMESTER,original_market_category, SPECIES_ITIS) %>%
+   group_by(year, STOCK_ABBREV,SEMESTER,original_market_category, SPECIES_ITIS) %>%
    mutate(transactions=1) %>%
    summarise(across(c(starts_with(c("pred_"))), \(x) sum(x, na.rm = TRUE))) %>%
   ungroup() %>%
-    select(year,SEMESTER, stockarea, original_market_category, SPECIES_ITIS,starts_with("pred_"))
+    select(year,SEMESTER, STOCK_ABBREV, original_market_category, SPECIES_ITIS,starts_with("pred_"))
 
 ambitious_YRS_predictions<-  ambitious_YRS_predictions %>%
       pivot_longer(
@@ -456,7 +458,7 @@ ambitious_YRS_predictions<-  ambitious_YRS_predictions %>%
 
 # ensure I have 1 observation per year-region-SEMESTER
 check1<-ambitious_YRS_predictions %>%
-  group_by(year,SEMESTER,stockarea, original_market_category, SPECIES_ITIS, Market.Comb)%>%
+  group_by(year,SEMESTER,STOCK_ABBREV, original_market_category, SPECIES_ITIS, Market.Comb)%>%
   summarise(count=n()) %>%
   ungroup()%>%
   summarise(max=max(count))
@@ -464,11 +466,11 @@ stopifnot(check1==1)
 
 ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
   mutate(Market.Comb=fct_relevel(Market.Comb,"Jumbo","Large","Medium","Small")) %>%
-  group_by(year,SEMESTER,stockarea, Market.Comb,original_market_category, SPECIES_ITIS)%>%
-  arrange(SPECIES_ITIS, year,SEMESTER,stockarea,original_market_category, Market.Comb)%>%
+  group_by(year,SEMESTER,STOCK_ABBREV, Market.Comb,original_market_category, SPECIES_ITIS)%>%
+  arrange(SPECIES_ITIS, year,SEMESTER,STOCK_ABBREV,original_market_category, Market.Comb)%>%
   ungroup() %>%
  mutate(YEAR = as.numeric(as.character(year)),
-           STOCK_ABBREV = toupper(stockarea),
+           STOCK_ABBREV = toupper(STOCK_ABBREV),
            MARKET_DESC = toupper(Market.Comb),
            MARKET_DESC = case_when (MARKET_DESC == 'MEDIUM' ~ "MEDIUM OR SELECT",
                                     MARKET_DESC != 'MEDIUM' ~ MARKET_DESC),
@@ -478,6 +480,7 @@ ambitious_YRS_predictions<-ambitious_YRS_predictions %>%
 
 # Pad out the Ambitious classifications
 padded_unc<-ambitious_YRS_predictions %>%
+  filter(STOCK_ABBREV %in% c("NORTH","SOUTH")) %>%
   group_by(YEAR, SEMESTER, STOCK_ABBREV, MARKET_DESC_ORIG, SPECIES_ITIS) %>%
   slice(1) %>%
   ungroup() %>%
@@ -522,7 +525,7 @@ write_rds(padded, file=here("data_folder","predictions",glue("ambitious_out_of_s
 ```{r nicer_conservative_plot}
 
 #YRS_predictions<-YRS_predictions %>%
-#    mutate(stockarea = fct_rev(stockarea))
+#    mutate(STOCK_ABBREV = fct_rev(STOCK_ABBREV))
 
 
 class_colours <- c(
