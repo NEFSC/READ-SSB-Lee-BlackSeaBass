@@ -667,6 +667,42 @@ p_predictions
 
 
 
+
+```{r test_recode, eval=FALSE}
+# This code read in the "PRED_ files and did some quick summary stats on them. 
+# I've moved the functionality of predictions_data_prep_for_stock_assessment into the B01_data_prep file. This verifies that
+# That functionality is basically to construct the STOCK_ABBREV column.  
+PRED_BSB_original_combined_dataset <- readRDS("~/PricesInStockAssessment/READ-SSB-Lee-BlackSeaBass/data_folder/main/commercial/PRED_BSB_original_combined_dataset2026-07-02.Rds")
+
+PRED_BSB_original_combined_dataset %>%
+  group_by(stock_abbrev) %>%
+  summarise(sum=sum(lndlb))
+
+
+BSB_original_combined_dataset <- readRDS("~/PricesInStockAssessment/READ-SSB-Lee-BlackSeaBass/data_folder/main/commercial/BSB_original_combined_dataset2026-05-28.Rds")
+
+
+BSB_original_combined_dataset %>%
+  group_by(STOCK_ABBREV) %>%
+  summarise(sum=sum(lndlb))
+
+
+PRED_BSB_unclassified_dataset %>%   
+  group_by(stock_abbrev) %>%
+  summarise(sum=sum(lndlb))
+
+
+
+BSB_unclassified_dataset %>%
+  group_by(STOCK_ABBREV) %>%
+  summarise(sum=sum(lndlb))
+
+
+
+
+
+
+
 <!---
 \newpage
 --->
