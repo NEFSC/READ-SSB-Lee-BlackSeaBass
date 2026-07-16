@@ -369,7 +369,7 @@ To summarize, our modeling approach, we expand our transaction data up to pounds
 
 # Results
 
-The set of tuning paramters with the lowest Brier score were $mtry=14$ and $min_n=10$ ($BS=0.1783$).  However, we opted to used the second best set of hyperparameters  ($mtry=15, min_n=896;BS=0.1792$) for two reasons.  The first is computational, models with larger $min_n$ fit more rapidly and use less memory, because fewer splits are performed. Second, a model with very low $min_n$ may perform poorly out of sample due to overfitting. While a $min_n=10$ is not particularly low for standard random forest, the rows in our expanded dataset represent a single pound of landings; therefore a very small $min_n$ will result in many terminal nodes containing observations from a single transaction.  Inspection of the tuning surface revealed that the model fit was not particularly sensitive to a large portion of the hyperparameter space that we evaluated (See Appendix). 
+The set of tuning parameters with the lowest Brier score were $mtry=14$ and $min_n=10$ ($BS=0.1783$).  However, we opted to used the second best set of hyperparameters  ($mtry=15, min_n=896;BS=0.1792$) for two reasons.  The first is computational, models with larger $min_n$ fit more rapidly and use less memory, because fewer splits are performed. Second, a model with very low $min_n$ may perform poorly out of sample due to overfitting. While a $min_n=10$ is not particularly low for standard random forest, the rows in our expanded dataset represent a single pound of landings; therefore a very small $min_n$ will result in many terminal nodes containing observations from a single transaction.  Inspection of the tuning surface revealed that the model fit was not particularly sensitive to a large portion of the hyperparameter space that we evaluated (See Appendix). 
 
 The calibration steps find moderate gain from multinomial calibration, and the validation shows the model fits well. The tuning and validation model fit statistics are similar, suggesting the model is not overfit.  Although the model is not a causal one, the importance of explanatory factors in the Variable Importance Plots make intuitive sense; prices and dealer-specific effects are important factors in the classification model.
 
@@ -387,7 +387,7 @@ We validate model performance by applying the final trained model and auxiliary 
 
 We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).  For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 82\% of Jumbo, 77\% of Large, 80\% of Medium, and 723\% of Small landings. Reassuringly, the model mis-predictions, in off diagonal terms, frequently offset.  Consider the true "Jumbo" market category. Our  Random Forest incorrectly classified 164 mt of Jumbo as Large, 22 mt as Medium, and 1mt as Small.  However, this is offset by the 128 mt of true Large, 17 mt of true Medium, and 1 mt of true Small that are incorrectly classified as Jumbo.  Table \@ref(tab:weighted-predictions) illustrate the aggregate accuracy of the Calibrated Random Forest predictions are quite accurate at predicting weights by market category.  Somewhat surprisingly, Table \@ref(tab:transaction-predictions) illustrates that the trained model is better at predicting aggregate transactions than weights.
 
-#  Out of Sample Predictions
+##  Out of Sample Predictions
 
 We predict out-of-sample on the unclassified observations and aggregate to the region-year-semester.  In our data cleaning step, we exclude certain observations from our estimation sample, notably observations from dealers that exhibit little variation in prices.  Figures \@ref(fig:out-of-sample-preds) illustrates graphically predictions when we refrain from predicting market category for similar observations. Figure \@ref(fig:ambitious-out-of-sample-preds) requires all unclassified transactions to be predicted into another market category. 
 
@@ -396,7 +396,7 @@ We convert the landings of these observations into an age structure and compare 
 
 # Discussion
 
-No manuscripts would be complete without a discussion of caveats. Here they are.
+No manuscripts would be complete without a discussion of caveats and future work. Here they are.
 
 ## Caveats
 
@@ -649,13 +649,13 @@ kable(
 knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 
-```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024."}
+```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024.  The top panels show that few fish from the Unclassified category were measured for a large portion of the time series.}
 #verified july 2 (no code change needed)
 
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 
-```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Fold-level ROC curves from tuning on a 5% subsample of data.  Selected set of hyperparameters ($mtry=15, min_n=896$)."}
+```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Fold-level ROC curves from tuning on a 5% subsample of data.  Selected set of hyperparameters ($mtry=15, min_n=896$).  The 10 individual lines are generated from out-of-sample on each of the hold-out samples."}
 # need to rebuild
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_selected_nocluster{pred_vintage}.pdf")))
 ```
