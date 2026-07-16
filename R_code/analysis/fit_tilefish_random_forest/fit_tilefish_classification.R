@@ -44,6 +44,8 @@ library("discrim")
 library("betacal")
 library("janitor")
 library("conflicted")
+library("ggplot2")
+
 
 
 
@@ -66,7 +68,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -140,7 +142,7 @@ best_param_file_name<-glue("tilefish_best_parameters{tuning_vintage}.Rds")
  
 final_fit_file_name<-glue("tilefish_final{tuning_vintage}.Rds")
 vi_file_name<-glue("tilefish_vi{tuning_vintage}.Rds")
-
+final_fit <- read_rds(file = here("results", "tilefish", final_fit_file_name))
 
 
 
@@ -334,18 +336,6 @@ message("Final model fit and saved")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 run_this<-1
 
 if (run_this==1){
@@ -355,6 +345,8 @@ if (run_this==1){
   
   # using train data
 first_train_predictions <- augment(trained_wf, new_data = train_data)
+
+
 
 
   message("Validation predictions done")
@@ -395,28 +387,37 @@ final_pr <- first_train_predictions %>%
   pr_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
 
+final_pr
+
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_pr_curve_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_PR_curve_{modeltype}_{tuning_vintage}.png")), 
   plot = final_pr)
 
 
-# 3. ROC Curve
+# ROC Curve
 train_roc <- first_train_predictions %>%
   roc_curve(market_desc, any_of(prob_names)) %>%
   autoplot()
 
+train_roc
+
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_roc_curvetrain_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_ROC_curve_{modeltype}_{tuning_vintage}.png")), 
   plot = train_roc)
 
-# 4.  Confusion Matrix
+
+
+# Confusion Matrix
 final_cm <- first_train_predictions %>%
   conf_mat(truth = market_desc, estimate = .pred_class) %>%
   autoplot(type = "heatmap")
 
+final_cm
+
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_confusion_matrix_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("classification_confusion_matrix_{modeltype}_{tuning_vintage}.png")), 
   plot = final_cm)
+
 
 
 # Validation Dataset
@@ -477,15 +478,8 @@ p_cal
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_p_cal_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("validation_test_calibrated_windowed_{modeltype}_{tuning_vintage}.png")), 
   plot = p_cal)
-
-
-
-
-
-
-
 
 
 #Experiment with different methods of calibration.
@@ -515,6 +509,12 @@ calibrate_beta <- cal_estimate_beta(
   smooth = FALSE
 )
 
+
+
+write_rds(calibrate_beta, file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+
+
+
 #  Isotonic Calibration
 calibrate_iso <- cal_estimate_isotonic(
   validation_clean, 
@@ -540,7 +540,6 @@ validation_data_betacalib_applied <-
 validation_data_multicalib_applied <-
   validation_clean %>%
   cal_apply(calibrate_multinom)
-
 
 
 
@@ -595,7 +594,7 @@ iso_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_iso_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("isotonic_calibration_{modeltype}_{tuning_vintage}.png")), 
   plot = iso_applied_window)
 
 
@@ -614,7 +613,7 @@ multi_applied_window <- cal_plot_windowed(
 multi_applied_window
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_multi_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("multinomial_calibration_{modeltype}_{tuning_vintage}.png")), 
   plot = multi_applied_window)
 
 
@@ -632,8 +631,9 @@ beta_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_beta_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("beta_calibration_{modeltype}_{tuning_vintage}.png")), 
   plot = beta_applied_window)
+
 
 #BETA might look better- extra analysis
 exact_pred_cols <- c(
@@ -653,6 +653,7 @@ roc_data <- validation_data_betacalib_applied %>%
   )
 
 roc_plot <- autoplot(roc_data)
+roc_plot
 
 ggsave(
   filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{modeltype}_{tuning_vintage}.png")), 
@@ -669,7 +670,7 @@ auc_data <- validation_data_betacalib_applied %>%
 
 auc_data
 
-
+#0.961
 
 
 p_facet <- ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) + 
@@ -701,10 +702,12 @@ p_facet <- ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) +
     plot.margin = margin(4, 6, 4, 4, "pt") 
   )
 
+
+p_facet
 # save the plot
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_facet_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("colorful_facet_beta_{modeltype}_{tuning_vintage}.png")), 
   plot = p_facet)
 
 
@@ -768,7 +771,7 @@ calibrated <- cal_plot_windowed(
 calibrated
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibration_applied_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{modeltype}_{tuning_vintage}.png")), 
   plot = calibrated)
 
 
@@ -810,9 +813,13 @@ p_cal_test_beta <- ggplot(cal_data, aes(x = predicted_midpoint, y = event_rate))
     plot.margin = margin(4, 6, 4, 4, "pt")
   )
 
+p_cal_test_beta
+
+
+
 #save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_facet_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_COLOR{modeltype}_{tuning_vintage}.png")), 
   plot = p_cal_test_beta)
 
 #publication ready curves on uncalibrated
@@ -828,9 +835,6 @@ uncalibrated <- cal_plot_windowed(
 uncalibrated
 
 uncal_data <- uncalibrated$data
-
-
-
 
 
 #Build publication-ready faceted calibration plot for raw predictions
@@ -867,9 +871,13 @@ p_uncal <- ggplot(uncal_data, aes(x = predicted_midpoint, y = event_rate)) +
     plot.margin = margin(4, 6, 4, 4, "pt")
   )
 
+p_uncal
+
+
+
 # save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_pubready_facet_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_color_ready_{modeltype}_{tuning_vintage}.png")), 
   plot = p_uncal)
 
 
@@ -884,9 +892,12 @@ roc_dataUW <- test_data_calibration_applied %>%
   )
 
 roc_plot2 <- autoplot(roc_dataUW)
+roc_plot2
+
+
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot_test_data{modeltype}_{tuning_vintage}.png")), 
   plot = roc_plot2)
 
 
@@ -935,10 +946,15 @@ p_facetUW <- ggplot(roc_dataUW, aes(x = 1 - specificity, y = sensitivity)) +
     plot.margin = margin(4, 6, 4, 4, "pt") 
   )
 
+p_facetUW
+
+
+
+
 #SAVE
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_facet_ROC_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_ROC_{modeltype}_{tuning_vintage}.png")), 
   plot = p_facetUW)
 
 # calibration gains
@@ -1095,6 +1111,267 @@ ggsave(
 
 
 message("Successfully ran")
+
+
+# Here I predict out of sample with my test data
+
+
+#   fitted workflow
+fitted_workflow <- extract_workflow(final_fit)
+
+# predicted on wf variable
+class_predictions <- predict(fitted_workflow, new_data = test_data, type = "class")
+prob_predictions  <- predict(fitted_workflow, new_data = test_data, type = "prob")
+
+test_data_calibration_applied <- test_data %>%
+  bind_cols(class_predictions) %>%
+  bind_cols(prob_predictions)
+
+# keeps certain columnns
+test_data_calibration_applied_subset <- test_data_calibration_applied %>% 
+  select(market_desc, lndlb, year, starts_with(".pred_"), .pred_class)
+
+model_market_names <- names(test_data_calibration_applied_subset) %>% 
+  grep("^\\.pred_", ., value = TRUE) %>% 
+  gsub("^\\.pred_", "", .) %>% 
+  setdiff("class")  # This guarantees .pred_class is skipped in the equation
+
+
+# calculates expected landing weight (pounds) per category
+for (l in model_market_names) {
+  test_data_calibration_applied_subset[[paste0("pred_", l)]] <- 
+    test_data_calibration_applied_subset[[paste0(".pred_", l)]] * test_data_calibration_applied_subset$lndlb
+}
+
+
+exact_cols_to_sum <- c(
+  ".pred_Extra Large", ".pred_Extra Small", ".pred_Large", ".pred_Medium", ".pred_Small Kitten",
+  "pred_Extra Large", "pred_Extra Small", "pred_Large", "pred_Medium", "pred_Small Kitten",
+  "lndlb", "transactions"
+)
+
+# group and sum the data
+
+test_predictions <- test_data_calibration_applied_subset %>% 
+  group_by(year, market_desc) %>% 
+  mutate(transactions = 1) %>% 
+  summarise(
+    across(all_of(exact_cols_to_sum), \(x) sum(x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+test_predictions$modeltype <- modeltype
+
+
+#checks it matches
+existing_levels <- intersect(
+  c("Extra Large", "Large", "Medium", "Small Kitten", "Extra Small"), 
+  levels(as.factor(test_predictions$market_desc))
+)
+
+test_predictions <- test_predictions %>% 
+  mutate(market_desc = fct_relevel(market_desc, existing_levels))
+
+
+aggregate_transactions <- test_predictions %>% 
+  ungroup() %>% 
+  summarise(across(starts_with(".pred_"), \(x) sum(x, na.rm = TRUE))) %>% 
+  pivot_longer(
+    cols = starts_with(".pred_"), 
+    names_to = "market_desc", 
+    names_prefix = ".pred_", 
+    values_to = "ObsPredicted"
+  )
+
+
+
+aggregate_test_predictions <- test_predictions %>% 
+  ungroup() %>% 
+  summarise(across(starts_with("pred_"), \(x) sum(x, na.rm = TRUE))) %>% 
+  pivot_longer(
+    cols = starts_with("pred_"), 
+    names_to = "market_desc", 
+    names_prefix = "pred_", 
+    values_to = "predicted"
+  )
+
+# calculates the true observed weight realities and transactions
+true <- test_predictions %>% 
+  group_by(market_desc) %>% 
+  summarise(
+    lndlb = sum(lndlb, na.rm = TRUE), 
+    transactions = sum(transactions, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# joins the observed and predicted lndlb and transactions
+Testmkt_preds <- aggregate_transactions %>% 
+  left_join(true, by = join_by(market_desc == market_desc)) %>% 
+  left_join(aggregate_test_predictions, by = join_by(market_desc == market_desc))
+
+# raw pound weights to Metric Tonnes (mt) and derive percent error bounds
+Testmkt_preds <- Testmkt_preds %>% 
+  mutate(
+    predicted = predicted / lbs_per_mt, 
+    lndlb = lndlb / lbs_per_mt
+  ) %>% 
+  rename(
+    true_mt = lndlb, 
+    predicted_mt = predicted, 
+    predicted_transactions = ObsPredicted
+  ) %>% 
+  mutate(
+    `mt error (%)` = scales::percent((predicted_mt - true_mt) / true_mt, accuracy = 0.01), 
+    `Transaction error (%)` = scales::percent((predicted_transactions - transactions) / transactions, accuracy = 0.01)
+  )
+
+# Filter down for table
+transaction_predictions <- Testmkt_preds %>% 
+  select(market_desc, transactions, predicted_transactions, `Transaction error (%)`)
+
+#table
+knitr::kable(
+  transaction_predictions, 
+  caption = 'Calibrated Predictions on the 15% Validation Sample (transaction count).', 
+  format.args = list(big.mark = ","), 
+  digits = 0, 
+  align = c("l", rep('r', times = 3))
+)
+
+# metric tons predictions and error
+weighted_predictions<-Testmkt_preds %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)
+
+#Table
+knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Validation Sample (mt).',format.args = list(big.mark = ","),
+digits=0, align=c("l",rep('r',times=4)))  
+
+# i can do the same code to get predictions (transactions and mt) for the hold-out sample, without the probability calibrations.
+# use uncalibrated_predictions-- test data
+
+
+# Here below I can try transactions and metric tons for the holdout sample, without probability calibrations.
+
+# same code but just using 'un-calibrated'
+
+
+
+
+
+# out of sample predictions with beta calibration
+
+raw_oos_data_vintage_string <- list.files(here("data_folder", "main", "tilefish"), pattern = glob2rx("tilefish_unclassified_dataset*Rds")) 
+raw_oos_data_vintage_string <- gsub("tilefish_unclassified_dataset", "", raw_oos_data_vintage_string) 
+raw_oos_data_vintage_string <- gsub(".Rds", "", raw_oos_data_vintage_string) 
+raw_oos_data_vintage_string <- max(raw_oos_data_vintage_string)
+
+# raw out-of-sample data
+oos_data <- readr::read_rds(
+  file = here("data_folder", "main", "tilefish", glue("tilefish_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+
+# this is for out of sample dataset for unclassified
+final_workflow <- extract_workflow(final_fit)
+extract_recipe(final_fit)
+preds <- final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>% dplyr::filter(role == "predictor")
+num_preds <- nrow(preds)
+
+
+oos_data <- oos_data %>% 
+  mutate(
+    original_market_category = market_desc, 
+    SPECIES_ITIS = "168546",
+    year = as.factor(year),
+    month = as.factor(month),
+    rand = runif(n())         
+  )
+
+
+oos_predictable <- oos_data %>% dplyr::filter(mark_in == 1)
+oos_unpredictable <- oos_data %>% dplyr::filter(mark_in != 1)
+
+
+oos_predictions <- augment(final_workflow, oos_predictable)
+
+
+oos_predictions_clean <- oos_predictions %>% 
+  janitor::clean_names()
+
+oos_predictions_calibrated <- oos_predictions_clean %>%
+  probably::cal_apply(calibrate_beta)
+
+
+calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+
+
+
+# converting to landings_kg_category_apportion 
+
+
+
+for (l in c("Extra Large", "Extra Small", "Large","Large Medium", "Medium", "Small Kitten", "Unclassified")) {
+  tryCatch({
+    oos_predictions_calibrated[[paste0("pred_", l)]] <- oos_predictions_calibrated[[paste0(".pred_", l)]] * oos_data_calibration_applied$livlb
+  }, error = function(e) {
+    
+  })
+}
+
+prob_names <- colnames(oos_predictions_calibrated) %>% 
+  grep("^\\.pred_", ., value = TRUE) %>% 
+  grep("^\\.pred_class", ., value = TRUE, invert = TRUE)
+
+
+# calculate yearly metrics
+
+YRS_predictions <- oos_predictions_calibrated %>%
+  select(
+    year, 
+    market_desc, 
+    livlb, 
+    any_of(prob_names), 
+    pred_class) %>%
+  group_by(year) %>%
+  mutate(across(
+      .cols = any_of(prob_names),
+      .fns = ~ .x * livlb,
+      .names = "{gsub('^\\\\.pred_', 'pred_', .col)}"
+    ), transactions = n(),
+    # Sums the live pounds for the year, convert to metric tons, then to kg
+    TOTAL_YEAR_LIVLB = sum(livlb, na.rm = TRUE),
+    live_metric_tons = TOTAL_YEAR_LIVLB / lbs_per_mt,
+    LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons * 1000,
+    MARKET_DESC_ORIG = toupper(market_desc)
+  ) %>%
+  ungroup() %>%
+  select(
+    year, 
+    market_desc, 
+    pred_class, 
+    transactions, 
+    LANDINGS_KG_CATEGORY_APPORTION, 
+    starts_with("pred_") & where(is.numeric))
+
+
+
+YRS_predictions <- oos_predictions_calibrated %>%
+  select(year, market_desc, livlb, any_of(prob_names), pred_class) %>%
+  mutate(
+    across(
+      .cols = any_of(prob_names),
+      .fns = ~ .x * livlb,
+      .names = "{gsub('^\\\\.pred_', 'pred_', .col)}" )) %>%
+  group_by(year, pred_class) %>%
+  summarise(
+    transactions = n(),
+    LANDINGS_KG_CATEGORY_APPORTION = (sum(livlb, na.rm = TRUE) / lbs_per_mt) * 1000,
+    across(starts_with("pred_") & where(is.numeric), \(x) sum(x, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  select(year, pred_class, transactions, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))
+
+
+
+
 
 
 
