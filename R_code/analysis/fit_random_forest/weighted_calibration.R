@@ -183,6 +183,19 @@ validation_preds<-bind_cols(validation_preds,validation_data)
 validation_preds<-validation_preds%>%
   mutate(weighting=hardhat::frequency_weights(lndlb)) 
 
+
+validation_subs<-validation_preds %>%
+  select(c(starts_with(".pred"),market_desc, lndlb)) %>%
+  rename(pred_Jumbo=.pred_Jumbo,
+         pred_Large=.pred_Large,
+         pred_Medium=.pred_Medium,
+         pred_Small=.pred_Small)
+  )
+
+
+write_dta(validation_subs, path=here("results","ranger","validation_preds.dta"))
+
+
 # look at the fit metrics
 # Weighted fit metrics on validation predictions: ROC AUC, log loss, and
 # Brier score, all using lndlb as case weights so high-volume transactions
@@ -504,8 +517,11 @@ test_data_uncount<- test_data  %>%
   uncount(weights = weighting)
 
 
-uncalibrated<-cal_plot_windowed(test_data_uncount, truth = market_desc, step_size = 0.05,include_points=FALSE)
+uncalibrated<-cal_plot_windowed(test_data_uncount, truth = market_desc, step_size = 0.10,include_points=FALSE)
+uncalibrated
 
+uncalibrated_UW<-cal_plot_windowed(test_data, truth = market_desc, step_size = 0.10,include_points=FALSE)
+uncalibrated_UW
 
 # Apply the calibration model (fit on validation subsample) to the test holdout.
 
@@ -518,16 +534,38 @@ test_data_calibration_applied_uncount<- test_data_calibration_applied  %>%
   uncount(weights = weighting)
 
 
-calibrated<-cal_plot_windowed(test_data_calibration_applied_uncount, truth = market_desc, step_size = 0.05,include_points=FALSE)
+calibrated<-cal_plot_breaks(test_data_calibration_applied_uncount, 
+                            truth = market_desc, 
+                            num_breaks=10,
+                            include_points=FALSE)
 
 calibrated
+
+test_data_calibration_applied %>%
+  summarise(
+    p10  = quantile(.pred_Small, 0.10),
+    p25  = quantile(.pred_Small, 0.25),
+    p50  = quantile(.pred_Small, 0.50),
+    p75  = quantile(.pred_Small, 0.75),
+    p90  = quantile(.pred_Small, 0.90),
+    p95  = quantile(.pred_Small, 0.95),
+    p99  = quantile(.pred_Small, 0.99),
+    pct_below_01 = mean(.pred_Small < 0.10),
+    pct_below_05 = mean(.pred_Small < 0.05)
+  )
+
+
+
+
+calibratedUW<-cal_plot_windowed(test_data_calibration_applied, truth = market_desc, step_size = 0.1,include_points=FALSE)
+calibratedUW
 
 # Pub Ready Calibration
 # Extract data from the ggplot internals
 cal_data <- calibrated$data
 
 
-message("Plotting results of test set  with calibration")
+message("Saving to Publication ready format")
 
 # --- 2. Build publication-ready faceted calibration plot ---
 # Calibrated test predictions. Same theme/formatting as validation plot above.
@@ -982,7 +1020,311 @@ if (run_this==1){
 }
 
 
+
+
+# There isn't too much small in the dataset. (<5%). 
+
+message("training set check:")
+
+train_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+message("validation set check:")
+validation_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+
+message("test set check:")
+test_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+
+
 cat("weighted_calibration.R completed successfully.")
 
 
+if (run_this==1){
+  
 
+test_data_UW_multicalib_applied <-
+  test_data %>%
+  cal_apply(calibrate_case_UW_multinom)
+
+test_data_UW_multicalib_applied_uncount<-test_data_UW_multicalib_applied %>%
+  uncount(lndlb)
+
+cal_UW_multi<-cal_plot_windowed(test_data_UW_multicalib_applied_uncount,
+                                      truth = market_desc, step_size = 0.05, include_points =FALSE)
+
+
+test_nocal<-cal_plot_windowed(test_data,
+                                truth = market_desc, step_size = 0.05, include_points =FALSE)
+
+test_data %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small,
+              case_weights = weighting) %>%
+  pull(.estimate)
+
+
+test_data_UW_multicalib_applied %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small,
+              case_weights = weighting) %>%
+  pull(.estimate)
+
+
+test_data_UW_multicalib_applied_uncount %>%
+  mn_log_loss(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+
+ESPR_UWraw<-test_data %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_UW_multi<-test_data_UW_multicalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+
+# Small investigate
+# There's very very transactions where there's more than the tiniest probability of 
+# Small
+test_data %>%
+  summarise(
+    p10  = quantile(.pred_Small, 0.10),
+    p25  = quantile(.pred_Small, 0.25),
+    p50  = quantile(.pred_Small, 0.50),
+    p75  = quantile(.pred_Small, 0.75),
+    p90  = quantile(.pred_Small, 0.90),
+    p95  = quantile(.pred_Small, 0.95),
+    p99  = quantile(.pred_Small, 0.99),
+    pct_below_01 = mean(.pred_Small < 0.10),
+    pct_below_05 = mean(.pred_Small < 0.05)
+  )
+
+
+test_data_calibration_applied %>%
+  summarise(
+    p10  = quantile(.pred_Small, 0.10),
+    p25  = quantile(.pred_Small, 0.25),
+    p50  = quantile(.pred_Small, 0.50),
+    p75  = quantile(.pred_Small, 0.75),
+    p90  = quantile(.pred_Small, 0.90),
+    p95  = quantile(.pred_Small, 0.95),
+    p99  = quantile(.pred_Small, 0.99),
+    pct_below_01 = mean(.pred_Small < 0.10),
+    pct_below_05 = mean(.pred_Small < 0.05)
+  )
+
+# In contrast, there's a nice spread for predictions of Large's
+test_data %>%
+  summarise(
+    p10  = quantile(.pred_Large, 0.10),
+    p25  = quantile(.pred_Large, 0.25),
+    p50  = quantile(.pred_Large, 0.50),
+    p75  = quantile(.pred_Large, 0.75),
+    p90  = quantile(.pred_Large, 0.90),
+    p95  = quantile(.pred_Large, 0.95),
+    p99  = quantile(.pred_Large, 0.99),
+    pct_below_01 = mean(.pred_Large < 0.10),
+    pct_below_05 = mean(.pred_Large < 0.05)
+  )
+
+# Takeaway 1. The calibration plot is misleading for the Small class, where there
+# are very few datapoints
+
+
+
+test_data_uncount%>%
+  summarise(
+    p10  = quantile(.pred_Small, 0.10),
+    p25  = quantile(.pred_Small, 0.25),
+    p50  = quantile(.pred_Small, 0.50),
+    p75  = quantile(.pred_Small, 0.75),
+    p90  = quantile(.pred_Small, 0.90),
+    p95  = quantile(.pred_Small, 0.95),
+    p99  = quantile(.pred_Small, 0.99),
+    pct_below_01 = mean(.pred_Small < 0.10),
+    pct_below_05 = mean(.pred_Small < 0.05)
+  )  geom_rug(data = predictions_df,
+           aes(x = .pred_Small, color = (truth == "Small")),
+           inherit.aes = FALSE, alpha = 0.2, sides = "b") +
+  scale_color_manual(values = c("FALSE" = "grey50", "TRUE" = "firebrick"),
+                     name = "True Small")
+
+# Takeaway 2 -- it's even worse for the uncounted data, where P90 for Small is 0.017 (just under 2%)
+
+test_data_uncount %>%
+  mutate(true = (market_desc == "Large")) %>%
+  ggplot(aes(x = .pred_Large, fill = true)) +
+  geom_histogram(bins = 20, position = "stack") +
+  scale_fill_manual(values = c("FALSE" = "grey70", "TRUE" = "firebrick"),
+                    name = "True Class = Large") +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 200000 )) +
+    labs(x = "Predicted P(Large)",
+       y = "Count",
+       title = "Distribution of Predicted P(Large) by True Class")
+
+test_data_uncount %>%
+  mutate(true = (market_desc == "Small")) %>%
+  ggplot(aes(x = .pred_Small, fill = true)) +
+  geom_histogram(bins = 20, position = "stack") +
+  scale_fill_manual(values = c("FALSE" = "grey70", "TRUE" = "firebrick"),
+                    name = "True Class = Small") +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 200000 )) +
+  labs(x = "Predicted P(Small)",
+       y = "Count",
+       title = "Distribution of Predicted P(Small) by True Class")
+
+
+
+cal_data <- test_data_uncount %>%
+  cal_plot_windowed(market_desc,
+                    .pred_Small,
+                    window_size = 0.10,
+                    step_size   = 0.05,
+                    .by          = NULL) 
+
+# The returned object is a ggplot — add a rug
+cal_data +
+  geom_rug(data = test_data_uncount,
+           aes(x = .pred_Small, color = (market_desc == "Small")),
+           inherit.aes = FALSE, alpha = 0.2, sides = "b") +
+  scale_color_manual(values = c("FALSE" = "grey50", "TRUE" = "firebrick"),
+                     name = "True Small")
+
+cal_plot_windowed(test_data_uncount,
+  truth=market_desc,
+  estimate=.pred_Small,
+  window_size = 0.025,
+  step_size   = 0.05,
+.by          = NULL) 
+
+
+
+
+window_size <- 0.10
+step_size   <- 0.05
+
+centers <- seq(window_size / 2, 1 - window_size / 2, by = step_size)
+
+window_n <- map_dfr(centers, function(ctr) {
+  in_window <- test_data %>%
+    filter(.pred_Small >= ctr - window_size / 2,
+           .pred_Small <  ctr + window_size / 2)
+  tibble(
+    center       = ctr,
+    n_total      = nrow(in_window),
+    n_true_small = sum(in_window$market_desc == "Small"),
+    obs_fraction = if_else(nrow(in_window) > 0,
+                           mean(in_window$market_desc == "Small"),
+                           NA_real_)
+  )
+})
+
+window_n %>%
+  pivot_longer(cols = c(n_total),
+               names_to = "type", values_to = "n") %>%
+  ggplot(aes(x = center, y = n, color = type)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  scale_color_manual(values = c("n_total" = "black", "n_true_small" = "firebrick"),
+                     labels = c("Total obs in window", "True Small in window")) +
+  labs(x = "Window center (predicted P(Small))",
+       y = "Observations in window",
+       title = "Effective sample size per calibration window — Small class",
+       color = NULL)
+
+
+
+
+window_L <- map_dfr(centers, function(ctr) {
+  in_window <- test_data %>%
+    filter(.pred_Large >= ctr - window_size / 2,
+           .pred_Large <  ctr + window_size / 2)
+  tibble(
+    center       = ctr,
+    n_total      = nrow(in_window),
+    n_true_large = sum(in_window$market_desc == "Large"),
+    obs_fraction = if_else(nrow(in_window) > 0,
+                           mean(in_window$market_desc == "Large"),
+                           NA_real_)
+  )
+})
+
+
+
+
+window_L %>%
+  pivot_longer(cols = c(n_true_large),
+               names_to = "type", values_to = "n") %>%
+  ggplot(aes(x = center, y = n, color = type)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  scale_color_manual(values = c("n_total" = "black", "n_true_large" = "firebrick"),
+                     labels = c("Total obs in window", "True Large in window")) +
+  labs(x = "Window center (predicted P(Small))",
+       y = "Observations in window",
+       title = "Effective sample size per calibration window — Large class",
+       color = NULL)
+
+
+
+
+compute_window_fraction <- function(df, pred_col, truth_col, 
+                                    true_class, window_size = 0.10,
+                                    step_size = 0.05) {
+  centers <- seq(window_size / 2, 1 - window_size / 2, by = step_size)
+  map_dfr(centers, function(ctr) {
+    w <- df %>%
+      filter(.data[[pred_col]] >= ctr - window_size / 2,
+             .data[[pred_col]] <  ctr + window_size / 2)
+    n     <- nrow(w)
+    n_pos <- sum(w[[truth_col]] == true_class)
+    p_hat <- if (n > 0) n_pos / n else NA_real_
+    se    <- if (n > 1) sqrt(p_hat * (1 - p_hat) / n) else NA_real_
+    tibble(center = ctr, n_total = n, n_pos = n_pos,
+           obs_frac = p_hat, se = se, class = true_class)
+  })
+}
+
+small_windows <- compute_window_fraction(test_data_calibration_applied, ".pred_Small",
+                                         "market_desc", "Small")
+large_windows <- compute_window_fraction(test_data_calibration_applied, ".pred_Large",
+                                         "market_desc", "Large")
+
+bind_rows(small_windows, large_windows) %>%
+  ggplot(aes(x = center, y = obs_frac, color = class, fill = class)) +
+  geom_ribbon(aes(ymin = obs_frac - 1.96 * se,
+                  ymax = obs_frac + 1.96 * se), alpha = 0.2, color = NA) +
+  geom_line(linewidth = 1) +``
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  labs(x = "Predicted probability",
+       y = "Observed fraction",
+       title = "Calibration comparison: Small vs. Large")
+
+
+
+}
