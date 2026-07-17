@@ -1304,6 +1304,7 @@ calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calib
 
 
 
+
 # converting to landings_kg_category_apportion 
 
 
@@ -1336,7 +1337,6 @@ YRS_predictions <- oos_predictions_calibrated %>%
       .fns = ~ .x * livlb,
       .names = "{gsub('^\\\\.pred_', 'pred_', .col)}"
     ), transactions = n(),
-    # Sums the live pounds for the year, convert to metric tons, then to kg
     TOTAL_YEAR_LIVLB = sum(livlb, na.rm = TRUE),
     live_metric_tons = TOTAL_YEAR_LIVLB / lbs_per_mt,
     LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons * 1000,
@@ -1368,6 +1368,314 @@ YRS_predictions <- oos_predictions_calibrated %>%
     .groups = "drop"
   ) %>%
   select(year, pred_class, transactions, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))
+
+
+
+readr::write_csv(YRS_predictions, "YRS_predictions.csv")
+
+
+
+
+
+
+
+
+
+
+# plot
+
+
+class_colours <- c(
+  "Extra Large"   = "#1B6CA8", # deep blue
+  "Extra Small"   = "#E05C2A", # burnt orange
+  "Large"         = "#2E8B57", # sea green
+  "Large Medium"  = "#7B3F9E", # purple
+  "Medium"        = "#A0522D", # sienna brown
+  "Small Kitten"  = "#DDA0DD", # plum
+  "Unclassified"  = "#404040"  # dark gray
+)
+
+
+# keep only 2004 to 2013
+YRS_predictions_cuts <- YRS_predictions %>% 
+  mutate(year = as.numeric(as.character(year))) %>% 
+  dplyr::filter(year >= 2004 & year <= 2013) %>% 
+  mutate(pred_class = stringr::str_to_title(pred_class)) %>% 
+  mutate(pred_class = fct_relevel(
+    pred_class, 
+    "Extra Large", "Large", "Medium", "Small Kitten", "Extra Small"
+  ))
+
+# builds the plot here 
+p_predictions <- ggplot(
+  YRS_predictions_cuts, 
+  aes(
+    x = year, 
+    y = LANDINGS_KG_CATEGORY_APPORTION / 1000, 
+    fill = pred_class
+  )
+) + 
+  geom_col(
+    position = position_stack(reverse = TRUE), 
+    width = 0.8, 
+    colour = NA
+  ) + 
+  scale_fill_manual(
+    name = "Market Category", 
+    values = class_colours, 
+    breaks = names(class_colours)
+  ) + 
+  scale_x_continuous(
+    name = "Year", 
+    breaks = scales::breaks_pretty(n = 5), 
+    expand = expansion(mult = 0.01)
+  ) + 
+  scale_y_continuous(
+    name = "Predicted live weight (mt)", 
+    labels = scales::label_comma(accuracy = 1), 
+    expand = expansion(mult = c(0, 0.05))
+  ) + 
+  theme_bw(base_size = 9) + 
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 7, colour = "grey20"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(size = 7, face = "bold"),
+    legend.text = element_text(size = 7),
+    legend.key.width = unit(0.4, "cm"),
+    legend.key.height = unit(0.3, "cm"),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(4, "pt"),
+    plot.margin = margin(4, 6, 4, 4, "pt")
+  )
+
+p_predictions
+
+
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_2004_2013{modeltype}_{tuning_vintage}.png")), 
+  plot = p_predictions)
+
+
+
+
+# kept all years
+
+YRS_predictions_plot <- YRS_predictions %>%
+  mutate(year = as.numeric(as.character(year))) %>% 
+  mutate(pred_class = stringr::str_to_title(pred_class)) %>% 
+  mutate(pred_class = fct_relevel(
+    pred_class, 
+    "Extra Large", "Large", "Medium", "Small Kitten", "Extra Small" 
+  ))
+
+
+
+
+# builds the plot here
+p_predictions2 <- ggplot(
+  YRS_predictions_plot, 
+  aes(
+    x = year, 
+    y = LANDINGS_KG_CATEGORY_APPORTION / 1000, 
+    fill = pred_class
+  )
+) +
+  geom_col(
+    position = position_stack(reverse = TRUE),
+    width = 0.8,
+    colour = NA
+  ) +
+  scale_fill_manual(
+    name = "Market Category",
+    values = class_colours,
+    breaks = names(class_colours) 
+  ) +
+  scale_x_continuous(
+    name = "Year",
+    breaks = scales::breaks_pretty(n = 5),
+    expand = expansion(mult = 0.01)
+  ) +
+  scale_y_continuous(
+    name = "Predicted live weight (mt)",
+    labels = scales::label_comma(accuracy = 1),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  theme_bw(base_size = 9) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y = element_blank(),
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 7, colour = "grey20"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(size = 7, face = "bold"),
+    legend.text = element_text(size = 7),
+    legend.key.width = unit(0.4, "cm"),
+    legend.key.height = unit(0.3, "cm"),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.spacing = unit(4, "pt"),
+    plot.margin = margin(4, 6, 4, 4, "pt")
+  )
+
+p_predictions2
+
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_all_years{modeltype}_{tuning_vintage}.png")), 
+  plot = p_predictions2)
+
+
+
+
+# confusion matrix
+class_levels <- c(
+  "Extra Large", 
+  "Large", 
+  "Large Medium", 
+  "Medium", 
+  "Extra Small", 
+  "Small Kitten", 
+  "Unclassified"
+)
+
+
+# first confusion matrix I made, not sure if it's reading transactions it looks off.
+#soft_predictions_data <- test_data_calibration_applied %>%
+  mutate(Truth = stringr::str_to_title(market_desc)) %>%
+  group_by(Truth) %>%
+  summarise(
+    across(where(is.numeric), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = -Truth,
+    names_to = "Prediction",
+    values_to = "Freq"
+  ) %>%
+  mutate(
+    Prediction = gsub("^\\.?pred_", "", Prediction),
+    Prediction = stringr::str_to_title(Prediction),
+    Prediction = gsub("^prediction_", "", Prediction, ignore.case = TRUE)
+  ) %>%
+  dplyr::filter(Prediction %in% class_levels) %>%
+  group_by(Truth) %>%
+  mutate(Prop = Freq / sum(Freq)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth = factor(Truth, levels = rev(class_levels))
+    )
+
+
+
+# metric tons
+
+soft_predictions_data <- test_data_calibration_applied %>%
+  mutate(Truth = stringr::str_to_title(market_desc)) %>%
+  group_by(Truth) %>%
+  summarise(
+    across(
+      where(is.numeric) & starts_with(".pred"), 
+      ~ sum(.x * livlb, na.rm = TRUE) / lbs_per_mt
+    ),
+    .groups = "drop"
+  ) %>%
+pivot_longer(
+  cols = -Truth,
+  names_to = "Prediction",
+  values_to = "Metric_Tons" 
+) %>%
+  mutate(
+    Prediction = gsub("^\\.?pred_", "", Prediction),
+    Prediction = stringr::str_to_title(Prediction),
+    Prediction = gsub("^prediction_", "", Prediction, ignore.case = TRUE)
+  ) %>%
+  dplyr::filter(Prediction %in% class_levels) %>%
+  group_by(Truth) %>%
+  mutate(Prop = Metric_Tons / sum(Metric_Tons)) %>%
+  ungroup() %>%
+  mutate(
+    Prediction = factor(Prediction, levels = class_levels),
+    Truth = factor(Truth, levels = rev(class_levels))
+  )
+
+
+#prints here
+
+p_softcm <- ggplot(soft_predictions_data, aes(x = Prediction, y = Truth, fill = Prop)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(
+    aes(label = paste0(
+      sprintf("%.2f", Prop), 
+      "\n(", 
+      formatC(Metric_Tons, format = "f", digits = 0, big.mark = ","), 
+      ")"
+    )),
+    size = 2.4, 
+    colour = "grey10"
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#2166AC",
+    limits = c(0, 1),
+    breaks = seq(0, 1, 0.25),
+    name = "Recall\n(row prop.)"
+  ) +
+  scale_x_discrete(position = "bottom") +
+  labs(
+    x = "Predicted class",
+    y = "True class"
+  ) +
+  coord_equal() +
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x = element_text(size = 7, colour = "grey20", angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 7, colour = "grey20"),
+    axis.title = element_text(size = 8),
+    legend.title = element_text(size = 7),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width = unit(0.3, "cm"),
+    panel.grid = element_blank(),
+    panel.border = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin = margin(4, 4, 4, 4, "pt")
+  )
+
+p_softcm
+
+
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("Final_ConfusionMatrix_MT{modeltype}_{tuning_vintage}.png")), 
+  plot = p_softcm)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
