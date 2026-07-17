@@ -264,7 +264,8 @@ train_baked <- bake(
 rm(train_data, train_expanded)
 gc()
 ############################################
-
+run_me = 0
+if (run_me == 1){
 # Final model fitting on the baked dataset
 message("Fitting final model:...")
 final_ranger_fit <- ranger(
@@ -288,6 +289,16 @@ write_rds(final_ranger_fit, file=here("results","ranger",final_fit_file_name))
 
 rm(train_baked)
 gc()
+}
+if (run_me==0){
+  
+  final_ranger_fit<-read_rds(file=here("results","ranger",final_fit_file_name))
+  prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
+  prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+                       
+
+}
+
 # Augment by hand. Since final_ranger_fit is a ranger object, not a workflow, I have to 
 # predict by hand and then bind into the original data
 data_split<-readr::read_rds(file=here("results","ranger",data_save_name))
@@ -312,21 +323,18 @@ train_preds<-train_preds %>%
 train_preds<-bind_cols(train_preds,train_data)
 
 
-train_preds<-train_preds%>%
-  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+train_preds_uncount<-train_preds%>%
+  uncount(lndlb) 
 
 
 # compute training metrics with yardstick
-train_metrics <-  bind_rows(
-  roc_auc(train_preds, truth = market_desc,
-          starts_with(".pred_"),
-          case_weights = weighting),
-  mn_log_loss(train_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting),
-  brier_class(train_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting)
+train_metrics<-  bind_rows(
+  roc_auc(train_preds_uncount, truth = market_desc,
+          starts_with(".pred_")),
+  mn_log_loss(train_preds_uncount, truth = market_desc,
+              starts_with(".pred_")),
+  brier_class(train_preds_uncount, truth = market_desc,
+              starts_with(".pred_")),
 )
 
 message("Fit metrics on the training data:")
@@ -339,7 +347,7 @@ train_preds<-bind_cols(class,train_preds)
 # calibration predictions
  
 # prediction using the validation data, bake with the prepped recipe
-#prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
+# prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
 
 
 calib_preds<-predict_byhand(new_data=calibration_data,
@@ -362,19 +370,16 @@ calib_preds<-bind_cols(calib_preds,calibration_data)
 
 # print out the metrics
 
-calib_preds <- calib_preds %>%
-  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+calib_uncount <- calib_preds%>%
+  uncount(lndlb) 
 
 calib_test_metrics <- bind_rows(
-  roc_auc(calib_preds, truth = market_desc,
-          starts_with(".pred_"),
-          case_weights = weighting),
-  mn_log_loss(calib_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting),
-  brier_class(calib_preds, truth = market_desc,
-              starts_with(".pred_"),
-              case_weights = weighting)
+  roc_auc(calib_uncount, truth = market_desc,
+          starts_with(".pred_")),
+  mn_log_loss(calib_uncount, truth = market_desc,
+              starts_with(".pred_")),
+  brier_class(calib_uncount, truth = market_desc,
+              starts_with(".pred_"))
 
 )
 
