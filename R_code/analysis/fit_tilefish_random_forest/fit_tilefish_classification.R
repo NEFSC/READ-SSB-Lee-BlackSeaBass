@@ -140,10 +140,6 @@ data_save_name<-glue("tilefish_data_split{tuning_vintage}.Rds")
 tune_file_name<-glue("tilefish_tuning{tuning_vintage}.Rds")
 best_param_file_name<-glue("tilefish_best_parameters{tuning_vintage}.Rds")
 
-files <- list.files(here("results", "tilefish"),
-                    pattern = "tilefish_tuning.*\\.Rds$", full.names = TRUE)
-
-final_fit <- read_rds(max(files))
 final_fit_file_name <- glue("tilefish_final_fit_{tuning_vintage}.Rds")
 
 
