@@ -68,7 +68,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Prototype"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -139,10 +139,14 @@ tuning_vintage<-as.character(Sys.Date())
 data_save_name<-glue("tilefish_data_split{tuning_vintage}.Rds")
 tune_file_name<-glue("tilefish_tuning{tuning_vintage}.Rds")
 best_param_file_name<-glue("tilefish_best_parameters{tuning_vintage}.Rds")
- 
-final_fit_file_name<-glue("tilefish_final{tuning_vintage}.Rds")
-vi_file_name<-glue("tilefish_vi{tuning_vintage}.Rds")
-final_fit <- read_rds(file = here("results", "tilefish", final_fit_file_name))
+
+files <- list.files(here("results", "tilefish"),
+                    pattern = "tilefish_tuning.*\\.Rds$", full.names = TRUE)
+
+final_fit <- read_rds(max(files))
+final_fit_file_name <- glue("tilefish_final_fit_{tuning_vintage}.Rds")
+
+
 
 
 
@@ -336,9 +340,9 @@ message("Final model fit and saved")
 
 
 
-run_this<-1
+#run_this<-1
 
-if (run_this==1){
+#if (run_this==1)
 
   # Pulling the trained model out of the last_fit container
   trained_wf <- extract_workflow(first_tilefish_model)
@@ -373,8 +377,6 @@ prob_names <- grep("^\\.pred_", prob_names, value = TRUE)
 prob_names <- grep("^\\.pred_class", prob_names, value = TRUE, invert = TRUE)
 
 
-
-
 clean_prob_names <- prob_names %>% 
   stringr::str_replace("^\\.", "") %>% 
   janitor::make_clean_names()
@@ -390,7 +392,7 @@ final_pr <- first_train_predictions %>%
 final_pr
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("train_PR_curve_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_PR_curve_{modeltype}.png")), 
   plot = final_pr)
 
 
@@ -402,7 +404,7 @@ train_roc <- first_train_predictions %>%
 train_roc
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("train_ROC_curve_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_ROC_curve_{modeltype}.png")), 
   plot = train_roc)
 
 
@@ -415,7 +417,7 @@ final_cm <- first_train_predictions %>%
 final_cm
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("classification_confusion_matrix_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("classification_confusion_matrix_{modeltype}.png")), 
   plot = final_cm)
 
 
@@ -478,7 +480,7 @@ p_cal
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_test_calibrated_windowed_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("validation_test_calibrated_windowed_{modeltype}.png")), 
   plot = p_cal)
 
 
@@ -594,7 +596,7 @@ iso_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("isotonic_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("isotonic_calibration_{modeltype}.png")), 
   plot = iso_applied_window)
 
 
@@ -613,7 +615,7 @@ multi_applied_window <- cal_plot_windowed(
 multi_applied_window
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("multinomial_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("multinomial_calibration_{modeltype}.png")), 
   plot = multi_applied_window)
 
 
@@ -631,7 +633,7 @@ beta_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("beta_calibration_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("beta_calibration_{modeltype}.png")), 
   plot = beta_applied_window)
 
 
@@ -656,7 +658,7 @@ roc_plot <- autoplot(roc_data)
 roc_plot
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{modeltype}.png")), 
   plot = roc_plot)
 
 
@@ -707,7 +709,7 @@ p_facet
 # save the plot
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("colorful_facet_beta_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("colorful_facet_beta_{modeltype}.png")), 
   plot = p_facet)
 
 
@@ -743,9 +745,9 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 CalLoss
 rCalLoss
 
-}
 
-# Beta boosted model probabilty accuracy by 3.78%. Other calibrations were not very good.
+
+# Beta boosted model probabilty accuracy by 2.52%. Other calibrations were not very good.
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
 
 # training workflow into testing data, does it look good with random forest and probabilities.
@@ -771,7 +773,7 @@ calibrated <- cal_plot_windowed(
 calibrated
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{modeltype}.png")), 
   plot = calibrated)
 
 
@@ -819,7 +821,7 @@ p_cal_test_beta
 
 #save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_COLOR{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_COLOR{modeltype}.png")), 
   plot = p_cal_test_beta)
 
 #publication ready curves on uncalibrated
@@ -877,7 +879,7 @@ p_uncal
 
 # save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_color_ready_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_color_ready_{modeltype}.png")), 
   plot = p_uncal)
 
 
@@ -897,7 +899,7 @@ roc_plot2
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot_test_data{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot_test_data{modeltype}.png")), 
   plot = roc_plot2)
 
 
@@ -954,7 +956,7 @@ p_facetUW
 #SAVE
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_ROC_{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_ROC_{modeltype}.png")), 
   plot = p_facetUW)
 
 # calibration gains
@@ -975,8 +977,8 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 # beta  calibration improves model fit a bit.
 CalLoss
 rCalLoss
-# raw model scored 0.0170562 and calibrated went down to 0.5619904
-# rCalLoss 3.33% improvement
+# raw model scored 0.51202 and calibrated went down to 0.5025716
+# rCalLoss 1.85% improvement
 
 
 # mapping nespp4 codes, 2007 and 2015
@@ -1099,10 +1101,10 @@ combinedplot <- combined_data %>%
   labs(y = "Number of Specimens") + 
   facet_grid(YEAR ~ MARKET_DESC)
 
-# Save the plot 
+# Save
 ggsave(
   filename = here("images", "tilefish", "exploratory", 
-                  glue("2007vs2015_lengths_plot_{modeltype}_{tuning_vintage}.png")), 
+                  glue("2007vs2015_lengths_plot_{modeltype}.png")), 
   plot = combinedplot,
   width = 12,
   height = 8,
@@ -1115,13 +1117,13 @@ message("Successfully ran")
 
 # Here I predict out of sample with my test data
 
+fitted_workflow <- extract_workflow(first_tilefish_model)
 
-#   fitted workflow
-fitted_workflow <- extract_workflow(final_fit)
 
-# predicted on wf variable
 class_predictions <- predict(fitted_workflow, new_data = test_data, type = "class")
 prob_predictions  <- predict(fitted_workflow, new_data = test_data, type = "prob")
+
+
 
 test_data_calibration_applied <- test_data %>%
   bind_cols(class_predictions) %>%
@@ -1269,10 +1271,12 @@ raw_oos_data_vintage_string <- max(raw_oos_data_vintage_string)
 oos_data <- readr::read_rds(
   file = here("data_folder", "main", "tilefish", glue("tilefish_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
 
+
+calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+
 # this is for out of sample dataset for unclassified
-final_workflow <- extract_workflow(final_fit)
-extract_recipe(final_fit)
-preds <- final_fit$.workflow[[1]]$pre$actions$recipe$recipe$var_info %>% dplyr::filter(role == "predictor")
+final_workflow <- extract_workflow(first_tilefish_model)
+preds <- final_workflow$pre$actions$recipe$recipe$var_info %>% dplyr::filter(role == "predictor")
 num_preds <- nrow(preds)
 
 
@@ -1300,7 +1304,7 @@ oos_predictions_calibrated <- oos_predictions_clean %>%
   probably::cal_apply(calibrate_beta)
 
 
-calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+
 
 
 
@@ -1321,45 +1325,16 @@ prob_names <- colnames(oos_predictions_calibrated) %>%
   grep("^\\.pred_", ., value = TRUE) %>% 
   grep("^\\.pred_class", ., value = TRUE, invert = TRUE)
 
-
-# calculate yearly metrics
-
-YRS_predictions <- oos_predictions_calibrated %>%
-  select(
-    year, 
-    market_desc, 
-    livlb, 
-    any_of(prob_names), 
-    pred_class) %>%
-  group_by(year) %>%
-  mutate(across(
-      .cols = any_of(prob_names),
-      .fns = ~ .x * livlb,
-      .names = "{gsub('^\\\\.pred_', 'pred_', .col)}"
-    ), transactions = n(),
-    TOTAL_YEAR_LIVLB = sum(livlb, na.rm = TRUE),
-    live_metric_tons = TOTAL_YEAR_LIVLB / lbs_per_mt,
-    LANDINGS_KG_CATEGORY_APPORTION = live_metric_tons * 1000,
-    MARKET_DESC_ORIG = toupper(market_desc)
-  ) %>%
-  ungroup() %>%
-  select(
-    year, 
-    market_desc, 
-    pred_class, 
-    transactions, 
-    LANDINGS_KG_CATEGORY_APPORTION, 
-    starts_with("pred_") & where(is.numeric))
-
-
-
+#
 YRS_predictions <- oos_predictions_calibrated %>%
   select(year, market_desc, livlb, any_of(prob_names), pred_class) %>%
   mutate(
     across(
       .cols = any_of(prob_names),
       .fns = ~ .x * livlb,
-      .names = "{gsub('^\\\\.pred_', 'pred_', .col)}" )) %>%
+      .names = "{gsub('^\\\\.pred_', 'pred_', .col)}"
+    )
+  ) %>%
   group_by(year, pred_class) %>%
   summarise(
     transactions = n(),
@@ -1368,8 +1343,6 @@ YRS_predictions <- oos_predictions_calibrated %>%
     .groups = "drop"
   ) %>%
   select(year, pred_class, transactions, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))
-
-
 
 readr::write_csv(YRS_predictions, "YRS_predictions.csv")
 
@@ -1459,7 +1432,7 @@ p_predictions
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_2004_2013{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_2004_2013{modeltype}.png")), 
   plot = p_predictions)
 
 
@@ -1530,7 +1503,7 @@ p_predictions2
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_all_years{modeltype}_{tuning_vintage}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_all_years{modeltype}.png")), 
   plot = p_predictions2)
 
 
@@ -1542,44 +1515,44 @@ class_levels <- c(
   "Large", 
   "Large Medium", 
   "Medium", 
+  "Small Kitten",
   "Extra Small", 
-  "Small Kitten", 
   "Unclassified"
 )
 
 
 # first confusion matrix I made, not sure if it's reading transactions it looks off.
 #soft_predictions_data <- test_data_calibration_applied %>%
-  mutate(Truth = stringr::str_to_title(market_desc)) %>%
-  group_by(Truth) %>%
-  summarise(
-    across(where(is.numeric), ~ sum(.x, na.rm = TRUE)),
-    .groups = "drop"
-  ) %>%
-  pivot_longer(
-    cols = -Truth,
-    names_to = "Prediction",
-    values_to = "Freq"
-  ) %>%
-  mutate(
-    Prediction = gsub("^\\.?pred_", "", Prediction),
-    Prediction = stringr::str_to_title(Prediction),
-    Prediction = gsub("^prediction_", "", Prediction, ignore.case = TRUE)
-  ) %>%
-  dplyr::filter(Prediction %in% class_levels) %>%
-  group_by(Truth) %>%
-  mutate(Prop = Freq / sum(Freq)) %>%
-  ungroup() %>%
-  mutate(
-    Prediction = factor(Prediction, levels = class_levels),
-    Truth = factor(Truth, levels = rev(class_levels))
-    )
+  #mutate(Truth = stringr::str_to_title(market_desc)) %>%
+  #group_by(Truth) %>%
+  #summarise(
+   # across(where(is.numeric), ~ sum(.x, na.rm = TRUE)),
+    #.groups = "drop"
+ # ) %>%
+ # pivot_longer(
+   # cols = -Truth,
+    #names_to = "Prediction",
+    #values_to = "Freq"
+  #) %>%
+  #mutate(
+   # Prediction = gsub("^\\.?pred_", "", Prediction),
+   # Prediction = stringr::str_to_title(Prediction),
+   # Prediction = gsub("^prediction_", "", Prediction, ignore.case = TRUE)
+  #) %>%
+  #dplyr::filter(Prediction %in% class_levels) %>%
+  #group_by(Truth) %>%
+  #mutate(Prop = Freq / sum(Freq)) %>%
+ # ungroup() %>%
+ # mutate(
+  #  Prediction = factor(Prediction, levels = class_levels),
+   # Truth = factor(Truth, levels = rev(class_levels))
+   # )
 
 
 
 # metric tons
 
-soft_predictions_data <- test_data_calibration_applied %>%
+mt_predictions_data <- test_data_calibration_applied %>%
   mutate(Truth = stringr::str_to_title(market_desc)) %>%
   group_by(Truth) %>%
   summarise(
@@ -1611,7 +1584,7 @@ pivot_longer(
 
 #prints here
 
-p_softcm <- ggplot(soft_predictions_data, aes(x = Prediction, y = Truth, fill = Prop)) +
+p_mtcm <- ggplot(mt_predictions_data, aes(x = Prediction, y = Truth, fill = Prop)) +
   geom_tile(colour = "white", linewidth = 0.8) +
   geom_text(
     aes(label = paste0(
@@ -1650,12 +1623,12 @@ p_softcm <- ggplot(soft_predictions_data, aes(x = Prediction, y = Truth, fill = 
     plot.margin = margin(4, 4, 4, 4, "pt")
   )
 
-p_softcm
+p_mtcm
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_ConfusionMatrix_MT{modeltype}_{tuning_vintage}.png")), 
-  plot = p_softcm)
+  filename = here("images", "tilefish", "exploratory", glue("Final_ConfusionMatrix_MT{modeltype}.png")), 
+  plot = p_mtcm)
 
 
 
