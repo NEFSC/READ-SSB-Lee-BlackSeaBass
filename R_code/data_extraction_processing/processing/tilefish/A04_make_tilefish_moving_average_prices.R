@@ -123,7 +123,7 @@ combined_prices <- combined_prices %>%
             by = c("dlr_date", "market_desc")) #%>%
 
 combined_prices<-combined_prices %>%
-  filter(dlr_date>="2001-01-03")
+  filter(dlr_date>="2001-01-01")
 
 # Assert all rows have region-wide price (should always exist post-tsfill)
 stopifnot(
@@ -150,7 +150,7 @@ grand_ma_prices <- combined_prices %>%
   rename(
     LargeMA30price  = Large,
     MediumMA30price = Medium,
-    SmallKitteMA30price  = `Small Kitten`
+    SmallKittenMA30price  = `Small Kitten`
   ) %>%
   arrange(dlr_date)
 
