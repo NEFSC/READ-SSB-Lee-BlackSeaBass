@@ -1,0 +1,182 @@
+---
+title: "TilefishProject"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r Set up working space and data}
+library(here)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(conflicted)
+library(glue)
+library(kableExtra)
+
+conflicts_prefer(dplyr::filter)
+conflicts_prefer(lubridate::year)
+conflicts_prefer(lubridate::month)
+conflicts_prefer(lubridate::week)
+conflicts_prefer(dplyr::summarise)
+conflicts_prefer(dplyr::arrange)
+
+here::i_am("R_code/data_extraction_processing/processing/tilefish/TilefishProject.Rmd")
+
+
+
+my_datapull<-dirname(here())
+my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
+
+    
+in_string      <- "2026-06-09"  
+vintage_string <- Sys.Date()   
+lbs_to_kg<-2.20462
+
+
+tile <- readRDS(file.path(my_datapull,"data_folder", "main", "commercial", glue("tile_landings_all_{in_string}.Rds")))
+# need to change this- maybe need to add the rest.
+source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
+
+#final data prep, missing source
+
+
+```
+
+Here is some exploratory analysis of tilefish
+
+```{r dealerbargraphs}
+
+#Unique dealers
+
+dealers_annual <- tile
+
+colnames(dealers_annual)
+
+# Year
+dealers_by_year <- dealers_annual %>%
+group_by(year) %>%
+summarise(unique_dealers = n_distinct(dlrid))
+print(dealers_by_year)
+
+
+# By State
+dealers_by_state <- dealers_annual %>%
+group_by(state) %>%
+summarise(unique_dealers = n_distinct(dlrid))
+print(dealers_by_state)
+
+
+# plot
+dealers_annual %>% 
+  group_by(year, state) %>% 
+  summarise(count = n_distinct(dlrid), .groups = "drop") %>% 
+  ggplot(aes(x = factor(year), y = count, fill = state)) + 
+  geom_col() + 
+  labs(x = "Year") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+
+
+```
+
+
+After 2012, June-August started increasing in unique transactions for every year afterwards.
+Throughout every year, Jan-May had much more unique transactions then later months in the spring.
+Later winter starts picking up again.
+
+
+```{r uniquetransactions}
+# Price variables
+
+ # 1. How many unique transactions are there in every month per year?
+
+tile %>% 
+  group_by(year, month) %>% 
+  summarise(unique_transactions = n_distinct(camsid), .groups = "drop") %>% 
+  kable()
+
+
+# adding lndlb with unique transactions
+tile %>% 
+  group_by(year, month) %>% 
+  summarise(
+    unique_transactions = n_distinct(camsid),
+    total_weight = sum(lndlb, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  ) %>% 
+  arrange(year, month) %>% 
+  mutate(
+    display_value = paste0(
+      scales::comma(unique_transactions), 
+      " (", scales::comma(total_weight, accuracy = 0.1), "k)"
+    )
+  ) %>%
+  pivot_wider(
+    id_cols = year,
+    names_from = month, 
+    values_from = display_value,
+    values_fill = "0"
+  ) %>% 
+  select(year, any_of(as.character(1:12))) %>%
+  kable(format = "html", align = "c") %>% 
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+
+```
+
+
+
+# 2006-2015 was landing more pounds
+
+```{r market_desc}
+
+# Month, Market_desc, and Year
+
+tile %>% 
+  apply_tilefish_market_rebinning() %>% 
+  group_by(market_desc, month, year) %>% 
+  summarise(
+    total_unique_transactions = n_distinct(camsid),
+    total_weight = sum(lndlb, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  ) %>% 
+  arrange(market_desc, year, month) %>% 
+  mutate(
+    total_unique_transactions = scales::comma(total_unique_transactions),
+    total_weight = scales::comma(total_weight)
+  ) %>% 
+  kable(
+    format = "html", 
+    align = "c", 
+    col.names = c("Market Category", "Month", "Year", "Unique transactions", "Total Weight (1,000 lbs)")
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "condensed"), 
+    full_width = FALSE
+  )
+
+```
+
+
+```{r}
+#plot by market_desc
+
+tile %>% 
+  apply_tilefish_market_rebinning() %>% 
+  group_by(market_desc, year) %>% 
+  summarise(total_unique_transactions = n_distinct(camsid), .groups = "drop") %>% 
+  ggplot(aes(x = factor(year), y = total_unique_transactions, fill = market_desc)) + 
+  geom_col() + 
+  labs(x = "Year", y = "Unique Transactions", fill = "Market Category") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+
+```
+
+
