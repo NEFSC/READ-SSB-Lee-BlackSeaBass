@@ -18,7 +18,9 @@ Tile.Classification.Recipe <- recipe(train_data) %>%
 
 Tile.Classification.Recipe <- Tile.Classification.Recipe %>% 
     update_role(
-      priceR_CPI, 
+      Price_Diff_L,
+      Price_Diff_M,
+      Price_Diff_SK,
       mygear, 
       lndlb,
       state,
