@@ -177,7 +177,7 @@ cleaned_landings<-cleaned_landings %>%
 
 # merge in moving_average_prices  statistics
  cleaned_landings<-cleaned_landings %>%
-   left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")%>%
+   left_join(grand_moving_average_prices, by=join_by(dlr_date==dlr_date), relationship="many-to-one")%>%
    mutate(
      .merge = case_when(
        .in_original == 1L & is.na(.in_gma) ~ 1L,
@@ -190,7 +190,7 @@ cleaned_landings<-cleaned_landings %>%
   filter(year>=2001)
 
 
-verify merge worked, stop if it didnt. Cleanup if it did
+#verify merge worked, stop if it didnt. Cleanup if it did
  stopifnot(all(cleaned_landings$.merge == 3L))
  cleaned_landings<-cleaned_landings %>%
    select(-c(.in_gma,.merge))
