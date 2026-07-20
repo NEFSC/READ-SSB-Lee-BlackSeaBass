@@ -1344,8 +1344,9 @@ YRS_predictions <- oos_predictions_calibrated %>%
   ) %>%
   select(year, pred_class, transactions, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))
 
-readr::write_csv(YRS_predictions, "YRS_predictions.csv")
 
+
+readr::write_csv(YRS_predictions, here("data_folder", "predictions", glue("tilefish_out_of-sample_predictions_{vintage_string}.csv")))
 
 
 
