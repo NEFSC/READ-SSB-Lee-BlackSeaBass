@@ -304,6 +304,7 @@ combined_dataset<-combined_dataset %>%
 # To predict
 combined_dataset<-combined_dataset %>%
   mutate(mark_in=case_when(
+              year<=2000 ~ FALSE,
               price<0.15 ~ FALSE,
               price>30 ~ FALSE,
               is.na(price) ~ FALSE,
