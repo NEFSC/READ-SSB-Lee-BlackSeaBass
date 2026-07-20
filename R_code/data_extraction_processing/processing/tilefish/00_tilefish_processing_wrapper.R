@@ -40,8 +40,8 @@ source(here("R_code", "data_extraction_processing","processing","tilefish",  "A0
 
 source(here("R_code", "data_extraction_processing","processing", "tilefish", "A03_make_tilefish_dealer_stats.R"))
 
-# Will not use them at the moment 
-#source(here("R_code", "data_extraction_processing","processing", "tilefish", "A04_make_moving_average_tilefish_prices.R"))
+# Use this to make trailing 30 day prices for Large, Medium, and SK 
+source(here("R_code", "data_extraction_processing","processing", "tilefish", "A04_make_tilefish_moving_average_prices.R"))
 
 #final data prep.
 # there's no great reason to have these start with B, execpt that the A files were previously made by stata.
