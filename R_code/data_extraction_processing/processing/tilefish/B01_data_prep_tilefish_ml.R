@@ -60,9 +60,9 @@ dlrid_lag<-readRDS(here("data_folder","main","tilefish", glue("dlrid_tile_lag_st
 dlrid_lag<-dlrid_lag%>%
   mutate(.in_dlrid_lag = 1L)
 
-#grand_moving_average_prices<-readRDS(here("data_folder","main","tilefish", glue("grand_moving_average_prices_{vintage_string}.Rds")))
-#grand_moving_average_prices<-grand_moving_average_prices%>%
-#  mutate(.in_gma = 1L)
+grand_moving_average_prices<-readRDS(here("data_folder","main","tilefish", glue("tile_grand_moving_average_prices_{vintage_string}.Rds")))
+grand_moving_average_prices<-grand_moving_average_prices%>%
+  mutate(.in_gma = 1L)
 
 ###############################################################################
 # mimics the stata data cleaning that I did for the multinomial logit.
@@ -176,24 +176,24 @@ cleaned_landings<-cleaned_landings %>%
 
 
 # merge in moving_average_prices  statistics
-# cleaned_landings<-cleaned_landings %>%
-#   left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")%>%
-#   mutate(
-#     .merge = case_when(
-#       .in_original == 1L & is.na(.in_gma) ~ 1L,
-#       is.na(.in_original) & .in_gma == 1L ~ 2L,
-#       .in_original == 1L & .in_gma == 1L ~ 3L,
-#     )
-#   )
+ cleaned_landings<-cleaned_landings %>%
+   left_join(grand_moving_average_prices, by=join_by(state==state, dlr_date==dlr_date), relationship="many-to-one")%>%
+   mutate(
+     .merge = case_when(
+       .in_original == 1L & is.na(.in_gma) ~ 1L,
+       is.na(.in_original) & .in_gma == 1L ~ 2L,
+       .in_original == 1L & .in_gma == 1L ~ 3L,
+     )
+   )
 # there's a handful of 1996 records hanging around here.  
 cleaned_landings<-cleaned_landings %>%
-  filter(year>1997)
+  filter(year>=2001)
 
 
-#verify merge worked, stop if it didnt. Cleanup if it did
-# stopifnot(all(cleaned_landings$.merge == 3L))
-# cleaned_landings<-cleaned_landings %>%
-#   select(-c(.in_gma,.merge))
+verify merge worked, stop if it didnt. Cleanup if it did
+ stopifnot(all(cleaned_landings$.merge == 3L))
+ cleaned_landings<-cleaned_landings %>%
+   select(-c(.in_gma,.merge))
 
 
 cleaned_landings<-cleaned_landings %>%
@@ -205,6 +205,14 @@ cleaned_landings<-cleaned_landings %>%
   mutate(price=value/lndlb,
          priceR_CPI=valueR_CPI/lndlb,
          month=lubridate::month(dlr_date))
+
+# compute Price Differences to Large, Medium, and SK
+
+cleaned_landings<-cleaned_landings %>%
+  mutate(Price_Diff_L=priceR_CPI-LargeMA30price,
+         Price_Diff_M=priceR_CPI-MediumMA30price,
+         Price_Diff_SK=priceR_CPI-SmallKittenMA30price)
+
 
 # trip level tilefish landings
 cleaned_landings<-cleaned_landings %>%
@@ -351,5 +359,6 @@ estimation_dataset<-combined_dataset %>%
   select(-c("mark_in", "flag_in"))
 
 write_rds(estimation_dataset, file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{out_data_string}.Rds")))
+
 
 
