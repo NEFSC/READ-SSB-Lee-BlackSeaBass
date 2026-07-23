@@ -68,7 +68,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Initial"
+search_type<-"Prototype"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -743,7 +743,7 @@ rCalLoss
 
 
 
-# Beta boosted model probabilty accuracy by 2.52%. Other calibrations were not very good.
+# Beta boosted model probabilty accuracy by 5.35%. Other calibrations were not very good.
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
 
 # training workflow into testing data, does it look good with random forest and probabilities.
@@ -909,7 +909,7 @@ auc_data <- test_data_calibration_applied %>%
   )
 auc_data
 
-# 0.960 was the given value
+# 0.959 was the given value
 
 # Level names match the exact string names inside the .level column of roc_dataUW
 
@@ -973,8 +973,8 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 # beta  calibration improves model fit a bit.
 CalLoss
 rCalLoss
-# raw model scored 0.51202 and calibrated went down to 0.5025716
-# rCalLoss 1.85% improvement
+# raw model scored 0.5210528 and calibrated went down to 0.5096049
+# rCalLoss 2.19% improvement
 
 
 # mapping nespp4 codes, 2007 and 2015
@@ -1376,24 +1376,24 @@ YRS_predictions_cuts <- YRS_predictions %>%
     "Extra Large", "Large", "Medium", "Small Kitten", "Extra Small"
   ))
 
-# builds the plot here 
+# builds the plot here- 
+
+target_order <- c("Extra Large", "Large", "Medium", "Small Kitten", "Extra Small")
+
+YRS_predictions_cuts$pred_class <- factor(
+  YRS_predictions_cuts$pred_class, 
+  levels = target_order
+)
+
 p_predictions <- ggplot(
   YRS_predictions_cuts, 
-  aes(
-    x = year, 
-    y = LANDINGS_KG_CATEGORY_APPORTION / 1000, 
-    fill = pred_class
-  )
+  aes(x = year, y = LANDINGS_KG_CATEGORY_APPORTION / 1000, fill = pred_class)
 ) + 
-  geom_col(
-    position = position_stack(reverse = TRUE), 
-    width = 0.8, 
-    colour = NA
-  ) + 
+  geom_col(position = position_stack(reverse = TRUE), width = 0.8, colour = NA) + 
   scale_fill_manual(
     name = "Market Category", 
     values = class_colours, 
-    breaks = names(class_colours)
+    breaks = target_order
   ) + 
   scale_x_continuous(
     name = "Year", 
@@ -1405,24 +1405,25 @@ p_predictions <- ggplot(
     labels = scales::label_comma(accuracy = 1), 
     expand = expansion(mult = c(0, 0.05))
   ) + 
-  theme_bw(base_size = 9) + 
+  theme_bw(base_size = 14) + 
   theme(
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
     panel.grid.minor.y = element_blank(),
-    axis.title = element_text(size = 8),
-    axis.text = element_text(size = 7, colour = "grey20"),
+    axis.title = element_text(size = 13), 
+    axis.text = element_text(size = 11, colour = "grey20"), 
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "bottom",
-    legend.title = element_text(size = 7, face = "bold"),
-    legend.text = element_text(size = 7),
-    legend.key.width = unit(0.4, "cm"),
-    legend.key.height = unit(0.3, "cm"),
+    legend.title = element_text(size = 12, face = "bold"), 
+    legend.text = element_text(size = 11), 
+    legend.key.width = unit(0.5, "cm"), 
+    legend.key.height = unit(0.4, "cm"),
     legend.margin = margin(0, 0, 0, 0),
-    legend.box.spacing = unit(4, "pt"),
-    plot.margin = margin(4, 6, 4, 4, "pt")
+    legend.box.spacing = unit(6, "pt"),
+    plot.margin = margin(6, 8, 6, 6, "pt")
   )
+
 
 p_predictions
 
@@ -1628,14 +1629,7 @@ ggsave(
   plot = p_mtcm)
 
 
-
-
-
-
-
-
-
-
+# price histogram made here
 
 
 
