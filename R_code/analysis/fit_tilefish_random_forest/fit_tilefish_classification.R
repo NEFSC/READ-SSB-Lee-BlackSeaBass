@@ -68,7 +68,7 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 modeltype<-"nocluster"
 # OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
 
-search_type<-"Prototype"
+search_type<-"Initial"
 # search_type in "Initial", "Prototype","Advanced")
 
 # Only used with search_type<-"Prototype" -- how much data do you want in the dataset to prototype the code
@@ -743,7 +743,7 @@ rCalLoss
 
 
 
-# Beta boosted model probabilty accuracy by 5.35%. Other calibrations were not very good.
+# Beta boosted model probabilty accuracy by 2.52%. Other calibrations were not very good.
 # Beta calibration fits better, curves look way nicer and closer to our dotted line. In addition, it is the one with the lower mn log loss value of 0.5690
 
 # training workflow into testing data, does it look good with random forest and probabilities.
@@ -909,7 +909,7 @@ auc_data <- test_data_calibration_applied %>%
   )
 auc_data
 
-# 0.959 was the given value
+# 0.960 was the given value
 
 # Level names match the exact string names inside the .level column of roc_dataUW
 
@@ -973,8 +973,8 @@ rCalLoss <- 100 * CalLoss / ESPR_raw
 # beta  calibration improves model fit a bit.
 CalLoss
 rCalLoss
-# raw model scored 0.5210528 and calibrated went down to 0.5096049
-# rCalLoss 2.19% improvement
+# raw model scored 0.51202 and calibrated went down to 0.5025716
+# rCalLoss 1.85% improvement
 
 
 # mapping nespp4 codes, 2007 and 2015
