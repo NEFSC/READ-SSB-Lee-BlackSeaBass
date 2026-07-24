@@ -9,7 +9,6 @@
 #  - tile_unclassified_dataset (from data_prep_ml.Rmd)
 #  - Tilefish.Classification.Recipe.R
 #  - Tilefish.Workflow.Setup.R
-
 # Outputs:
 #  - estimating dataset 
 #  - tuning results 
@@ -334,6 +333,16 @@ write_rds(first_tilefish_model, file=here("results","tilefish",final_fit_file_na
 message("Final model fit and saved")
 
 
+# 1. Extract the parsnip fit object
+fitted_model <- extract_fit_parsnip(first_tilefish_model)
+# VI plot
+
+variable_importance_plot<-vip(fitted_model, num_features=20L) 
+
+variable_importance_plot
+ggsave(
+  filename = here("images", "tilefish", "exploratory", glue("VIP_{modeltype}.png")), 
+  plot = variable_importance_plot)
 
 
 #run_this<-1
@@ -1281,9 +1290,18 @@ oos_data <- oos_data %>%
     original_market_category = market_desc, 
     SPECIES_ITIS = "168546",
     year = as.factor(year),
-    month = as.factor(month),
     rand = runif(n())         
   )
+# CREATE BLOCK_ID
+oos_data <- oos_data %>% 
+  mutate(
+    BLOCK_ID = case_when(
+      month<=6 ~ 1L,
+      month>=7 ~ 2L,
+      TRUE ~ 0L
+    ) 
+  ) %>%
+  mutate(month = as.factor(month))
 
 
 oos_predictable <- oos_data %>% dplyr::filter(mark_in == 1)
@@ -1323,7 +1341,7 @@ prob_names <- colnames(oos_predictions_calibrated) %>%
 
 #
 YRS_predictions <- oos_predictions_calibrated %>%
-  select(year, market_desc, livlb, any_of(prob_names), pred_class) %>%
+  select(year, market_desc, block_id, livlb, any_of(prob_names), pred_class) %>%
   mutate(
     across(
       .cols = any_of(prob_names),
@@ -1331,14 +1349,15 @@ YRS_predictions <- oos_predictions_calibrated %>%
       .names = "{gsub('^\\\\.pred_', 'pred_', .col)}"
     )
   ) %>%
-  group_by(year, pred_class) %>%
+  group_by(year, block_id, pred_class) %>%
   summarise(
-    transactions = n(),
+    #transactions = n(), transactions is probably misleading
     LANDINGS_KG_CATEGORY_APPORTION = (sum(livlb, na.rm = TRUE) / lbs_per_mt) * 1000,
     across(starts_with("pred_") & where(is.numeric), \(x) sum(x, na.rm = TRUE)),
     .groups = "drop"
   ) %>%
-  select(year, pred_class, transactions, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))
+  select(year, pred_class, block_id, LANDINGS_KG_CATEGORY_APPORTION, starts_with("pred_") & where(is.numeric))  %>%
+  rename(BLOCK_ID = block_id)
 
 
 
