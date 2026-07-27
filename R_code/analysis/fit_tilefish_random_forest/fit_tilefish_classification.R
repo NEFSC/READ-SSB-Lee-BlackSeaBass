@@ -1395,24 +1395,24 @@ YRS_predictions_cuts <- YRS_predictions %>%
     "Extra Large", "Large", "Medium", "Small Kitten", "Extra Small"
   ))
 
-# builds the plot here 
+# builds the plot here- 
+
+target_order <- c("Extra Large", "Large", "Medium", "Small Kitten", "Extra Small")
+
+YRS_predictions_cuts$pred_class <- factor(
+  YRS_predictions_cuts$pred_class, 
+  levels = target_order
+)
+
 p_predictions <- ggplot(
   YRS_predictions_cuts, 
-  aes(
-    x = year, 
-    y = LANDINGS_KG_CATEGORY_APPORTION / 1000, 
-    fill = pred_class
-  )
+  aes(x = year, y = LANDINGS_KG_CATEGORY_APPORTION / 1000, fill = pred_class)
 ) + 
-  geom_col(
-    position = position_stack(reverse = TRUE), 
-    width = 0.8, 
-    colour = NA
-  ) + 
+  geom_col(position = position_stack(reverse = TRUE), width = 0.8, colour = NA) + 
   scale_fill_manual(
     name = "Market Category", 
     values = class_colours, 
-    breaks = names(class_colours)
+    breaks = target_order
   ) + 
   scale_x_continuous(
     name = "Year", 
@@ -1424,24 +1424,25 @@ p_predictions <- ggplot(
     labels = scales::label_comma(accuracy = 1), 
     expand = expansion(mult = c(0, 0.05))
   ) + 
-  theme_bw(base_size = 9) + 
+  theme_bw(base_size = 14) + 
   theme(
     panel.grid.major.x = element_blank(),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(colour = "grey88", linewidth = 0.3),
     panel.grid.minor.y = element_blank(),
-    axis.title = element_text(size = 8),
-    axis.text = element_text(size = 7, colour = "grey20"),
+    axis.title = element_text(size = 13), 
+    axis.text = element_text(size = 11, colour = "grey20"), 
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "bottom",
-    legend.title = element_text(size = 7, face = "bold"),
-    legend.text = element_text(size = 7),
-    legend.key.width = unit(0.4, "cm"),
-    legend.key.height = unit(0.3, "cm"),
+    legend.title = element_text(size = 12, face = "bold"), 
+    legend.text = element_text(size = 11), 
+    legend.key.width = unit(0.5, "cm"), 
+    legend.key.height = unit(0.4, "cm"),
     legend.margin = margin(0, 0, 0, 0),
-    legend.box.spacing = unit(4, "pt"),
-    plot.margin = margin(4, 6, 4, 4, "pt")
+    legend.box.spacing = unit(6, "pt"),
+    plot.margin = margin(6, 8, 6, 6, "pt")
   )
+
 
 p_predictions
 
@@ -1647,14 +1648,7 @@ ggsave(
   plot = p_mtcm)
 
 
-
-
-
-
-
-
-
-
+# price histogram made here
 
 
 
