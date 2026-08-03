@@ -121,10 +121,23 @@ raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 ###############################################################
 # # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
+# First split was 80, 5, 15.  reasonable when I was going to unweight at all stages
+# I think this isn't leaving enough data for the calibration 
+# I'm going to re-stick the validation and test data together. Then I'm going to split it in half, so I get 
+# 10% and 10%.
 # Onlyneed the test and validation 
 train_data <- training(data_split)
 validation_data <- validation(data_split)
 test_data <- testing(data_split)
+
+rebind<-rbind(test_data, validation_data)
+# seed
+set.seed(32560049)
+ds2<-initial_split(rebind, prop=0.5 )
+
+validation_data<-training(ds2)
+test_data<-testing(ds2)
+
 
 # recreate the frequency weights variables
 # lndlb (landed pounds per transaction) serves as a frequency/case weight

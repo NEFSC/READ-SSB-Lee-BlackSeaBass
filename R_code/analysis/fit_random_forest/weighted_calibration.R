@@ -14,11 +14,6 @@
 #
 #   Pipeline position: run AFTER train_randomforest_nocluster.R.
 #
-# Requires:
-#   A custom build of {probably} shipped with this repo. To install:
-#     remove.packages("probably")
-#     here()
-#     remotes::install_local(here("R_code","probably1.2.0"))
 #
 # Inputs (read from results/ranger; newest vintage auto-selected in Section 1):
 #   data_split       -- rsample 3-way split (train / validation / test)
@@ -174,6 +169,20 @@ train_data <- training(data_split)
 validation_data <- validation(data_split)
 test_data <- testing(data_split)
 
+# First split was 80, 5, 15.  reasonable when I was going to unweight at all stages
+# I think this isn't leaving enough data for the calibration 
+# I'm going to re-stick the validation and test data together. Then I'm going to split it in half, so I get 
+# 10% and 10%.
+
+rebind<-rbind(test_data, validation_data)
+# seed
+set.seed(32560049)
+ds2<-initial_split(rebind, prop=0.5 )
+
+validation_data<-training(ds2)
+test_data<-testing(ds2)
+
+
 # recreate the frequency weights variables
 # lndlb (landed pounds per transaction) serves as a frequency/case weight
 # throughout; high-volume transactions receive proportionally more influence
@@ -199,8 +208,8 @@ final_ranger_fit<-read_rds(file=here("results","ranger",glue("{final_pattern}{tu
 #predict
 class_levels <- c("Jumbo", "Large", "Medium", "Small")
 validation_preds<-predict_byhand(new_data=validation_data,
-                            prepped_recipe = prepped_recipe,
-                            ranger_fitted_model  = final_ranger_fit)
+                                 prepped_recipe = prepped_recipe,
+                                 ranger_fitted_model  = final_ranger_fit)
 
 class <- colnames(validation_preds)[max.col(validation_preds, ties.method = "first")]
 class<-as_tibble(class) %>%
@@ -225,8 +234,6 @@ validation_subs<-validation_preds %>%
          pred_Large=.pred_Large,
          pred_Medium=.pred_Medium,
          pred_Small=.pred_Small)
-  
-
 
 write_dta(validation_subs, path=here("results","ranger",glue("validation_preds{finalfit_vintage}.dta")))
 
@@ -259,18 +266,13 @@ validation_data<-validation_preds
 # =============================================================================
 # SECTION 4 — Pre-calibration diagnostic plot (raw validation)
 # Windowed calibration plot on RAW validation predictions, used to decide
-# whether calibration is needed. cal_plot_windowed() needs observation-level
-# data, so rows are first uncounted by lndlb (one pseudo-row per pound).
-# A publication-ready faceted version is then built and saved (ICES JMS spec).
-# The ggplot/ggsave block here recurs, near-verbatim, in Sections 7, 10, 11.
+# whether calibration is needed. 
 # =============================================================================
 
 set.seed(9834549)
 
 
-
-
-cal_gg<-uncounted_validation %>%
+cal_gg<-validation_preds %>%
   cal_plot_windowed(
     truth          = market_desc,
     estimate       = c(.pred_Jumbo, .pred_Large, .pred_Medium, .pred_Small),
@@ -324,7 +326,7 @@ p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
-       glue("calplot_raw_Weighted_window{modeltype}{finalfit_vintage}.pdf")),
+       glue("calplot_raw_transactions_{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_cal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
@@ -335,148 +337,74 @@ ggsave(
 # =============================================================================
 # SECTION 5 — Fit calibration models
 # Fits, on the validation predictions:
-#   calibrate_weighted_multinom   -- multinomial, lndlb-weighted (smooth=FALSE)
-#   calibrate_UW_multinom         -- multinomial, unweighted (transaction-level)
-#   cal_iso_transactions          -- isotonic, transaction-level
-#   cal_isoB_pounds               -- bootstrapped isotonic on uncounted (pounds) data
+#   calibrate_multinom_transactions -- multinomial, unweighted (transaction-level)
 # Weighted/unweighted multinomials are fit via do.call() to force immediate
 # evaluation of the weights argument. Model objects are written to disk.
 # =============================================================================
 # I tried to use cal_estimate_multinomial with smooth=TRUE to fit a multinomial
 # model with splines.  
 # mcgv::gam() will not actually accept weights (it silently swallows them)
+# The smooth=TRUE option seems to fit better for transactions.
 #################################################################################
 
-# This throws an error, but wrapping a do.call forces the weights to get evaluated immediately.
 
-# calibrate_weighted_multinom <- cal_estimate_multinomial(validation_preds, 
-#                                          truth=market_desc, 
-#                                          estimate=.pred_Jumbo:.pred_Small,
-#                                          smooth=FALSE, 
-#                                          weights=lndlb)
+# Fit the unweighted one, 
+calibrate_UW_multinom <- do.call(
+  cal_estimate_multinomial,
+  list(
+    .data = validation_preds,
+    truth = quote(market_desc),
+    estimate = quote(.pred_Jumbo:.pred_Small),
+    smooth = FALSE
+  )
+)
 
-# Fit a weighted model. without smoothing splines
+# Fit the unweighted one, 
+calibrate_UW_multinom2 <- do.call(
+  cal_estimate_multinomial,
+  list(
+    .data = validation_preds,
+    truth = quote(market_desc),
+    estimate = quote(.pred_Jumbo:.pred_Small),
+    smooth = TRUE
+  )
+)
 
+# Apply calibration to validation data
+CalM1 <-
+  validation_data %>%
+  cal_apply(calibrate_UW_multinom)
 
-validation_preds<-validation_preds %>%
-  mutate(.cal_weight=as.integer(lndlb))
-
-
-calibrate_weighted_multinom <- do.call(
-   cal_estimate_multinomial,
-   list(
-     .data = validation_preds,
-     truth = quote(market_desc),
-     estimate = quote(.pred_Jumbo:.pred_Small),
-     smooth = FALSE,
-     weights = validation_preds$.cal_weight
-   )
- )
- 
- 
- write_rds(calibrate_weighted_multinom, file=here("results","ranger","final",glue(
-   "calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
- 
- # Fit the unweighted one, 
-  calibrate_UW_multinom <- do.call(
-   cal_estimate_multinomial,
-   list(
-     .data = validation_preds,
-     truth = quote(market_desc),
-     estimate = quote(.pred_Jumbo:.pred_Small),
-     smooth = FALSE
-     )
- )
-  write_rds(calibrate_UW_multinom, file=here("results","ranger","final",glue(
-    "calibrate_transactions_multinom_{modeltype}{finalfit_vintage}.Rds")))
-  
-  
-  cal_iso_transactions<-cal_estimate_isotonic(validation_preds, 
-                                              truth=market_desc, 
-                                              estimate=.pred_Jumbo:.pred_Small)
-  
-#uncounth the validation predictions
-
-set.seed(84843)
-
-a<-  Sys.time()
-cal_isoB_pounds<-cal_estimate_isotonic_boot(uncounted_validation, 
-                                    truth=market_desc,
-                                    times=50,
-                                    prop=.1,
-                                    estimate=.pred_Jumbo:.pred_Small)
-elapsed<-  Sys.time()-a
-elapsed
-gc()
-  
-
-write_rds(cal_isoB_pounds, file=here("results","ranger","final",glue(
-  "calibrate_isoB_pounds{modeltype}{finalfit_vintage}.Rds")))
-
-    
-  #print them both. They are different. 
-
-message("printing the estimates from the weighted calibration")
-  calibrate_weighted_multinom$estimates
-  
-message("estimates from the transaction level calibration")
-  calibrate_UW_multinom$estimates
- 
-# =============================================================================
-# SECTION 6 — Apply calibration to validation set; Brier-score gains
-# Applies the fitted models back to the FULL validation set and compares Brier
-# scores pre/post calibration (CalLoss, rCalLoss). Diagnostic only — the appropriate
-# evaluation is on the test set (Section 9).
-# =============================================================================
-# 
-# Calibration is applied to the full validation set.
-# Brier scores computed pre- and post-calibration;
-# CalLoss and rCalLoss summarize the absolute and relative improvement.
-# This particular computation is 'just for fun'. We really want to evaluate the
-# performance of the calibration on the TEST set.
 validation_transactions_multicalib_applied <-
   validation_data %>%
-  cal_apply(calibrate_weighted_multinom)
+  cal_apply(calibrate_UW_multinom2)
 
 
-validation_pounds_multicalib_applied <-validation_transactions_multicalib_applied %>%
-  uncount(as.integer(lndlb))
-  
-validation_pounds_isoB<-uncounted_validation %>%
-  cal_apply(cal_isoB_pounds)
-
-
-ESPR_pounds_raw<-uncounted_validation %>%
-  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
-  pull(.estimate)
-              
-
-ESPR_pounds_multicalib<-validation_pounds_multicalib_applied %>%
+# calculate brier class
+CalM1 %>%
   brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
   pull(.estimate)
 
 
-ESPR_pounds_isoB<-validation_pounds_isoB %>%
+validation_transactions_multicalib_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+validation_data %>%
   brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
   pull(.estimate)
 
 
-message("Validation Set Brier score Pounds, uncalibrated:  ", ESPR_pounds_raw)
-message("Validation Set Brier score Pounds, multi calibrated:  ", ESPR_pounds_multicalib)
-message("Validation Set Brier score Pounds, Bootstrapped Iso calibrated:  ", ESPR_pounds_isoB)
+message("Brier Classification computed for the two calibration models on the validation data")
+message("This is a sanity check, but not the fair comparison (next step)" )
 
 
-CalLoss<-ESPR_pounds_raw-ESPR_pounds_multicalib
-rCalLoss<-100*CalLoss/ESPR_pounds_raw
 
-message("Relative, change (%):  ", round(rCalLoss, 2))
-
-rm(ESPR_pounds_raw, ESPR_pounds_multicalib, CalLoss, rCalLoss)
 
 # =============================================================================
 # SECTION 7 — Validation-set calibration plots
 # Windowed calibration plots on the CALIBRATED validation predictions (sanity
-# check that underconfidence was corrected). Saves multinom and isoB pub-ready
+# check that underconfidence was corrected). Saves multinom  pub-ready
 # versions. Same caveats as Section 6 (validation, not test).
 # Reuses the Section 4 ggplot/ggsave block.
 # =============================================================================
@@ -489,37 +417,10 @@ rm(ESPR_pounds_raw, ESPR_pounds_multicalib, CalLoss, rCalLoss)
 # like the previous section, this is just a sanity check. It should be evaluated on the test set
 # this is also not "uncounted", so it's not quite right
 cal_transactions_multi<-cal_plot_windowed(validation_transactions_multicalib_applied,
-                  truth = market_desc, step_size = 0.05, include_points =FALSE)
-
-cal_transactions_multi
-
-
-cal_pounds_isoB<-cal_plot_windowed(validation_pounds_isoB,
                                           truth = market_desc, step_size = 0.05, include_points =FALSE)
 
-cal_pounds_isoB
 
-
-
-rm(cal_transactions_multi)
-
-
-cal_pound_multi<-cal_plot_windowed(validation_pounds_multicalib_applied,
-                                      truth = market_desc, step_size = 0.05, include_points =FALSE)
-cal_pound_multi
-
-ggsave(
-  here("results", "ranger", "final",
-       glue("calplot_Multi_Valid{modeltype}{finalfit_vintage}.pdf")),
-  plot   = cal_pound_multi,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
-
-
-cal_data <- cal_pounds_isoB$data
+cal_data <- cal_transactions_multi$data
 
 
 
@@ -565,7 +466,7 @@ p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
-       glue("calplot_isoB_Valid{modeltype}{finalfit_vintage}.pdf")),
+       glue("calplot_multi_Valid{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_cal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
@@ -586,13 +487,18 @@ message("Final predictions on test set")
 
 
 
+# Calibration is applied to the full test set.
+# Brier scores computed pre- and post-calibration;
+# CalLoss and rCalLoss summarize the absolute and relative improvement.
 
-# Predict out-of-sample on the final test holdout.
-# Same predict_byhand / modal-class extraction / bind-back pattern as validation.
+
+#####################################################
+
+# predict  on the test dataset
 class_levels <- c("Jumbo", "Large", "Medium", "Small")
 test_preds<-predict_byhand(new_data=test_data,
-                          prepped_recipe = prepped_recipe,
-                            ranger_fitted_model  = final_ranger_fit)
+                           prepped_recipe = prepped_recipe,
+                           ranger_fitted_model  = final_ranger_fit)
 
 test_class <- colnames(test_preds)[max.col(test_preds, ties.method = "first")]
 
@@ -611,8 +517,66 @@ test_class<-test_class %>%
 # Bind cols
 test_data<-bind_cols(test_class,test_preds,test_data)
 
-test_data<-test_data%>%
-  mutate(weighting=hardhat::frequency_weights(lndlb)) 
+
+# Apply Calibrations 1 and 2 to the test data with predictions
+CalTM1 <-
+  test_data %>%
+  cal_apply(calibrate_UW_multinom)
+
+ESPR_TM1 <- CalTM1 %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+test_data_calibration_applied <-
+  test_data %>%
+  cal_apply(calibrate_UW_multinom2)
+
+ESPR_TM2<-test_data_calibration_applied %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+ESPR_raw<-test_data %>%
+  brier_class(market_desc,.pred_Jumbo:.pred_Small) %>%
+  pull(.estimate)
+
+
+message("Brier Classification for the uncalibrated):", ESPR_raw)
+
+message("Brier Classification for the unsmooth (multinomial):", ESPR_TM1)
+
+message("Brier Classification for the smooth (multinomial):", ESPR_TM2)
+
+
+
+CalLoss<-ESPR_raw-ESPR_TM2
+rCalLoss<-100*CalLoss/ESPR_raw
+
+message("Relative, change (%):  ", round(rCalLoss, 2))
+
+
+# The Smoothed multinomial is best, We'll quickly verify that's the case
+# And then drop the unsmooth one
+
+
+cal_plot_windowed(test_data_calibration_applied,truth = market_desc, 
+                  step_size = 0.05, include_points =FALSE)
+
+cal_plot_windowed(CalTM1,truth = market_desc, 
+                  step_size = 0.05, include_points =FALSE)
+
+cal_plot_windowed(test_data,truth = market_desc, 
+                  step_size = 0.05, include_points =FALSE)
+
+
+message("Eyeballed the basic plots. The smooth version definitely looks better that unsmooth ")
+
+rm(calibrate_UW_multinom)
+rm(CalTM1)
+
+
+write_rds(calibrate_UW_multinom2, file=here("results","ranger","final",glue(
+  "calibrate_transactions_multinom_{modeltype}{finalfit_vintage}.Rds")))
+
 
 # =============================================================================
 # SECTION 9 — Test-set calibration gains: apply models, compute metrics
@@ -630,120 +594,18 @@ test_data<-test_data%>%
 # raw (uncalibrated) and calibrated predictions for side-by-side comparison.
 
 
-# Plot the "raw" predictions
-
-test_data_pounds<- test_data  %>%
-  uncount(weights = weighting)
-
-# Apply the calibration model (fit on validation subsample) to the test holdout.
-test_data_calibration_applied_pounds <-
-  test_data %>%
-  cal_apply(calibrate_weighted_multinom)
-
-test_data_calibration_applied_pounds<- test_data_calibration_applied_pounds  %>%
-  uncount(weights = weighting)
-
-
-# Apply the calibration model (fit on validation subsample) to the test holdout.
-test_data_isoB_pounds <-
-  test_data %>%
-  cal_apply(cal_isoB_pounds)
-
-test_data_isoB_pounds<- test_data_isoB_pounds  %>%
-  uncount(weights = weighting)
-
-
-# Apply the calibration model (fit on transactions subsample) to the test holdout.
-test_data_UW_cal_pounds <-
-  test_data %>%
-  cal_apply(calibrate_UW_multinom) %>%
-  uncount(weights = weighting)
-
-
-
-# compute uncalibrated test  metrics with yardstick
-test_metricsNoCAL <-  bind_rows(
-  roc_auc(test_data_pounds %>%select(-.pred_class), truth = market_desc,
-          starts_with(".pred_")),
-  mn_log_loss(test_data_pounds%>%select(-.pred_class) , truth = market_desc,
-              starts_with(".pred_")),
-  brier_class(test_data_pounds %>%select(-.pred_class), truth = market_desc,
-              starts_with(".pred_"))
-)
-test_metricsNoCAL
 
 
 # compute calibrated test  metrics with yardstick
 test_metricsCAL <-  bind_rows(
-  roc_auc(test_data_calibration_applied_pounds%>%select(-.pred_class), truth = market_desc,
+  roc_auc(test_data_calibration_applied%>%select(-.pred_class), truth = market_desc,
           starts_with(".pred_")),
-  mn_log_loss(test_data_calibration_applied_pounds%>%select(-.pred_class), truth = market_desc,
+  mn_log_loss(test_data_calibration_applied%>%select(-.pred_class), truth = market_desc,
               starts_with(".pred_")),
-  brier_class(test_data_calibration_applied_pounds%>%select(-.pred_class), truth = market_desc,
+  brier_class(test_data_calibration_applied%>%select(-.pred_class), truth = market_desc,
               starts_with(".pred_"))
 )
 test_metricsCAL
-
-
-
-
-# compute calibrated test  metrics with yardstick
-test_metricsisoB<-  bind_rows(
-  roc_auc(test_data_isoB_pounds%>%select(-.pred_class), truth = market_desc,
-          starts_with(".pred_")),
-  mn_log_loss(test_data_isoB_pounds%>%select(-.pred_class), truth = market_desc,
-              starts_with(".pred_")),
-  brier_class(test_data_isoB_pounds%>%select(-.pred_class), truth = market_desc,
-              starts_with(".pred_"))
-)
-test_metricsisoB
-
-
-# compute transaction-calibrated metrics with yardstick
-test_metrics_transactions_CAL <-  bind_rows(
-  roc_auc(test_data_UW_cal_pounds%>%select(-.pred_class), truth = market_desc,
-          starts_with(".pred_")),
-  mn_log_loss(test_data_UW_cal_pounds%>%select(-.pred_class), truth = market_desc,
-              starts_with(".pred_")),
-  brier_class(test_data_UW_cal_pounds%>%select(-.pred_class), truth = market_desc,
-              starts_with(".pred_"))
-)
-test_metrics_transactions_CAL
-
-
-
-
-
-ESPR_pounds_raw<-test_metricsNoCAL %>%
-filter(.metric=="brier_class") %>%
-  pull(.estimate)
-
-
-ESPR_pounds_multicalib<-test_metricsCAL %>%
-  filter(.metric=="brier_class") %>%
-  pull(.estimate)
-
-ESPR_pounds_isoB<-test_metricsisoB %>%
-  filter(.metric=="brier_class") %>%
-  pull(.estimate)
-
-ESPR_pounds_transaction_cal<-test_metrics_transactions_CAL %>%
-  filter(.metric=="brier_class") %>%
-  pull(.estimate)
-
-
-
-
-message("Test Set Brier score Pounds, uncalibrated:  ", ESPR_pounds_raw)
-message("Test Set Brier score Pounds, multicalibrated:  ", ESPR_pounds_multicalib)
-message("Test Set Brier score Pounds, isoB calibrated:  ", ESPR_pounds_isoB)
-
-message("Test Set Brier score Pounds, transaction level calibrated:  ", ESPR_pounds_transaction_cal)
-
-CalLoss<-ESPR_pounds_raw-ESPR_pounds_multicalib
-rCalLoss<-100*CalLoss/ESPR_pounds_raw
-
-message("Relative, change (%):  ", round(rCalLoss, 2))
 
 # =============================================================================
 # SECTION 10 — Test-set calibration plots
@@ -751,7 +613,7 @@ message("Relative, change (%):  ", round(rCalLoss, 2))
 # (raw / multinom / isoB; pounds & transactions). Several are saved for the
 # paper. The pub-ready block near the end reuses the Section 4 ggplot code.
 # =============================================================================
-calibrated<-cal_plot_windowed(test_data_calibration_applied_pounds, 
+calibrated<-cal_plot_windowed(test_data_calibration_applied, 
                               truth = market_desc, 
                               step_size = 0.1 , 
                               include_points=FALSE)
@@ -767,10 +629,10 @@ ggsave(
 )
 
 
-uncalibrated<-cal_plot_windowed(test_data_pounds, 
-                              truth = market_desc, 
-                              step_size = 0.1 , 
-                              include_points=FALSE)
+uncalibrated<-cal_plot_windowed(test_data, 
+                                truth = market_desc, 
+                                step_size = 0.1 , 
+                                include_points=FALSE)
 uncalibrated
 ggsave(
   here("results", "ranger", "final",
@@ -783,89 +645,9 @@ ggsave(
 )
 
 
-# Calibration plots of transactions
-# just to look at, but not saved as pub ready
-
-uncalibrated_transactions<-cal_plot_windowed(test_data,
-                                             truth = market_desc, 
-                                             step_size = 0.10, 
-                                             include_points=FALSE)
-uncalibrated_transactions
-
-ggsave(
-  here("results", "ranger", "final",
-       glue("calplot_uncal_trans_test{modeltype}{finalfit_vintage}.pdf")),
-  plot   = uncalibrated_transactions,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
-
-test_data_calibration_applied_transactions <-
-  test_data %>%
-  cal_apply(calibrate_UW_multinom)
-
-
-
-calibratedTrans<-cal_plot_windowed(test_data_calibration_applied_transactions, 
-                                   truth = market_desc, 
-                                   step_size = 0.1 , 
-                                   include_points=FALSE)
-calibratedTrans
-
-ggsave(
-  here("results", "ranger", "final",
-       glue("calplot_multi_trans_test{modeltype}{finalfit_vintage}.pdf")),
-  plot   = calibratedTrans,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
-
-
-
-
-calibrated_pounds<-cal_plot_windowed(test_data_calibration_applied_pounds, 
-                                       truth = market_desc, 
-                                       step_size = 0.10, 
-                                       include_points=FALSE)
-calibrated_pounds
-
-ggsave(
-  here("results", "ranger", "final",
-       glue("calplot_multi_pounds_test{modeltype}{finalfit_vintage}.pdf")),
-  plot   = calibrated_pounds,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
-
-
-
-iso_pounds<-cal_plot_windowed(test_data_isoB_pounds, 
-                             truth = market_desc, 
-                             step_size = 0.05, 
-                             include_points=FALSE)
-
-iso_pounds
-ggsave(
-  here("results", "ranger", "final",
-       glue("calplot_isoB_test{modeltype}{finalfit_vintage}.pdf")),
-  plot   = iso_pounds,
-  width  = 84,
-  height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
-  units  = "mm",
-  device = cairo_pdf
-)
-
-
-
 # Pub Ready Calibration
 # Extract data from the ggplot internals
-cal_data <- iso_pounds$data
+cal_data <- calibrated$data
 
 
 message("Saving to Publication ready format")
@@ -910,7 +692,7 @@ p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
-       glue("cal_WisoB_testing{modeltype}{finalfit_vintage}.pdf")),
+       glue("test_data_calibrated_multinomial_{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_cal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
@@ -930,22 +712,6 @@ ggsave(
 message("Plotting results of test set  without calibration")
 
 
-
-
-
-
-
-
-
-
-
-uncalibrated_pounds <- cal_plot_windowed(test_data_pounds, 
-                                       truth = market_desc, 
-                                       step_size = 0.10, 
-                                       include_points=FALSE)
-uncalibrated_pounds
-
-
 # Pub Ready Calibration
 # Extract data from the ggplot internals
 # Uncalibrated test predictions publication plot, built from uncalibrated$data.
@@ -956,7 +722,7 @@ uncal_data <- uncalibrated$data
 
 # --- 2. Build publication-ready faceted calibration plot ---
 p_uncal <- ggplot(uncal_data,
-                aes(x = predicted_midpoint, y = event_rate)) +
+                  aes(x = predicted_midpoint, y = event_rate)) +
   # perfect calibration reference line
   geom_abline(slope = 1, intercept = 0,
               linetype = "dashed", colour = "grey50", linewidth = 0.4) +
@@ -993,7 +759,7 @@ p_uncal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
-       glue("uncal_windowed_testing{modeltype}{finalfit_vintage}.pdf")),
+       glue("test_data_uncalibrated{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_uncal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
@@ -1016,14 +782,6 @@ message("Beginning calibrated predictions")
 
 
 
-# 
-# test_data_calibration_applied is transactions, but with the isoB calibration. 
-# Athough there is a slight mismatch, this is exactly what I need to predict in
-# the next step.
-test_data_calibration_applied<-test_data %>%
-  cal_apply(cal_isoB_pounds)  
-
-
 
 
 ##################PREDICT ####################################
@@ -1035,6 +793,9 @@ test_data_calibration_applied<-test_data %>%
 # Calibrated Predictions
 ### pull a few categories, compute a prob*lndlb variable, sum 
 
+prob_names<-colnames(test_data_calibration_applied) 
+prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
+prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 # keep just a few columns
 test_data_calibration_applied<-test_data_calibration_applied %>%
@@ -1051,11 +812,11 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 }
 # Sum up the predictions by year, market category, and stockarea. 
 test_predictions<-test_data_calibration_applied %>%
-   group_by(stockarea, year,market_desc) %>%
+  group_by(stockarea, year,market_desc) %>%
   select(-.pred_class) %>%
   mutate(transactions=1) %>%
   summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
-   ungroup()
+  ungroup()
 test_predictions$modeltype<-modeltype
 
 test_predictions<-test_predictions %>%
@@ -1077,19 +838,19 @@ write_rds(test_predictions, file=here("results","ranger",glue("aggregate_uncount
 # % errors formatted via scales::percent().
 
 aggregate_transactions<-test_predictions %>%
-    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  summarise(across(c(starts_with(".pred_")), sum)) %>%
   pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
 
 
 aggregate_test_predictions<-test_predictions %>%
-    summarise(across(c(starts_with("pred_")), sum)) %>%
+  summarise(across(c(starts_with("pred_")), sum)) %>%
   pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
 
 
 true<-test_predictions %>%
-    group_by(market_desc) %>%
-    summarise(lndlb=sum(lndlb),
-              transactions=sum(transactions))
+  group_by(market_desc) %>%
+  summarise(lndlb=sum(lndlb),
+            transactions=sum(transactions))
 
 Testmkt_preds<-aggregate_transactions %>%
   left_join(true, by=join_by(market_desc==market_desc))
@@ -1111,12 +872,12 @@ transaction_predictions<-Testmkt_preds %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
 
 
-knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 15% Test Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(transaction_predictions, caption='Calibrated Predictions on the 10% Test Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 
 weighted_predictions<-Testmkt_preds %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`)
 
-knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 15% Test Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(weighted_predictions, caption='Calibrated Predictions on the 10% Test Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 message("End of calibrated predictions")
 
 
@@ -1159,11 +920,11 @@ for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
 }
 # Sum up the predictions by year, market category, and stockarea. 
 nocal_predictions<-test_data_nocalibration_applied%>%
-   group_by(stockarea, year,market_desc) %>%
+  group_by(stockarea, year,market_desc) %>%
   select(-.pred_class) %>%
   mutate(transactions=1) %>%
   summarise(across(c(starts_with(c("pred_",".pred_")), "lndlb", "transactions"), \(x) sum(x, na.rm = TRUE))) %>%
-   ungroup()
+  ungroup()
 nocal_predictions$modeltype<-modeltype
 
 nocal_predictions<-nocal_predictions%>%
@@ -1211,12 +972,12 @@ Testmkt_preds<-Testmkt_preds %>%
 transaction_predictions<-Testmkt_preds %>%
   select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)
 
-knitr::kable(transaction_predictions, caption='Uncalibrated Predictions on the 15% Test Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(transaction_predictions, caption='Uncalibrated Predictions on the 10% Test Sample (transaction count).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 
 weighted_predictions<-Testmkt_preds %>%
   select(market_desc,true_mt, predicted_mt, `mt error (%)`)
 
-knitr::kable(weighted_predictions, caption='Uncalibrated Predictions on the 15% Test Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
+knitr::kable(weighted_predictions, caption='Uncalibrated Predictions on the 10% Test Sample (mt).',format.args = list(big.mark = ","), digits=0, align=c("l",rep('r',times=4)))  
 
 
 message("End of uncalibrated predictions")
@@ -1248,41 +1009,41 @@ message("weighted_calibration.R completed successfully.")
 # calibration plot is unreliable).
 # =============================================================================
 # There isn't too much small in the dataset. (<5%). 
-  
-  message("training set check:")
-  
-  train_data %>%group_by(market_desc) %>%
-    summarise(lnd=sum(lndlb),
-              obs=n()) %>%
-    ungroup() %>%
-    mutate(total=sum(lnd),
-           totalobs=sum(obs)) %>%
-    mutate(frac=lnd/total,
-           fracobs=obs/totalobs) %>%
-    select(-c(total,totalobs))
-  message("validation set check:")
-  validation_data %>%group_by(market_desc) %>%
-    summarise(lnd=sum(lndlb),
-              obs=n()) %>%
-    ungroup() %>%
-    mutate(total=sum(lnd),
-           totalobs=sum(obs)) %>%
-    mutate(frac=lnd/total,
-           fracobs=obs/totalobs) %>%
-    select(-c(total,totalobs))
-  
-  message("test set check:")
-  test_data %>%group_by(market_desc) %>%
-    summarise(lnd=sum(lndlb),
-              obs=n()) %>%
-    ungroup() %>%
-    mutate(total=sum(lnd),
-           totalobs=sum(obs)) %>%
-    mutate(frac=lnd/total,
-           fracobs=obs/totalobs) %>%
-    select(-c(total,totalobs))
-  
-  
+
+message("training set check:")
+
+train_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+message("validation set check:")
+validation_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+
+message("test set check:")
+test_data %>%group_by(market_desc) %>%
+  summarise(lnd=sum(lndlb),
+            obs=n()) %>%
+  ungroup() %>%
+  mutate(total=sum(lnd),
+         totalobs=sum(obs)) %>%
+  mutate(frac=lnd/total,
+         fracobs=obs/totalobs) %>%
+  select(-c(total,totalobs))
+
+
 # Small investigate
 message("there isn't much data for smalls where there's even the tiniest bit of probability.")
 test_data %>%
@@ -1330,7 +1091,8 @@ test_data %>%
 # Takeaway 1. The calibration plot is misleading for the Small class, where there
 # are very few datapoints
 
-
+test_data_pounds<-test_data %>%
+  uncount(weighting)
 
 test_data_pounds%>%
   summarise(

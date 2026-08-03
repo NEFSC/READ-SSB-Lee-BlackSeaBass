@@ -162,6 +162,21 @@ train_data <- training(data_split)
 test_data <- testing(data_split)
 validation_data <- validation(data_split)
 
+# First split was 80, 5, 15.  reasonable when I was going to unweight at all stages
+# I think this isn't leaving enough data for the calibration 
+# I'm going to re-stick the validation and test data together. Then I'm going to split it in half, so I get 
+# 10% and 10%.
+# Onlyneed the test and validation 
+rebind<-rbind(test_data, validation_data)
+# seed
+set.seed(32560049)
+ds2<-initial_split(rebind, prop=0.5 )
+
+validation_data<-training(ds2)
+test_data<-testing(ds2)
+rm(rebind)
+rm(ds2)
+
 best_param_file_name<-glue("{best_param_pattern}{pred_vintage}.Rds")
 
 aggregate_oos_predictions<-readRDS(here("data_folder","predictions",paste0("out_of_sample_predictions_YRS_nocluster",pred_vintage, ".Rds")))
