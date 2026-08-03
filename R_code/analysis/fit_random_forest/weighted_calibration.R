@@ -1035,9 +1035,6 @@ test_data_calibration_applied<-test_data %>%
 # Calibrated Predictions
 ### pull a few categories, compute a prob*lndlb variable, sum 
 
-prob_names<-colnames(test_data_calibration_applied) 
-prob_names<-grep("^\\.pred_", prob_names, value=TRUE)
-prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 
 # keep just a few columns
 test_data_calibration_applied<-test_data_calibration_applied %>%
