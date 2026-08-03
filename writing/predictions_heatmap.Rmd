@@ -295,7 +295,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 ```{r load_calibration}
 # load in the calibration model
 
-calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_transactions_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 
 ```

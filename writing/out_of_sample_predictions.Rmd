@@ -217,7 +217,7 @@ oos_unpredictable<-oos_data %>%
 
 
 # Read in calibrationmodel 
-calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_transactions_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 ```
 
