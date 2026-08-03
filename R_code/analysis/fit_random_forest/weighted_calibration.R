@@ -165,7 +165,6 @@ raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 # =============================================================================
 # # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
-# Onlyneed the test and validation 
 train_data <- training(data_split)
 validation_data <- validation(data_split)
 test_data <- testing(data_split)
@@ -416,8 +415,7 @@ message("This is a sanity check, but not the fair comparison (next step)" )
 # Reuses the Section 4 ggplot/ggsave block.
 # =============================================================================
 
-# Plain figure for transaction
-# nice figure for pounds
+# Plain figure for transactions
 
 # Windowed calibration plot on the calibrated validation predictions, for
 # visual confirmation that calibration corrected the underconfidence pattern.
@@ -798,7 +796,7 @@ message("Beginning calibrated predictions")
 # For each market grade, predicted pounds = P(grade) × lndlb per transaction.
 # tryCatch silently skips any grade that has no corresponding .pred_* column
 # (e.g., Unclassified may be absent from the calibrated output).
-# prob_names is defined in modeltype_patterns.R.
+# prob_names is recomputed locally just below (grep of .pred_* columns), overriding any modeltype_patterns.R definition.
 # Calibrated Predictions
 ### pull a few categories, compute a prob*lndlb variable, sum 
 
@@ -810,7 +808,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 test_data_calibration_applied<-test_data_calibration_applied %>%
   select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
 
-# predicted pounds per transaction in the validation dataset.
+# predicted pounds per transaction in the test dataset.
 # multiply the prediction by the landed pounds to get predicted pounds in each class. 
 for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   tryCatch({
@@ -906,7 +904,7 @@ message("Beginning uncalibrated predictions")
 # Parallel aggregation block for uncalibrated test predictions.
 # Identical pipeline to the calibrated block above; exists for direct
 # comparison of calibrated vs. raw model output.
-# write_rds is commented out -- nocal_predictions exists in memory only.
+# write nocal_predictions  to disk 
 
 # Subset data, construct predicted pounds, and aggregate
 
@@ -917,7 +915,7 @@ message("Beginning uncalibrated predictions")
 test_data_nocalibration_applied<-test_data%>%
   select(c( weighting, market_desc, lndlb, stockarea, year, any_of(prob_names), .pred_class))
 
-# predicted pounds per transaction in the validation dataset.
+# predicted pounds per transaction in the test  dataset .
 # multiply the prediction by the landed pounds to get predicted pounds in each class. 
 for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   tryCatch({
