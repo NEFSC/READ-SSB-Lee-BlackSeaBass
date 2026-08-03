@@ -3,14 +3,14 @@
 #
 # Purpose:
 #   Post-hoc probability calibration for the BSB market-grade random forest.
-#   Fits several calibration models on the validation set, evaluates them on the
-#   held-out test set (Brier / log-loss / ROC AUC), produces publication-ready
-#   calibration plots, and writes aggregated calibrated vs. uncalibrated
-#   predictions (transaction counts and landed weight) to disk.
+#   Fits two multinomial calibration models (unsmoothed and spline-smoothed) on
+#   the validation set, compares them by Brier score on the held-out test set,
+#   keeps the smoothed model, produces publication-ready calibration plots, and
+#   writes aggregated calibrated vs. uncalibrated predictions (transaction counts
+#   and landed weight) to disk.
 #
-#   Landed pounds (lndlb) act as frequency/case weights throughout, so
-#   high-volume transactions get proportional influence. "Pounds" metrics are
-#   computed on data uncounted by lndlb; "transaction" metrics on the raw rows.
+#   "Pounds" metrics are computed on data uncounted by lndlb;
+#   "transaction" metrics on the raw rows.
 #
 #   Pipeline position: run AFTER train_randomforest_nocluster.R.
 #
@@ -22,36 +22,35 @@
 #
 # Outputs:
 #   Calibration model objects (results/ranger/final/*.Rds):
-#     calibrate_weighted_multinom_*   -- multinomial, lndlb-weighted (nnet, smooth=FALSE)
-#     calibrate_transactions_multinom_* -- multinomial, unweighted (transaction-level)
-#     calibrate_isoB_pounds*          -- bootstrapped isotonic, on uncounted (pounds) data
-#   Prediction datasets:
-#     validation_preds*.dta                              (results/ranger)
-#     aggregate_uncounted_calibrated_test_predictions_*  (results/ranger; transactions + pounds)
-#     aggregate_nocal_predictions_*                      (results/ranger; uncalibrated counterpart)
-#   Plots (results/ranger/final/*.pdf), including:
-#     calplot_raw_Weighted_window* -- raw (uncalibrated) validation, windowed
-#     calplot_Multi_Valid* / calplot_isoB_Valid* -- calibrated validation
-#     calplot_*_test* -- assorted test-set diagnostics (raw / multinom / isoB; pounds & transactions)
-#     cal_Wmultinom_testing* -- pub-ready calibrated test plot 
-#     uncal_windowed_testing* -- pub-ready uncalibrated test plot
+#     calibrate_transactions_multinom_* -- multinomial, smoothed (smooth=TRUE),
+#         transaction-level. The unsmoothed model is fit for comparison, then
+#         rm()'d -- it is NOT saved.
+#   Prediction datasets (results/ranger):
+#     validation_preds*.dta
+#     aggregate_uncounted_calibrated_test_predictions_*  (transactions + pounds)
+#     aggregate_nocal_predictions_*                      (uncalibrated counterpart)
+#   Plots (results/ranger/final/*.pdf):
+#     calplot_raw_transactions_*         -- raw (uncalibrated) validation, windowed
+#     calplot_multi_Valid*               -- calibrated (smoothed) validation, pub-ready
+#     calplot_multi_test* / calplot_uncal_test* -- calibrated / uncalibrated test, windowed
+#     test_data_calibrated_multinomial_* -- pub-ready calibrated test
+#     test_data_uncalibrated*            -- pub-ready uncalibrated test
 #
 # Contents:
 #   0  Setup: config, libraries, conflict resolution, paths, constants
 #   1  Resolve file vintages and construct filenames
-#   2  Load data splits, weights, recipe, and fitted model
+#   2  Load data, re-split validation/test 50/50, rebuild weights, load recipe & model
 #   3  Validation-set predictions and weighted fit metrics
 #   4  Pre-calibration diagnostic plot (raw validation)
-#   5  Fit calibration models (multinomial weighted/unweighted; isotonic; isotonic-boot)
-#   6  Apply calibration to validation set; Brier-score gains
-#   7  Validation-set calibration plots
-#   8  Test-set predictions
-#   9  Test-set calibration gains: apply models, compute metrics
-#   10 Test-set calibration plots
-#   11 Test-set uncalibrated publication plot
-#   12 Aggregate CALIBRATED test predictions; accuracy tables
-#   13 Aggregate UNCALIBRATED test predictions; accuracy tables (parallel to Section 12)
-#   14 Class-distribution and Small-class diagnostics (runs after completion message)
+#   5  Fit calibration models (unsmoothed + smoothed multinomial) and validation sanity check
+#   6  Validation-set calibration plots
+#   7  Test-set predictions, apply calibrations, Brier comparison, save chosen model
+#   8  Test-set calibrated metrics (ROC AUC / log loss / Brier)
+#   9  Test-set calibration plots
+#   10 Test-set uncalibrated publication plot
+#   11 Aggregate CALIBRATED test predictions; accuracy tables
+#   12 Aggregate UNCALIBRATED test predictions; accuracy tables (parallel to Section 11)
+#   13 Class-distribution and Small-class diagnostics (runs after completion message)
 # =============================================================================
 
 # =============================================================================
@@ -157,10 +156,12 @@ raw_oos_data_vintage_string<-gsub(".Rds","",raw_oos_data_vintage_string)
 raw_oos_data_vintage_string<-max(raw_oos_data_vintage_string)
 
 # =============================================================================
-# SECTION 2 — Load data splits, weights, recipe, and fitted model
-# Read the rsample split (created by data_prep_ml.Rmd), pull train/validation/
-# test frames, rebuild lndlb frequency weights on validation and test, and load
-# the prepped recipe and final ranger fit.
+# SECTION 2 — Load data, re-split validation/test 50/50, rebuild weights, load recipe & model
+# Read the rsample split (created by data_prep_ml.Rmd) and pull train/validation/
+# test. The original validation and test sets are then recombined and re-split
+# 50/50 (initial_split, seed 32560049) to give ~10%/10% validation/test, leaving
+# more data for calibration. Rebuild lndlb frequency weights on the new
+# validation and test sets, then load the prepped recipe and final ranger fit.
 # =============================================================================
 # # this was created with data_prep_ml.Rmd
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
@@ -265,8 +266,10 @@ validation_data<-validation_preds
 
 # =============================================================================
 # SECTION 4 — Pre-calibration diagnostic plot (raw validation)
-# Windowed calibration plot on RAW validation predictions, used to decide
-# whether calibration is needed. 
+# Windowed calibration plot on RAW (transaction-level) validation predictions,
+# used to decide whether calibration is needed, plus a publication-ready faceted
+# version saved as calplot_raw_transactions_*. The ggplot/ggsave block here
+# recurs, near-verbatim, in Sections 6, 9, and 10.
 # =============================================================================
 
 set.seed(9834549)
@@ -335,11 +338,14 @@ ggsave(
 )
 
 # =============================================================================
-# SECTION 5 — Fit calibration models
-# Fits, on the validation predictions:
-#   calibrate_multinom_transactions -- multinomial, unweighted (transaction-level)
-# Weighted/unweighted multinomials are fit via do.call() to force immediate
-# evaluation of the weights argument. Model objects are written to disk.
+# SECTION 5 — Fit calibration models (unsmoothed + smoothed multinomial)
+# Fits two multinomial calibration models on the validation predictions, each
+# via do.call():
+#   calibrate_UW_multinom  -- smooth = FALSE (unsmoothed)
+#   calibrate_UW_multinom2 -- smooth = TRUE  (spline-smoothed)
+# Both are applied back to the validation set and their Brier scores compared as
+# a sanity check (the fair comparison is on the test set, Section 7). Neither
+# model is written to disk here; the chosen (smoothed) model is saved in Section 7.
 # =============================================================================
 # I tried to use cal_estimate_multinomial with smooth=TRUE to fit a multinomial
 # model with splines.  
@@ -402,10 +408,11 @@ message("This is a sanity check, but not the fair comparison (next step)" )
 
 
 # =============================================================================
-# SECTION 7 — Validation-set calibration plots
-# Windowed calibration plots on the CALIBRATED validation predictions (sanity
-# check that underconfidence was corrected). Saves multinom  pub-ready
-# versions. Same caveats as Section 6 (validation, not test).
+# SECTION 6 — Validation-set calibration plots
+# Windowed calibration plot on the CALIBRATED (smoothed multinomial) validation
+# predictions, as a visual sanity check that underconfidence was corrected, plus
+# a pub-ready version saved as calplot_multi_Valid*. Same caveat as Section 5:
+# this is validation, not the fair test-set evaluation, and is not uncounted.
 # Reuses the Section 4 ggplot/ggsave block.
 # =============================================================================
 
@@ -480,9 +487,13 @@ message("Finished creating weighted calibration plot")
 message("Final predictions on test set")
 
 # =============================================================================
-# SECTION 8 — Test-set predictions
-# Out-of-sample predictions on the final test holdout. Same predict_byhand /
-# modal-class / bind-back pattern as Section 3.
+# SECTION 7 — Test-set predictions, apply calibrations, Brier comparison
+# Out-of-sample predictions on the held-out test set (same predict_byhand /
+# modal-class / bind-back pattern as Section 3). Applies both calibration models
+# to the test set and compares Brier scores (raw vs. unsmoothed vs. smoothed;
+# CalLoss / rCalLoss) -- the fair evaluation. The unsmoothed model and its
+# applied object are dropped; the smoothed model is written to disk as
+# calibrate_transactions_multinom_*.
 # =============================================================================
 
 
@@ -579,18 +590,14 @@ write_rds(calibrate_UW_multinom2, file=here("results","ranger","final",glue(
 
 
 # =============================================================================
-# SECTION 9 — Test-set calibration gains: apply models, compute metrics
-# Applies each calibration model to the test holdout (uncounted to pounds),
-# then computes ROC AUC / log loss / Brier for raw, multinom-weighted, isoB,
-# and transaction-level calibrations. Brier deltas summarized as CalLoss /
-# rCalLoss. This is the honest evaluation of calibration performance.
+# SECTION 8 — Test-set calibrated metrics
+# Computes the full yardstick metric trio (ROC AUC, log loss, Brier) on the
+# smoothed-multinomial-calibrated test predictions (test_data_calibration_applied).
 # =============================================================================
 
 
 ############ How well calibrated is the model? 
 # A: Better when calibrated - same pattern as training data.
-# Calibration diagnostics on the test holdout: uncount by lndlb weight
-# (same rationale as validation), then build windowed cal plots for both
 # raw (uncalibrated) and calibrated predictions for side-by-side comparison.
 
 
@@ -608,10 +615,10 @@ test_metricsCAL <-  bind_rows(
 test_metricsCAL
 
 # =============================================================================
-# SECTION 10 — Test-set calibration plots
-# Windowed calibration plots for the test set across calibrations and weightings
-# (raw / multinom / isoB; pounds & transactions). Several are saved for the
-# paper. The pub-ready block near the end reuses the Section 4 ggplot code.
+# SECTION 9 — Test-set calibration plots
+# Windowed calibration plots for the test set: calibrated (calplot_multi_test*)
+# and uncalibrated (calplot_uncal_test*), followed by a pub-ready calibrated plot
+# saved as test_data_calibrated_multinomial_*. Reuses the Section 4 ggplot block.
 # =============================================================================
 calibrated<-cal_plot_windowed(test_data_calibration_applied, 
                               truth = market_desc, 
@@ -704,10 +711,11 @@ ggsave(
 
 
 # =============================================================================
-# SECTION 11 — Test-set uncalibrated publication plot
+# SECTION 10 — Test-set uncalibrated publication plot
 # Pub-ready faceted plot of the UNCALIBRATED test predictions, built from the
-# uncalibrated windowed plot's $data. Pairs with the calibrated plot in Section
-# 10 for direct visual comparison. Reuses the Section 4 ggplot block.
+# uncalibrated windowed plot's $data (Section 9). Pairs with the calibrated plot
+# in Section 9 for direct visual comparison; saved as test_data_uncalibrated*.
+# Reuses the Section 4 ggplot block.
 # =============================================================================
 message("Plotting results of test set  without calibration")
 
@@ -770,12 +778,13 @@ ggsave(
 
 
 # =============================================================================
-# SECTION 12 — Aggregate CALIBRATED test predictions; accuracy tables
-# Applies the isoB calibration, then aggregates to stockarea x year x market_desc.
-# Predicted pounds per grade = P(grade) * lndlb (tryCatch skips absent grades).
-# Writes aggregate_uncounted_calibrated_test_predictions_*, then builds topline
+# SECTION 11 — Aggregate CALIBRATED test predictions; accuracy tables
+# Reuses the calibrated test predictions from Section 7 (already cal_apply'd
+# there) and aggregates to stockarea x year x market_desc. Predicted pounds per
+# grade = P(grade) * lndlb (tryCatch skips absent grades). Writes
+# aggregate_uncounted_calibrated_test_predictions_*, then builds topline
 # transaction-count and landed-weight (mt) accuracy tables via knitr::kable().
-# Section 13 is the uncalibrated mirror of this block.
+# Section 12 is the uncalibrated mirror of this block.
 # =============================================================================
 message("Beginning calibrated predictions")
 
@@ -882,11 +891,10 @@ message("End of calibrated predictions")
 
 
 # =============================================================================
-# SECTION 13 — Aggregate UNCALIBRATED test predictions; accuracy tables
-# Parallel to Section 12 but on RAW (uncalibrated) test predictions, for direct
+# SECTION 12 — Aggregate UNCALIBRATED test predictions; accuracy tables
+# Parallel to Section 11 but on RAW (uncalibrated) test predictions, for direct
 # comparison. Identical aggregation/table pipeline. Writes
-# aggregate_nocal_predictions_* (the calibrated-side write_rds analogue is
-# present; note its in-memory-only comment in the block).
+# aggregate_nocal_predictions_* to disk.
 # =============================================================================
 message("Beginning uncalibrated predictions")
 
@@ -1002,7 +1010,7 @@ message("weighted_calibration.R completed successfully.")
 
 
 # =============================================================================
-# SECTION 14 — Class-distribution and Small-class diagnostics
+# SECTION 13 — Class-distribution and Small-class diagnostics
 # Post-hoc checks that run AFTER the completion message above. Reports the
 # landed-weight / observation share of each grade across train/validation/test,
 # and examines how sparse the Small-class probability mass is (why its
