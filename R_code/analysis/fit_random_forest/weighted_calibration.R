@@ -910,7 +910,7 @@ p_cal
 # --- 3. Save at ICES JMS double-column specification ---
 ggsave(
   here("results", "ranger", "final",
-       glue("cal_Wmultinom_testing{modeltype}{finalfit_vintage}.pdf")),
+       glue("cal_WisoB_testing{modeltype}{finalfit_vintage}.pdf")),
   plot   = p_cal,
   width  = 84,
   height = 88,     # suits 4 panels in one row; increase to 130 for 2x2 layout
