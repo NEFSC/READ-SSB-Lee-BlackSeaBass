@@ -3,4 +3,4 @@
 /ranger/*
 /cforest/*
 *.smcl
-/tilefish/*
+/tilefish/**

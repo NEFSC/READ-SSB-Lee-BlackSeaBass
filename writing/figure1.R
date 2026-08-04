@@ -76,6 +76,7 @@ price.mktcomb <- ggplot(
   ) +
   scale_y_continuous(
     name   = "Density",
+    limits = c(0, 0.25),
     expand = expansion(mult = c(0, 0.05))
   ) +
   theme_bw(base_size = 9) +
@@ -100,6 +101,31 @@ ggsave(
   units  = "mm",
   device = cairo_pdf
 )
+
+# Compute group weighted means, variance, skew, and kurtosis
+
+# keep only the columns I need and uncount
+combined_dataset_UW<-combined_dataset %>%
+  select(market_desc, lndlb, priceR_CPI)%>%
+  uncount(lndlb)
+
+combined_dataset_UW<-combined_dataset_UW %>%
+  group_by(market_desc) %>%
+  mutate(meanP=mean(priceR_CPI),
+         count_obs=n(),
+         variance=var(priceR_CPI) ) %>%
+  mutate(deviations=priceR_CPI-meanP)
+
+
+combined_dataset_moments<-combined_dataset_UW %>%
+  group_by(market_desc) %>%
+  mutate(varianceHand=(1/count_obs)*sum(deviations^2)) %>%
+  mutate(skew=(1/count_obs)*sum(deviations^3)/((1/count_obs)*sum(deviations^2))^1.5) %>%
+  mutate(kurtosis=(1/count_obs)*sum(deviations^4)/((1/count_obs)*sum(deviations^2))^2) %>%
+  slice_head(n=1) %>%
+  select(-c(deviations, priceR_CPI))
+
+combined_dataset_moments
 
 #write_rds(p, file=here("images","exploratory","wprice_histograms_vertical_NR.Rds"))
 ####################################################################################################
@@ -410,6 +436,7 @@ lfplot.mktcomb <- plot.data %>%
   ) +
   scale_y_continuous(
     name   = "Density",
+    limits = c(0, 0.25),
     expand = expansion(mult = c(0, 0.05))
   )+ 
   theme_bw(base_size = 9) +
@@ -445,5 +472,22 @@ if(save.fig=='y'){
 cat("figure1.R completed.")
 
 
+# mean, variance, skew, kurtosis 
+
+plot.data.moments<-plot.data %>%
+  group_by(MKTCOMB) %>%
+  mutate(meanL=mean(LENGTH),
+         count_obs=n(),
+         variance=var(LENGTH) ) %>%
+  mutate(deviations=LENGTH-meanL)
 
 
+plot.data.moments<-plot.data.moments %>%
+  group_by(MKTCOMB) %>%
+  mutate(varianceHand=(1/count_obs)*sum(deviations^2)) %>%
+  mutate(skew=(1/count_obs)*sum(deviations^3)/((1/count_obs)*sum(deviations^2))^1.5) %>%
+  mutate(kurtosis=(1/count_obs)*sum(deviations^4)/((1/count_obs)*sum(deviations^2))^2) %>%
+  slice_head(n=1) %>%
+  select(-c(deviations, LENGTH))
+
+plot.data.moments
