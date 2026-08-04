@@ -226,13 +226,13 @@ sizes of fish and their catch of other species, but cannot perfectly control
 what they catch and land.  The ability to target, and therefore the size composition of landings, is impacted by fishing regulations, which vary by state, and environmental conditions. For example, the seasonal inshore movement during 
 the spring and offshore movement  during the fall [@Moser2009] can affect the composition of landings.  It can also affect which firms land fish and where they are landed; long trips offshore are unprofitable when possession limits are low. Strong year classes can make a size class temporarily more available during certain years.
 
-The fishery is jointly managed by the Atlantic States Marine Fisheries Commission (ASMFC) and the Mid-Atlantic Fishery Management Council (MAFMC). Federal regulations are enacted by NOAA Fisheries. From 1996 through 2003, the fishery was managed primarily by quarterly catch limits for the entire fishery. There were early closures in 1999 (Quarters 2,3,4), 2000 (2,3,4), and 2001 (all). Quota was allocated to each state starting in 2003 (Amendment 13) and is monitored based on the state in which catch is landed. States enact commercial regulations that ensure their landings their share of the quota. In 2021, the formula that allocates commercial quotas to the states was revised; 75% of the quota is allocated according to historical  fishing and 25% is allocated in proportion to where the biomass is located.
+The fishery is jointly managed by the Atlantic States Marine Fisheries Commission (ASMFC) and the Mid-Atlantic Fishery Management Council (MAFMC). Federal regulations are enacted by NOAA Fisheries. From 1996 through 2003, the fishery was managed primarily by quarterly catch limits for the entire fishery. There were early closures in 1999 (Quarters 2,3,4), 2000 (2,3,4), and 2001 (all). Quota was allocated to each state starting in 2003 (Amendment 13) and is monitored based on the state in which catch is landed. States enact commercial regulations that ensure landings do not exceed their state's quota. In 2021, the formula that allocates commercial quotas to the states was revised; 75% of the quota is allocated according to historical  fishing and 25% is allocated in proportion to where the biomass is located.
 
 Firms operating in federal waters must hold a federal permit; fishing vessel operators are required to report information about fishing trips, including gear used, fishing location, landing locations, and estimates of the weight catch of each species. They are also required to sell their catch to federally permitted dealers, who report information that be used to link to the vessel reports along with value (nominal dollars) and landed weights (to the nearest pound)^[This has implications for units in subsequent analysis]. These purchase reports are disaggregated by market category.  There is some catch in the nearshore state-managed waters by fishing vessels that do not have federal permits. 
 
 Although all states have enacted some form of Limited Access, there is substantial variability in management across the states. Three states (Maryland, Delaware, and Virginia) currently manage the fishery with an Individual Fishing Quota (IFQ) program, while the other states manage with varying combinations of minimum size limits, possession limits, and season closures.  Possession limits vary widely by state; the IFQ states do not have  possession limits while Massachusetts and Rhode Island use seasonally varying limits that have been as restrictive as 50 lbs/day or as liberal as 1,500 lbs per week.
 
-Fishing vessels catch fish and deliver the catch to buyers (fish dealers).  Dealers report purchase quantities and value by market category to NOAA Fisheries.  For most *ex-vessel* fish markets, including this one, the quantity and quality supplied is determined before prices adjust to equalize quantity supplied and quantity demanded [@Barten1989; @Kristofersson2007;@Gobillon2017].  There are four prevalent market categories (Jumbo, Large, Medium, and Small), plus an "Unclassified" category^[Following the stock assessment, "Mixed or Unsized" is aggregated with "Unclassified";  "Extra Small" and "PeeWee" are aggregated with Small category; "Extra Large" is aggregated with "Jumbo"].  Figure \@ref(fig:LengthHistograms) illustrates that fish in the "Unclassified" category are precisely that, an unobserved combination of the other market categories.  The definition of  market categories is not standardized and vary over time and geography.  Many fish dealers act as wholesalers, selling whole fish to processors, restaurants, or final consumers. Other fish dealers are vertically integrated with some downstream entities, processing and selling filleted fish to downstream customers. Vertical integration, in which a firm has control of the harvest and dealer functions also occurs, for these observations, the reported prices for these firms are not the result of a competitive market equilibrium. 
+Fishing vessels catch fish and deliver the catch to buyers (fish dealers).  Dealers report purchase quantities and value by market category to NOAA Fisheries.  For most *ex-vessel* fish markets, including this one, both quantity supplied is prior to market clearing; that is, fish are caught before they are sold.  Market clear by adjusting pricices to equalize quantity supplied and quantity demanded [@Barten1989; @Kristofersson2007;@Gobillon2017].  There are four prevalent market categories (Jumbo, Large, Medium, and Small), plus an "Unclassified" category^[Following the stock assessment, "Mixed or Unsized" is aggregated with "Unclassified";  "Extra Small" and "PeeWee" are aggregated with Small category; "Extra Large" is aggregated with "Jumbo"].  Figure \@ref(fig:LengthHistograms) illustrates that fish in the "Unclassified" category are precisely that, an unobserved combination of the other market categories.  The definition of  market categories is not standardized and vary over time and geography.  Many fish dealers act as wholesalers, selling whole fish to processors, restaurants, or final consumers. Other fish dealers are vertically integrated with some downstream entities, processing and selling filleted fish to downstream customers. Vertical integration, in which a firm has control of the harvest and dealer functions also occurs, for these observations, the reported prices for these firms are not the result of a competitive market equilibrium. 
 
 The market categories exist because downstream buyers care about the sizes of fish; prices of most types of fish depend on the size of fish. Prices are also influenced by other attributes, including freshness, fat content, water content, buyer- and seller- effects, and the quantity supplied to the market^[@McConnell2000, @Carroll2001, @Kristofersson2004, @Kristofersson2007,  @Lee2014, @Hammarlund2015,  @Gobillon2017, and @Ardini2018 are just a few examples.]. 
 
@@ -320,7 +320,7 @@ estimation_dataset_topline
 --->
 Our model training procedure attempts to account for the idiosyncracies of Random Forest models and our data. The number of randomly selected predictors ($mtry$) is tuned over in nearly all Random Forest applications. Simulation studies by @Barreada2024 suggest tuning over the minimum node size ($min_n$) when using random forests in probability models.  The observational units in our estimation dataset are the 545,000 transactions representing 20,217 metric tons (44.6 million pounds) of black sea bass.  We treat the transactions as repeated observations of a pound of fish.  We do this for a few reasons.  First, they are exactly that.  Second, our goal is not predicting transactions, it is to obtain a prediction of aggregate weights.  While random forest models in the``tidyverse`` ecosystem support case weights, none fully supports our interpretation of frequency weighting, therefore we overcome the problem with brute force by expanding our data to large dataset with *pounds landed* copies of each row.
 
-During all stages when we split data and create folds, we ensure that all pound from a transaction are placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 44M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data.  We split our dataset into three parts; we use we use 80% of our dataset to train the model, 5% to calibrate probabilities, and 15% to validate the model.  We use 6.25% of the training sample (5% of the total dataset) to tune the model hyperparameters (just over 2.2 million rows from over 27,000 unique transactions).
+During all stages when we split data and create folds, we ensure that all pound from a transaction are placed into exactly one group.  However, during the bagging process of tree construction, observations can be partially in or out of an individual draw; therefore we do not use the Out-of-Bag errors.  The *min_n* stopping parameter is now interpreted as the number of pounds in a node below which further splitting will not occur.  Because the expanded data is approximately 44M rows and computing power available to U.S. government employees is finite, we perform hyperparameter tuning on just a small subset of data.  We split our dataset into three parts; we use we use 80% of our dataset to train the model,10% to calibrate probabilities, and 10% to validate the model.  We use 6.25% of the training sample (5% of the total dataset) to tune the model hyperparameters (just over 2.2 million rows from over 27,000 unique transactions).
 
 We tune over these two hyperparameters by performing a 10-fold cross validation study. We grid search over the reasonable starting values of the two parameters.^[An initial grid search used a space filling grid and searched 24 points on $mtry \in [1,XX]$ and $min_n \in [0,50000]$. The initial tuning results showed a relatively smooth surface and suggested the optimal $mtry<25$ and the optimal $min_n<2000$.  A refined grid search was conducted over $mtry \in [8,32]$ and $min_n \in [10,2500]$].  We grow 200 trees during the tuning process.  Tuning over a small part of our dataset risks identifying a suboptimal pair of hyperparameters, we draw a second, independent tuning set and tune again to verify the initial results. 
 
@@ -332,9 +332,9 @@ BS = \frac{1}{N} \sum_{i=i}^N (Y_{ik}-Pr[Y_{ik}=1|X_i])^2
 \end{equation}
 where $i$ indexes observations, $k$ indexes classes, $Y_{ik}=1$ if observation $i$ is a member of class $k$, and $Pr_{ik}=1|X_i]$ is the predicted probability that observation $i$ is a member of class $k$ conditional on explanatory factors $X_i$.
 
-After selecting a model, we train the final model on the full 80% of the training dataset and grow 500 trees at this step.  We use the trained model to predict class membership for the 5% calibration sample. We visually assess whether the model is well-calibrated using commonly used calibration plots [@Ojeda2023; @Barreada2024]. We calibrate using a multinomial calibration; , unlike the commonly used isotonic and beta calibrations, it does not require an ad-hoc adjustment to ensure that each observation's  sum of probabilities is unity.  We also use the Relative Calibration loss methods described in [@Ferrer2025] to characterize the gains from calibration.
+After selecting a model, we train the final model on the full 80% of the training dataset and grow 500 trees at this step.  We use the trained model to predict class membership for the 10% calibration sample. We visually assess whether the model is well-calibrated using commonly used calibration plots [@Ojeda2023; @Barreada2024]. We calibrate using a multinomial calibration; unlike the commonly used isotonic and beta calibrations, the multinomial does not require an ad-hoc adjustment to ensure that each observation's  sum of probabilities is unity.  We also use the Relative Calibration loss methods described in [@Ferrer2025] to characterize the gains from calibration.
 
-We apply the the trained model and the probability calibration routine to the final 15% of our data as a  test of our model.  After training the model and calibrating probabilities, we predict out of sample on the Unclassified Landings.  We aggregate the corresponding live weights to the year-, market category-, and region level.  We then convert these adjusted landings to an age structure and compare it with the traditional age structure. The random forest model is fit in R using the ``ranger`` package; we use  ``tidymodels`` packages to facilitate tuning, training, and out-of-sample predicting.  
+We apply the the trained model and the probability calibration routine to the final 10% of our data as a  test of our model.  After training the model and calibrating probabilities, we predict out of sample on the Unclassified Landings.  We aggregate the corresponding live weights to the year-, market category-, and region level.  We then convert these adjusted landings to an age structure and compare it with the traditional age structure. The random forest model is fit in R using the ``ranger`` package; we use  ``tidymodels`` packages to facilitate tuning, training, and out-of-sample predicting.  
 
 
 # Data, Pre-Processing, and Feature Engineering
@@ -384,7 +384,7 @@ To summarize, our modeling approach, we expand our transaction data up to pounds
 
 # Results
 
-The set of tuning parameters with the lowest Brier score were $mtry=14$ and $min_n=10$ ($BS=0.1783$).  However, we opted to used the second best set of hyperparameters  ($mtry=15, min_n=896;BS=0.1792$) for two reasons.  The first is computational, models with larger $min_n$ fit more rapidly and use less memory, because fewer splits are performed. Second, a model with very low $min_n$ may perform poorly out of sample due to overfitting. While a $min_n=10$ is not particularly low for standard random forest, the rows in our expanded dataset represent a single pound of landings; therefore a very small $min_n$ will result in many terminal nodes containing observations from a single transaction.  Inspection of the tuning surface revealed that the model fit was not particularly sensitive to a large portion of the hyperparameter space that we evaluated (See Appendix). 
+The set of tuning parameters with the lowest Brier score were $mtry=14$ and $min_n=10$ ($BS=0.1783$).  However, we opted to used the second best set of hyperparameters  ($mtry=15, min_n=896;BS=0.1792$) for two reasons.  The first is computational; models with larger $min_n$ fit more rapidly and use less memory, because fewer splits are performed. Second, a model with very low $min_n$ may perform poorly out of sample due to overfitting. While a $min_n=10$ is not particularly low for standard random forest, the rows in our expanded dataset represent a single pound of landings; therefore a very small $min_n$ will result in many terminal nodes containing observations from a single transaction.  Inspection of the tuning surface revealed that the model fit was not particularly sensitive to a large portion of the hyperparameter space that we evaluated (See Appendix). 
 
 The calibration steps find moderate gain from multinomial calibration, and the validation shows the model fits well. The tuning and validation model fit statistics are similar, suggesting the model is not overfit.  Although the model is not a causal one, the importance of explanatory factors in the Variable Importance Plots make intuitive sense; prices and dealer-specific effects are important factors in the classification model.
 
@@ -394,13 +394,15 @@ In-sample ROC curves from tuning are similar across folds and the initial steepn
 
 The VIP confirms that the three price variables are quite informative about predicting market category (Figure \@ref(fig:vip)), as are the transaction weight, trip level landings, proxies for availability at various levels, and the dealer propensities to purchase various sizes. Again, we caution against interpreting the ability to predict as a causal mechanism.
 
-The calibration step (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. A well calibrated model will be close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  The multinomial regression used to calibrate predictions improves the Brier Score on the Calibration set (Equation \ref{brierscore}) by approximately 89\% (from 0.0104 to 0.0011).
+The left panel of (Figure \@ref(fig:calibrationplots)) illustrates an issue that commonly affects predictions of Random Forest models. These plots are constructed by plotting a  moving windows of predicted probabilities of the test set on the x-axis against the observed outcomes on the y-axis.  Well calibrated models have a plots that are close to the 45 degree line.  For three of the four classes, the aggregation of individual trees leads to underconfidence; observations with high predicted probabilities have even higher true probabilities. The exception is the Small market category; this may be indicative of class imbalance in the dataset.  
 
 ## Model Testing 
 
-We validate model performance by applying the final trained model and auxiliary probability calibration to the holdout sample.  These figures illustrate good out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model^[Tuning is performed on 5\% of the dataset, but final model training uses 80\% of the data. Therefore, simply by using much more data, we expect model fit to improve.].  The multinomial regression used to calibrate predictions improves the Brier Score on the Test Set (Equation \ref{brierscore}) by approximately 59\% (from 0.118 to 0.049).
+We validate model performance by applying the final trained model and auxiliary probability calibration to the holdout sample.  These figures illustrate good out-of-sample model performance. The ROC curve in Figure  \@ref(fig:roc-Valid) is similar to the those produced by tuning model, suggesting we are not overfitting the model^[Tuning is performed on 5\% of the dataset, but final model training uses 80\% of the data. Therefore, simply by using much more data, we expect model fit to improve.].  
 
-We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).  For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 82\% of Jumbo, 77\% of Large, 80\% of Medium, and 723\% of Small landings. Reassuringly, the model mis-predictions, in off diagonal terms, frequently offset.  Consider the true "Jumbo" market category. Our  Random Forest incorrectly classified 164 mt of Jumbo as Large, 22 mt as Medium, and 1mt as Small.  However, this is offset by the 128 mt of true Large, 17 mt of true Medium, and 1 mt of true Small that are incorrectly classified as Jumbo.  Table \@ref(tab:weighted-predictions) illustrate the aggregate accuracy of the Calibrated Random Forest predictions are quite accurate at predicting weights by market category.  Somewhat surprisingly, Table \@ref(tab:transaction-predictions) illustrates that the trained model is better at predicting aggregate transactions than weights.
+The multinomial regression used to calibrate predictions improves predicted probabilities visually (Right panel of Figure \@ref(fig:calibrationplots)) and the Brier Score on the test set (Equation \ref{brierscore}) slightly.
+
+We also construct a weighted confusion matrix based on for the calibrated model predictions (Figure \@ref(fig:SoftWeightedPredictionHeatmap)).  For each observation in the validation dataset, we multiply landed weight by the each of the class membership probabilities and then aggregate.  The model correctly classifies 82\% of Jumbo, 78\% of Large, 81\% of Medium, and 76\% of Small landings. Reassuringly, the model mis-predictions, in off diagonal terms, frequently offset.  Consider the true "Jumbo" market category. Our  Random Forest incorrectly classified 103 mt of Jumbo as Large, 20 mt as Medium, and 1mt as Small.  However, this is nearly offset by the 80 mt of true Large and 10 mt of true Medium that are incorrectly classified as Jumbo.  Table \@ref(tab:weighted-predictions) illustrate the aggregate accuracy of the Calibrated Random Forest predictions are quite accurate at predicting weights by market category.  Somewhat surprisingly, Table \@ref(tab:transaction-predictions) illustrates that the trained model is better at predicting aggregate transactions than weights.
 
 ##  Out of Sample Predictions
 
@@ -549,7 +551,7 @@ knitr::kable(
 ```
 
 
-```{r validation-predictions, echo=FALSE, warning=FALSE}
+```{r validation-predictions-prep, echo=FALSE, warning=FALSE}
 
 aggregate_transactions<-nocluster_testing_predictions %>%
     summarise(across(c(starts_with(".pred_")), sum)) %>%
@@ -587,31 +589,8 @@ transaction_predictions<-Testmkt_preds %>%
     predicted_transactions = comma(predicted_transactions, accuracy = 1),
     transactions = comma(transactions, accuracy = 1)                        
   )
-
-
-
-
-kable(
-  transaction_predictions,
-  format    = "latex",
-  booktabs  = TRUE,
-  digits    = 0,
-  caption  = "Calibrated Predictions using the Validation Sample (Transactions)",
-  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Aggregate Error Rate"),
-  escape    = TRUE,         # allows LaTeX in cell content
-  label     = "transaction-predictions"
-) %>%
-  kable_styling(
- #   latex_options = c("hold_position"),
-    font_size     = 10
-  ) %>%
- column_spec(2:4, latex_column_spec = "r")  %>%
-    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
-
-
-
-
 ```
+
 
 
 
@@ -650,6 +629,32 @@ kable(
 ```
 
 
+```{r validation-predictions, echo=FALSE}
+
+kable(
+  transaction_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Calibrated Predictions using the Validation Sample (Transactions)",
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Aggregate Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "transaction-predictions"
+) %>%
+  kable_styling(
+ #   latex_options = c("hold_position"),
+    font_size     = 10
+  ) %>%
+ column_spec(2:4, latex_column_spec = "r")  %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+
+
+```
+
+
+
 
 \clearpage
 
@@ -664,7 +669,7 @@ kable(
 knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 
-```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024.  The top panels show that few fish from the Unclassified category were measured for a large portion of the time series.}
+```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024.  The top panels show that few fish from the Unclassified category were measured for a large portion of the time series."}
 #verified july 2 (no code change needed)
 
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
@@ -683,7 +688,7 @@ knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred
 
 ```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
 #updated July 2
-knitr::include_graphics(here("results","ranger","final", c(glue("uncal_windowed_testingnocluster{pred_vintage}.pdf"),glue("cal_Wmultinom_testingnocluster{pred_vintage}.pdf") ) ) )
+knitr::include_graphics(here("results","ranger","final", c(glue("calplot_uncal_testnocluster{pred_vintage}.pdf"),glue("calplot_multi_testnocluster{pred_vintage}.pdf") ) ) )
 ```
 
 
