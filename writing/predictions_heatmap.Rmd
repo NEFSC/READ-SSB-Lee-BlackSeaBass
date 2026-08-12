@@ -190,11 +190,24 @@ Final fit vintage is `r finalfit_vintage`.
 data_split<-readr::read_rds(file=here("results","ranger",glue("{data_pattern}{data_vintage_string}.Rds")))
 #tune_res<-readr::read_rds(file=here("results","ranger",glue("{tuning_pattern}{tuning_vintage}.Rds")))
 
-#train_data <- training(data_split)
 test_data <- testing(data_split)
 train_data <- training(data_split)
 
 validation_data <- validation(data_split)
+# First split was 80, 5, 15.  reasonable when I was going to unweight at all stages
+# I think this isn't leaving enough data for the calibration 
+# I'm going to re-stick the validation and test data together. Then I'm going to split it in half, so I get 
+# 10% and 10%.
+
+rebind<-rbind(test_data, validation_data)
+# seed
+set.seed(32560049)
+ds2<-initial_split(rebind, prop=0.5 )
+
+validation_data<-training(ds2)
+test_data<-testing(ds2)
+
+
 
 #source(here("R_code","analysis","fit_random_forest","BSB.Classification.Recipe.R"))
 
@@ -282,7 +295,7 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 ```{r load_calibration}
 # load in the calibration model
 
-calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_weighted_multinom_{modeltype}{finalfit_vintage}.Rds")))
+calibrate_weighted_multinom<-readr::read_rds(file=here("results","ranger","final",glue("calibrate_transactions_multinom_{modeltype}{finalfit_vintage}.Rds")))
 
 
 ```
