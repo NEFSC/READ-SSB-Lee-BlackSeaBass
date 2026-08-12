@@ -439,12 +439,10 @@ In addition to the above caveats, one other is warranted. Black Sea Bass prices 
 
 Our Random Forest model does very well at predicting observations and comparatively worse at weights (Tables \@ref(tab:transaction-predictions) and \@ref(tab:weighted-predictions)).  This is a bit surprising; because we expand our data to treat a landed pound of fish as the observational unit, we expected the opposite to occur.  Because our primary interest here is predictions of aggregate weights, the quantification methods described by and @milli2013quantification and @gonzalez2017review are likely to be applicable.
 
-## Extensions
-
-
-More ambitiously, it also suggests a method for optimizing the collection of portside sampling data. Collecting these data are costly and price information could be a substitute that allows this effort to be reallocated to other stocks and species. Candidates include difficult-to-sample categories when there is size overlap with neighboring categories, prices that depend approximately monotonically on size, and competitive markets for fish. We specifically caution against forgoing age-sampling to  "end" market categories (Jumbo and Small in the case of Black Sea Bass).
-
 # Conclusions
+This effort uses a socioeconomic information in a novel way in the stock assessment process to improve our understanding of commercial removals. More ambitiously, our work also suggests a method for optimizing the portside collection of  biological data. Collecting samples is costly. The information contained in prices could substitute for some of this costly data and allow this sampling effort to be reallocated to other market categories, stocks, or species. Candidates for reduced sampling include difficult-to-sample categories when there is size overlap with neighboring categories.  Again, we note that a successful empirical setting would include prices that depend approximately monotonically on size and competitive markets for fish. We specifically caution against forgoing age-sampling on "terminal" market categories (Jumbo and Small in the case of Black Sea Bass).  
+
+A prospective change to a sampling structure could be investigated by training a classifier without a particular market category. For black sea bass, we exclude the Unclassified and then predict out of sample. To investigate the effects of forgoing sampling of the Large class, we could train a classifier on the Small, Medium, and Jumbo classes, predict the class membership of the Large classes, combine the resultant predicted weights with the known lengths and ages of the other three classes and compare to the known age and length structure of the Large class.  We leave this to future research.
 
 
 \clearpage
