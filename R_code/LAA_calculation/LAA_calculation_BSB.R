@@ -253,7 +253,111 @@ LAA_calculation <- function(species_itis = NULL,
     device = cairo_pdf
   )
 
-
+#########################################
+# Compute Differences in Ages and Lengths
+#########################################
+  
+land.CAA_DIFF <- land.CAA.OLD %>% 
+    rename(ORIGINAL=CAA) %>%
+    select(-c(CAA_TYPE)) %>%
+    full_join(land.CAA.NEW %>%
+                rename(APPORTION=CAA) %>%
+                select(-CAA_TYPE),
+              by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "AGE")) %>%
+    mutate(DIFF_CAA=ORIGINAL-APPORTION)
+  
+  
+    land.CAL_DIFF <- land.CAL.OLD %>% 
+    rename(ORIGINAL=CAL,
+           ORIGINAL_PROP=CAL_PROP, 
+           ORGINAL_CATCH=CATCH) %>%
+    select(-c(CAL_TYPE)) %>%
+    full_join(land.CAL.NEW %>%
+                rename(APPORTION=CAL,
+                       APPORTION_PROP=CAL_PROP,
+                       APPORTION_CATCH=CATCH) %>%
+                select(-CAL_TYPE),
+              by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "LENGTH")) %>%
+    mutate(Diff_Prop=ORIGINAL_PROP-APPORTION_PROP,
+           DIFF_CAL=ORIGINAL-APPORTION)
+  
+    
+    
+    DIFF_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
+                                 filter(YEAR>=fyr.plot),
+                               aes(x=AGE,y=DIFF_CAA/1000)) + 
+      geom_col(position = "identity", alpha = 0.5, linewidth=0.1) + 
+      theme_bw(base_size = 9) +
+      theme(
+        axis.text.x      = element_text(size = 7, colour = "grey20",
+                                        angle = 45, hjust = 1),
+        axis.text.y      = element_text(size = 7, colour = "grey20"),
+        axis.title       = element_text(size = 8),
+        legend.title     = element_text(size = 7),
+        legend.text      = element_text(size = 8),
+        legend.key.height = unit(0.4, "cm"),
+        legend.key.width  = unit(0.3, "cm"),
+        legend.position  =  "bottom",
+        panel.grid       = element_blank(),
+        panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+        plot.margin      = margin(4, 4, 4, 4, "pt")
+      ) + 
+      labs(
+        x = "Age Class",
+        y = "Change in Catch-at-Age (000s of fish)",
+        color = NULL, 
+        fill = NULL
+      ) +
+    facet_grid(YEAR ~ STOCK_ABBREV)
+    DIFF_AGE_PLOT
+    
+    ggsave(
+      filename = here("results","DIFF_AGE_PLOT.pdf"),
+      plot = DIFF_LENGTH_PLOT,
+      width  = 84,
+      height = 84,
+      units  = "mm",
+      device = cairo_pdf
+    )
+    
+    
+  
+  DIFF_LENGTH_PLOT <- ggplot(data=land.CAL_DIFF %>%
+                       filter(YEAR>=fyr.plot),
+                     aes(x=LENGTH,y=DIFF_CAL/1000)) + 
+    geom_col(position = "identity", alpha = 0.5, linewidth=0.1) + 
+    theme_bw(base_size = 9) +
+    theme(
+      axis.text.x      = element_text(size = 7, colour = "grey20",
+                                      angle = 45, hjust = 1),
+      axis.text.y      = element_text(size = 7, colour = "grey20"),
+      axis.title       = element_text(size = 8),
+      legend.title     = element_text(size = 7),
+      legend.text      = element_text(size = 8),
+      legend.key.height = unit(0.4, "cm"),
+      legend.key.width  = unit(0.3, "cm"),
+      legend.position  =  "bottom",
+      panel.grid       = element_blank(),
+      panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+      plot.margin      = margin(4, 4, 4, 4, "pt")
+    ) + 
+    labs(
+      x = "Length (cm)",
+      y = "Change in Catch-at-Length (000s of fish)",
+      color = NULL, 
+      fill = NULL
+    ) +
+    facet_grid(YEAR ~ STOCK_ABBREV)
+  DIFF_LENGTH_PLOT
+  
+  ggsave(
+    filename = here("results","DIFF_LENGTH_PLOT.pdf"),
+    plot = DIFF_LENGTH_PLOT,
+    width  = 84,
+    height = 84,
+    units  = "mm",
+    device = cairo_pdf
+  )
     
   return(land.CAA)
   }
