@@ -6,8 +6,8 @@
 #               side so they can be compared. This is a verification and
 #               decomposition script, not a production path: it writes nothing
 #               to disk and ends with an in-memory identity check.
-# Inputs:       SA_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
-#               SA_ambitious_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
+# Inputs:       out_of_sample_predictions_YRS_nocluster<vintage>.Rds
+#               ambitious_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
 #               BSB_original_combined_dataset<vintage>.Rds
 #               StockEff, via get_stockeff() (ITIS 167687, 2013-2024)
 # Outputs:      NONE. Everything stays in memory - `ages_combined` holds the six
@@ -83,15 +83,15 @@ source(here("R_code/LAA_calculation/get_ages.R"))
 # then take max() to get the newest. max() on ISO dates is lexicographic but
 # gives the right answer because YYYY-MM-DD sorts the same either way.
 
-predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("SA_out_of_sample_predictions_YRS_nocluster*.Rds"))
-predictions_vintage<-gsub("SA_out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
+predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
+predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
 predictions_vintage<-gsub(".Rds","",predictions_vintage)
 predictions_vintage<-max(predictions_vintage)
 
 stopifnot(length(predictions_vintage)==1)
 
-predictions_full_location1<-here("data_folder","predictions", glue("SA_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
-predictions_full_location2<-here("data_folder","predictions", glue("SA_ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
+predictions_full_location1<-here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
+predictions_full_location2<-here("data_folder","predictions", glue("ambitious_out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))
 
 # out_of_sample_predictions1 contains some Unclassifieds
 # out_of_sample_predictions2 does not.
@@ -370,11 +370,8 @@ ages_combined <-ages_stockeff %>%
 ages_combined<-ages_combined%>%
   mutate(across(starts_with("LAA_"), ~replace_na(.x, 0)))
 
-# THE ONE ASSERTION THIS SCRIPT ACTUALLY EXECUTES.
-# Tests that LAA_No_Unclass + LAA_Only_Unclass == LAA_CAMS to 1e-8, i.e. that
-# splitting the landings, computing landings-at-age on each half and adding the
-# results gives the same answer as computing it once on the whole. This check
-# Was built to give me confidence that I wrote the code properly.
+# Tests that LAA_No_Unclass + LAA_Only_Unclass == LAA_CAMS to 1e-8.
+# This check was built to give me confidence that I wrote the code properly.
 
 check<-ages_combined %>%
   mutate(laa_re_combine=LAA_No_Unclass + LAA_Only_Unclass) %>%
