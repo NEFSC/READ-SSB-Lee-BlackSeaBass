@@ -182,13 +182,11 @@ landings_prepped<-original_combined_dataset %>%
 
 # Collapse CAMS transactions to the StockEff landings grain
 # (year x stock x semester x market category) and convert live pounds to kg.
-#
-# .groups="drop_last" drops only MARKET_DESC and leaves the result GROUPED by
-# YEAR, STOCK_ABBREV, BLOCK_ID. 
 
 aggregated_landings<-landings_prepped %>%
   group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC) %>%
-  summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_per_kg,.groups="drop_last")
+  summarise(LANDINGS_CAMS_KG=sum(livlb, na.rm=TRUE)/lbs_per_kg,) %>%
+  ungroup()
 
 ##########################################################
 # make some columns for the merge
