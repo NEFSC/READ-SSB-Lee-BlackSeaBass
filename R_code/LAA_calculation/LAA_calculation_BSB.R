@@ -153,20 +153,42 @@ LAA_calculation <- function(species_itis = NULL,
   fyr.plot <- 2020
   land.CAA.yrs <- land.CAA %>% filter(YEAR>=fyr.plot)
   
-  CAA_PLOT <- ggplot(data=land.CAA.yrs,aes(x=AGE,y=CAA,col=CAA_TYPE,fill = CAA_TYPE)) + 
-    geom_col(position = "identity", alpha = 0.5) + 
-    theme_classic() +
+  CAA_PLOT <- ggplot(data=land.CAA.yrs %>% 
+                       mutate(CAA=CAA/1000) %>% 
+                       filter(YEAR>=fyr.plot),
+                     aes(x=AGE,y=CAA,col=CAA_TYPE,fill = CAA_TYPE)) + 
+    geom_col(position = "identity", alpha = 0.5, linewidth=0.1) + 
+    theme_bw(base_size = 9) +
+    theme(
+      axis.text.x      = element_text(size = 7, colour = "grey20",
+                                      angle = 45, hjust = 1),
+      axis.text.y      = element_text(size = 7, colour = "grey20"),
+      axis.title       = element_text(size = 8),
+      legend.title     = element_text(size = 7),
+      legend.text      = element_text(size = 8),
+      legend.key.height = unit(0.4, "cm"),
+      legend.key.width  = unit(0.3, "cm"),
+      legend.position  =  "bottom",
+      panel.grid       = element_blank(),
+      panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+      plot.margin      = margin(4, 4, 4, 4, "pt")
+    ) + 
+  labs(
+      x = "Age",
+      y = "Catch-at-Age ('000s)",
+      color = NULL, 
+      fill = NULL
+    ) +
     facet_grid(YEAR ~ STOCK_ABBREV)
   CAA_PLOT
   
   ggsave(
-    filename = "CAA_PLOT.png",
+    filename = here("results","CAA_PLOT.pdf"),
     plot = CAA_PLOT,
-    width = 15,         # Define your width
-    height = 10,        # Define your height
-    units = "in",       # Options: "in", "cm", "mm", "px"
-    dpi = 300,          # High resolution for print
-    limitsize = FALSE   # Crucial: bypasses the 50x50 inch cap
+    width  = 84,
+    height = 84,
+    units  = "mm",
+    device = cairo_pdf
   )
   
   
@@ -194,22 +216,45 @@ LAA_calculation <- function(species_itis = NULL,
   fyr.plot <- 2020
   land.CAL.yrs <- land.CAL %>% filter(YEAR>=fyr.plot)
   
-  CAL_PLOT <- ggplot(data=land.CAL.yrs,aes(x=LENGTH,y=CAL_PROP,col=CAL_TYPE,fill = CAL_TYPE)) + 
-    geom_col(position = "identity", alpha = 0.5) + 
-    theme_classic() +
+  CAL_PLOT <- ggplot(data=land.CAL %>%
+                       filter(YEAR>=fyr.plot),
+                     aes(x=LENGTH,y=CAL_PROP,col=CAL_TYPE,fill = CAL_TYPE)) + 
+    geom_col(position = "identity", alpha = 0.5, linewidth=0.1) + 
+    theme_bw(base_size = 9) +
+    theme(
+      axis.text.x      = element_text(size = 7, colour = "grey20",
+                                      angle = 45, hjust = 1),
+      axis.text.y      = element_text(size = 7, colour = "grey20"),
+      axis.title       = element_text(size = 8),
+      legend.title     = element_text(size = 7),
+      legend.text      = element_text(size = 8),
+      legend.key.height = unit(0.4, "cm"),
+      legend.key.width  = unit(0.3, "cm"),
+      legend.position  =  "bottom",
+      panel.grid       = element_blank(),
+      panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+      plot.margin      = margin(4, 4, 4, 4, "pt")
+    ) + 
+    labs(
+      x = "Length (cm)",
+      y = "Catch-at-Length (proportion)",
+      color = NULL, 
+      fill = NULL
+      ) +
     facet_grid(YEAR ~ STOCK_ABBREV)
   CAL_PLOT
   
   ggsave(
-    filename = "CAL_PLOT.png",
+    filename = here("results","CAL_PLOT.pdf"),
     plot = CAL_PLOT,
-    width = 15,         # Define your width
-    height = 10,        # Define your height
-    units = "in",       # Options: "in", "cm", "mm", "px"
-    dpi = 300,          # High resolution for print
-    limitsize = FALSE   # Crucial: bypasses the 50x50 inch cap
+    width  = 84,
+    height = 84,
+    units  = "mm",
+    device = cairo_pdf
   )
-  
+
+
+    
   return(land.CAA)
   }
 }
