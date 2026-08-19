@@ -1,5 +1,5 @@
 #' @title LAA_calculation
-#' @description Use reapportionment information to recalculate Landings-at-age
+#' @description Use reapportionment information to recalculate Landings-at-age. This function calls get_stockeff()
 #' @param species_itis A string specifying a single itis code to query stockeff 
 #' @param out_of_sample_predictions A data frame specifying reapportioned metric tons across market categories. This dataframe must be be zero padded.  If there are 3 market categories in every year in the original data, there must be 3 in this dataframe. 
 #' \itemize{
@@ -24,7 +24,7 @@
 #' }
 #' @examples
 #' CAA<- LAA_calculation(species_itis = '167687',
-#'                             out_of_sample_predictions = readRDS(here("data_folder","predictions", glue("out_of_sample_predictions_YRS_nocluster{predictions_vintage}.Rds"))),
+#'                             out_of_sample_predictions = readRDS(here("data_folder","predictions", "out_of_sample_predictions_YRS_nocluster2026-06-15.rds")),
 #'                             fyr = 1989,
 #'                             lyr = 2024,
 #'                             connection = connection)
@@ -37,11 +37,7 @@ library(glue)
 library("conflicted")
 conflicts_prefer(dplyr::filter())
 
-species_itis = '167687'
-out_of_sample_predictions = readRDS(here("data_folder","predictions", "out_of_sample_predictions_YRS_nocluster2026-06-15.rds"))
-fyr=1989
-lyr=2024
-connection=db1
+source(here("R_code","LAA_calculation","get_stockeff.R"))
 
 
 LAA_calculation <- function(species_itis = NULL,
@@ -53,62 +49,22 @@ LAA_calculation <- function(species_itis = NULL,
   if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
   else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
   else{
-    
-  ################################################################################
-  # Query StockEff
-  ################################################################################
-  
-  # Query the market categories from StockEff:
-  mkt.qry <- glue("select NESPP4, market_desc 
-                          from stockeff.e_cf_market_c 
-                          where species_itis in ({species_itis})" )
-  mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
-  # Query the aggregate landings from StockEff:
-  
-  # --- Aggregate landings by block --------------------------------------
-  # mv_cf_stock_caa_land_block_o: one row per stock/year/semester/market category.
-  # Filtered to the requested year range; rows with null LANDINGS_KG excluded.
-  comm.land.qry <- glue("select * 
-                          from stockeff.mv_cf_stock_caa_land_block_o 
-                          where species_itis in ({species_itis}) 
-						  and year between {fyr} and {lyr}
-                          and LANDINGS_KG IS NOT NULL")
-  
-  
-  
-  comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
-  
-    # If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
-  if(dim(comm.land.res)[1]==0){
-    comm.land.qry <- glue("select * 
-                          from stockeff_pre_prod.mv_cf_stock_caa_land_block_o 
-                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
-                          and LANDINGS_KG IS NOT NULL")
-    
-    
-    
-    comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
-  }
 
-  # --- Query Landings by length and age from StockEff---------------------------------------
-  # v_cf_stock_caa_num_len_age_o: proportions at length and age used to
-  # convert landings into numbers at age.
+    
+################################################################################
+# Query StockEff
+################################################################################
+bsb_stockeff<-get_stockeff(species_itis=species_itis,
+    fyr=fyr,
+    lyr=lyr,
+    connection=connection)
 
-  # Query the landings by age and length from StockEff:
-comm.land.length.age.qry <- glue("select *
-                                    from stockeff.v_cf_stock_caa_num_len_age_o
-                                    where SPECIES_ITIS in ({species_itis})
-                                    and year between {fyr} and {lyr}")
+#unpack
+comm.land.length.age.res<-bsb_stockeff$comm.land.length.age.res
+mkt.res <- bsb_stockeff$mkt.res
+comm.land.res<-bsb_stockeff$comm.land.res
 
-  comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
-
-# If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
   
-  if(dim(comm.land.length.age.res)[1]==0){
-    comm.land.length.age.qry <- glue("select * from stockeff_pre_prod.v_cf_stock_caa_num_len_age_o 
-                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
-    comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
-  }
   #create a marker flag on in out_of_sample_predictions to make the logic of subsequent case_when a little safer.
   out_of_sample_predictions <- out_of_sample_predictions %>% 
     mutate(has_rf_pred = 1)
@@ -448,3 +404,5 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   return(land.CAA)
   }
 }
+
+
