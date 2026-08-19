@@ -105,7 +105,9 @@ comm.land.res<-bsb_stockeff$comm.land.res
       ) 
   }
   # I dont't think is quite right. For Solo, I want to pass in 
-  # Just the reapportioned landings. I think I also need to zero out NO_AT_AGE_LENGTH
+  # Just the reapportioned landings. 
+  # mabye I want to filter on MARKET_DESC_ORIG="UNCLASSIFIED"
+  # I think I also need to zero out NO_AT_AGE_LENGTH
   # but I don't know how to do this. Perhaps also on !is.na(has_rf_pred)?  
   # I dont' intend to compare solo to "original", so maybe this isn't a big deal and I can just filter out
   # and delete the figures.
