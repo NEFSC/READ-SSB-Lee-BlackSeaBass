@@ -16,7 +16,8 @@
 #' @param fyr first year for which you want LAA data
 #' @param lyr last year for which you want LAA data
 #' @param connection the connection information to access stockeff using sql 
-#'
+#' @param plotstub character suffix for plot file names 
+
 #' @return A data frame of the landings at age 
 #' \itemize{
 #'   \item{indices - FILL IN }
@@ -44,7 +45,8 @@ LAA_calculation <- function(species_itis = NULL,
                             out_of_sample_predictions = NULL,
                             fyr = NULL,
                             lyr = NULL,
-                            connection = NULL){
+                            connection = NULL,
+                            plotstub=NULL){
 
   if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
   else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
@@ -172,7 +174,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAA_PLOT
   
   ggsave(
-    filename = here("results","CAA_PLOT.pdf"),
+    filename = here("results",glue("CAA_PLOT_{plotstub}.pdf")),
     plot = CAA_PLOT,
     width  = 84,
     height = 84,
@@ -246,7 +248,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAL_PLOT
   
   ggsave(
-    filename = here("results","CAL_PLOT.pdf"),
+    filename = here("results",glue("CAL_PLOT_{plotstub}.pdf")),
     plot = CAL_PLOT,
     width  = 84,
     height = 84,
@@ -312,7 +314,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     DIFF_AGE_PLOT
     
     ggsave(
-      filename = here("results","DIFF_AGE_PLOT.pdf"),
+      filename = here("results",glue("DIFF_AGE_PLOT_{plotstub}.pdf")),
       plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
@@ -351,7 +353,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   DIFF_LENGTH_PLOT
   
   ggsave(
-    filename = here("results","DIFF_LENGTH_PLOT.pdf"),
+    filename = here("results",glue("DIFF_LENGTH_{plotstub}.pdf")),
     plot = DIFF_LENGTH_PLOT,
     width  = 84,
     height = 84,
@@ -389,7 +391,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   S_AGE_PLOT
   
   ggsave(
-    filename = here("results","S_AGE_PLOT.pdf"),
+    filename = here("results",glue("S_AGE_PLOT_{plotstub}.pdf")),
     plot = S_AGE_PLOT,
     width  = 84,
     height = 84,
