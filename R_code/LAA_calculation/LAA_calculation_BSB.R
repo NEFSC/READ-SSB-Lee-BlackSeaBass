@@ -15,7 +15,8 @@
 #' 
 #' @param fyr first year for which you want LAA data
 #' @param lyr last year for which you want LAA data
-#' @param connection the connection information to access stockeff using sql 
+#' @param connection the connection information to access stockeff using sql
+#' @param sumflag ="sum" add the reapportioned to the original. ="solo" just report age structure of the reapportioned 
 #' @param plotstub character suffix for plot file names 
 
 #' @return A data frame of the landings at age 
@@ -46,6 +47,7 @@ LAA_calculation <- function(species_itis = NULL,
                             fyr = NULL,
                             lyr = NULL,
                             connection = NULL,
+                            sumflag="sum",
                             plotstub=NULL){
 
   if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
@@ -76,21 +78,32 @@ comm.land.res<-bsb_stockeff$comm.land.res
     left_join(mkt.res, by=join_by(NESPP4)) %>% 
     left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
   
-  # CONSTRUCT LANDINGS_KG_ADJUSTED
+  # Two ways to Construct  LANDINGS_KG_ADJUSTED
+  # method 1 - sum things together 
   # is.na(has_rf_pred) Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
   # MARKET_DESC=="UNCLASSIFIED" Where the original market category is unclassified, use the new apportion value.  This is correct because 
   ##    1.  The RF model may "decline" to make a classifcation for some unclassified observations and we want to retain them as UNCLASSIFIED here. 
-  ##    2.  THe RF model may classify "all" the unclassifeds. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
+  ##    2.  THe RF model may classify "all" of the unclassifeds into categories. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
   # MARKET_DESC!="UNCLASSIFIED", add category apportion value to the original landings
-  # MARKET_DESC_ORIG refers the original market category and MARKET_DESC is the RF classified new market category.
+  # MARKET_DESC is the RF classified new market category.
   
+  # Method 2 -- Examine just the UNCLASSIFIEDS.
+  # is.na(has_rf_pred) Where the isn't an RF prediction, set LANDINGS_KG to 0 
+  # when we do have a RF prediction, set LANDINGS_KG to LANDINGS_KG_CATEGORY_APPORTION  
+  if (sumflag=="sum"){
   comm.land.length.age <- comm.land.length.age %>% 
     mutate(LANDINGS_KG_ADJUSTED = case_when(
       is.na(has_rf_pred) ~ LANDINGS_KG,
       MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
       MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
     ) 
-  
+  } else if (sumflag=="solo"){
+    comm.land.length.age <- comm.land.length.age %>% 
+      mutate(LANDINGS_KG_ADJUSTED = case_when(
+        is.na(has_rf_pred) ~ 0,
+        !is.na(has_rf_pred) ~ LANDINGS_KG_CATEGORY_APPORTION)
+      ) 
+  }
   ################################################################################
   # Calculate weight at age and length using LANDINGS_KG_ADJUSTED
   ################################################################################
@@ -174,7 +187,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAA_PLOT
   
   ggsave(
-    filename = here("results",glue("CAA_PLOT_{plotstub}.pdf")),
+    filename = here("results",glue("CAA_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAA_PLOT,
     width  = 84,
     height = 84,
@@ -248,7 +261,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAL_PLOT
   
   ggsave(
-    filename = here("results",glue("CAL_PLOT_{plotstub}.pdf")),
+    filename = here("results",glue("CAL_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAL_PLOT,
     width  = 84,
     height = 84,
@@ -266,7 +279,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
                 rename(APPORTION=CAA) %>%
                 select(-CAA_TYPE),
               by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "AGE")) %>%
-    mutate(DIFF_CAA=ORIGINAL-APPORTION)
+    mutate(DIFF_CAA=APPORTION-ORIGINAL)
   
   
     land.CAL_DIFF <- land.CAL.OLD %>% 
@@ -280,8 +293,8 @@ land.CAA_DIFF <- land.CAA.OLD %>%
                        APPORTION_CATCH=CATCH) %>%
                 select(-CAL_TYPE),
               by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "LENGTH")) %>%
-    mutate(Diff_Prop=ORIGINAL_PROP-APPORTION_PROP,
-           DIFF_CAL=ORIGINAL-APPORTION)
+    mutate(Diff_Prop=APPORTION_PROP-ORIGINAL_PROP,
+           DIFF_CAL=APPORTION-ORIGINAL)
   
     
     
@@ -306,7 +319,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
       ) + 
       labs(
         x = "Age Class",
-        y = "Change in Catch-at-Age (000s of fish)",
+        y = "Change in Catch-at-Age (000s of fish), Apportion minus original",
         color = NULL, 
         fill = NULL
       ) +
@@ -314,7 +327,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     DIFF_AGE_PLOT
     
     ggsave(
-      filename = here("results",glue("DIFF_AGE_PLOT_{plotstub}.pdf")),
+      filename = here("results",glue("DIFF_AGE_PLOTH_{sumflag}{plotstub}.pdf")),
       plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
@@ -345,7 +358,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     ) + 
     labs(
       x = "Length (cm)",
-      y = "Change in Catch-at-Length (000s of fish)",
+      y = "Change in Catch-at-Length (000s of fish), Apportion minus original",
       color = NULL, 
       fill = NULL
     ) +
@@ -353,7 +366,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   DIFF_LENGTH_PLOT
   
   ggsave(
-    filename = here("results",glue("DIFF_LENGTH_{plotstub}.pdf")),
+    filename = here("results",glue("DIFF_LENGTH_{sumflag}{plotstub}.pdf")),
     plot = DIFF_LENGTH_PLOT,
     width  = 84,
     height = 84,
@@ -383,7 +396,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     ) + 
     labs(
       x = "Age Class",
-      y = "Change in Catch-at-Age (000s of fish)",
+      y = "Change in Catch-at-Age (000s of fish), Apportion minus Original",
       color = NULL, 
       fill = NULL
     ) +
@@ -391,7 +404,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   S_AGE_PLOT
   
   ggsave(
-    filename = here("results",glue("S_AGE_PLOT_{plotstub}.pdf")),
+    filename = here("results",glue("S_AGE_PLOT_{sumflag}{plotstub}.pdf")),
     plot = S_AGE_PLOT,
     width  = 84,
     height = 84,
