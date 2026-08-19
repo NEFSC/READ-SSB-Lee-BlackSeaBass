@@ -358,6 +358,48 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     units  = "mm",
     device = cairo_pdf
   )
+  
+  # SOUTH ONLY
+  S_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
+                            filter(YEAR>=2013 & STOCK_ABBREV=="SOUTH"),
+                          aes(x=AGE,y=DIFF_CAA/1000)) + 
+    geom_col(position = "identity", alpha = 0.5, linewidth=0.1) + 
+    theme_bw(base_size = 9) +
+    theme(
+      axis.text.x      = element_text(size = 7, colour = "grey20",
+                                      angle = 45, hjust = 1),
+      axis.text.y      = element_text(size = 7, colour = "grey20"),
+      axis.title       = element_text(size = 8),
+      legend.title     = element_text(size = 7),
+      legend.text      = element_text(size = 8),
+      legend.key.height = unit(0.4, "cm"),
+      legend.key.width  = unit(0.3, "cm"),
+      legend.position  =  "bottom",
+      panel.grid       = element_blank(),
+      panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+      plot.margin      = margin(4, 4, 4, 4, "pt")
+    ) + 
+    labs(
+      x = "Age Class",
+      y = "Change in Catch-at-Age (000s of fish)",
+      color = NULL, 
+      fill = NULL
+    ) +
+    facet_wrap(~YEAR)
+  S_AGE_PLOT
+  
+  ggsave(
+    filename = here("results","S_AGE_PLOT.pdf"),
+    plot = S_AGE_PLOT,
+    width  = 84,
+    height = 84,
+    units  = "mm",
+    device = cairo_pdf
+  )
+  
+  
+  
+  
     
   return(land.CAA)
   }
