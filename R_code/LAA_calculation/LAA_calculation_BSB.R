@@ -234,21 +234,32 @@ comm.land.length.age.qry <- glue("select *
     summarize(CAL = sum(NO_AT_AGE_LENGTH,na.rm=T)) %>%
     mutate(CAL_TYPE = 'Original') %>%
     ungroup()
-  land.CAL.OLD <- land.CAL.OLD %>% group_by(YEAR) %>% summarise(CATCH = sum(CAL)) %>% full_join(land.CAL.OLD) %>% mutate(CAL_PROP = CAL/CATCH)
+  
+  land.CAL.OLD <- land.CAL.OLD %>% 
+    group_by(YEAR) %>% 
+    summarise(CATCH = sum(CAL)) %>%
+    full_join(land.CAL.OLD) %>% 
+    mutate(CAL_PROP = CAL/CATCH)
   
   land.CAL.NEW <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, LENGTH) %>%
     summarize(CAL = sum(NO_AT_AGE_LENGTH_NEW,na.rm=T)) %>%
     mutate(CAL_TYPE = 'Apportioned') %>%
     ungroup()
-  land.CAL.NEW <- land.CAL.NEW %>% group_by(YEAR) %>% summarise(CATCH = sum(CAL)) %>% full_join(land.CAL.NEW) %>% mutate(CAL_PROP = CAL/CATCH)
+  
+  land.CAL.NEW <- land.CAL.NEW %>% 
+    group_by(YEAR) %>% 
+    summarise(CATCH = sum(CAL)) %>% 
+    full_join(land.CAL.NEW) %>% mutate(CAL_PROP = CAL/CATCH)
   
   
-  land.CAL <- land.CAL.OLD %>% full_join(land.CAL.NEW)
+  land.CAL <- land.CAL.OLD %>% 
+    full_join(land.CAL.NEW)
   
     
   fyr.plot <- 2020
-  land.CAL.yrs <- land.CAL %>% filter(YEAR>=fyr.plot)
+  land.CAL.yrs <- land.CAL %>% 
+    filter(YEAR>=fyr.plot)
   
   CAL_PLOT <- ggplot(data=land.CAL %>%
                        filter(YEAR>=fyr.plot),
@@ -346,7 +357,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     
     ggsave(
       filename = here("results","DIFF_AGE_PLOT.pdf"),
-      plot = DIFF_LENGTH_PLOT,
+      plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
       units  = "mm",
