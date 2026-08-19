@@ -76,7 +76,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   comm.land.length.age <- comm.land.res  %>% 
     left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
     left_join(mkt.res, by=join_by(NESPP4)) %>% 
-    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
+    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, MARKET_DESC, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
   
   # Two ways to Construct  LANDINGS_KG_ADJUSTED
   # method 1 - sum things together 
@@ -104,6 +104,12 @@ comm.land.res<-bsb_stockeff$comm.land.res
         !is.na(has_rf_pred) ~ LANDINGS_KG_CATEGORY_APPORTION)
       ) 
   }
+  # I dont't think is quite right. For Solo, I want to pass in 
+  # Just the reapportioned landings. I think I also need to zero out NO_AT_AGE_LENGTH
+  # but I don't know how to do this. Perhaps also on !is.na(has_rf_pred)?  
+  # I dont' intend to compare solo to "original", so maybe this isn't a big deal and I can just filter out
+  # and delete the figures.
+  
   ################################################################################
   # Calculate weight at age and length using LANDINGS_KG_ADJUSTED
   ################################################################################
@@ -137,14 +143,16 @@ comm.land.res<-bsb_stockeff$comm.land.res
   #################
   land.CAA.OLD <- comm.land.length.age %>%
     group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH)) %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH),
+              WAA=sum(WT_AT_AGE_LENGTH)) %>%
     mutate(CAA_TYPE = 'Original') %>%
     ungroup()
   
   land.CAA.NEW <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW)) %>%
-    mutate(CAA_TYPE = 'Apportioned') %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW),
+              WAA=sum(WT_AT_AGE_LENGTH_NEW)) %>%
+        mutate(CAA_TYPE = 'Apportioned') %>%
     ungroup()
   
   ################################################################################
@@ -187,7 +195,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAA_PLOT
   
   ggsave(
-    filename = here("results",glue("CAA_PLOT_{sumflag}{plotstub}.pdf")),
+    filename = here("results",glue("CAA_PLOT_{sumflag}_{plotstub}.pdf")),
     plot = CAA_PLOT,
     width  = 84,
     height = 84,
@@ -261,7 +269,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAL_PLOT
   
   ggsave(
-    filename = here("results",glue("CAL_PLOT_{sumflag}{plotstub}.pdf")),
+    filename = here("results",glue("CAL_PLOT_{sumflag}_{plotstub}.pdf")),
     plot = CAL_PLOT,
     width  = 84,
     height = 84,
@@ -279,7 +287,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
                 rename(APPORTION=CAA) %>%
                 select(-CAA_TYPE),
               by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "AGE")) %>%
-    mutate(DIFF_CAA=APPORTION-ORIGINAL)
+    mutate(DIFF_CAA=ORIGINAL-APPORTION)
   
   
     land.CAL_DIFF <- land.CAL.OLD %>% 
@@ -293,8 +301,8 @@ land.CAA_DIFF <- land.CAA.OLD %>%
                        APPORTION_CATCH=CATCH) %>%
                 select(-CAL_TYPE),
               by=c("YEAR", "STOCK_ABBREV", "SPECIES_ITIS", "LENGTH")) %>%
-    mutate(Diff_Prop=APPORTION_PROP-ORIGINAL_PROP,
-           DIFF_CAL=APPORTION-ORIGINAL)
+    mutate(Diff_Prop=ORIGINAL_PROP-APPORTION_PROP,
+           DIFF_CAL=ORIGINAL-APPORTION)
   
     
     
@@ -319,7 +327,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
       ) + 
       labs(
         x = "Age Class",
-        y = "Change in Catch-at-Age (000s of fish), Apportion minus original",
+        y = "Change in Catch-at-Age (000s of fish)",
         color = NULL, 
         fill = NULL
       ) +
@@ -327,7 +335,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     DIFF_AGE_PLOT
     
     ggsave(
-      filename = here("results",glue("DIFF_AGE_PLOTH_{sumflag}{plotstub}.pdf")),
+      filename = here("results",glue("DIFF_AGE_PLOT_{sumflag}_{plotstub}.pdf")),
       plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
@@ -358,7 +366,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     ) + 
     labs(
       x = "Length (cm)",
-      y = "Change in Catch-at-Length (000s of fish), Apportion minus original",
+      y = "Change in Catch-at-Length (000s of fish)",
       color = NULL, 
       fill = NULL
     ) +
@@ -366,7 +374,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   DIFF_LENGTH_PLOT
   
   ggsave(
-    filename = here("results",glue("DIFF_LENGTH_{sumflag}{plotstub}.pdf")),
+    filename = here("results",glue("DIFF_LENGTH_{sumflag}_{plotstub}.pdf")),
     plot = DIFF_LENGTH_PLOT,
     width  = 84,
     height = 84,
@@ -396,7 +404,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     ) + 
     labs(
       x = "Age Class",
-      y = "Change in Catch-at-Age (000s of fish), Apportion minus Original",
+      y = "Change in Catch-at-Age (000s of fish)",
       color = NULL, 
       fill = NULL
     ) +
@@ -404,7 +412,7 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   S_AGE_PLOT
   
   ggsave(
-    filename = here("results",glue("S_AGE_PLOT_{sumflag}{plotstub}.pdf")),
+    filename = here("results",glue("S_AGE_PLOT_{sumflag}_{plotstub}.pdf")),
     plot = S_AGE_PLOT,
     width  = 84,
     height = 84,

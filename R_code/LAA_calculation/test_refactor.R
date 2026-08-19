@@ -53,7 +53,25 @@ CAA_NEW<- LAA_calculation(species_itis = '167687',
                                plotstub="new")
 
 
-
+CAA_NEW_TEST <-CAA_NEW%>%
+  select(-WAA)
 #CAA_OLD and CAA_NEW should be the same thing
 
-identical(CAA_NEW, CAA_OLD)
+identical(CAA_NEW_TEST, CAA_OLD)
+
+
+# Test conservation of mass
+# I've pulled along the kg per age class of landings   
+# total weight matches
+test1<-CAA_NEW %>%
+  group_by(CAA_TYPE) %>%
+  summarise(sum=sum(WAA))
+
+
+# and total weight by year matches
+test2<-CAA_NEW %>%
+  group_by(YEAR, CAA_TYPE) %>%
+  summarise(sum=sum(WAA), .groups="drop_last")
+  
+
+
