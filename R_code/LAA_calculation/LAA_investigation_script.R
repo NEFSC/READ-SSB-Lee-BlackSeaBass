@@ -1,6 +1,6 @@
 ################################################################################
 ################################################################################
-# Script:       LAA_calc_script.R
+# Script:       LAA_investigation_script.R
 # Purpose:      Builds six parallel landings-at-age (LAA) series for black sea
 #               bass from six different landings sources and joins them side by
 #               side so they can be compared. This is a verification and
