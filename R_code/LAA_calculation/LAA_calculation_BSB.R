@@ -1,5 +1,5 @@
 #' @title LAA_calculation
-#' @description Use reapportionment information to recalculate Landings-at-age. This function calls get_stockeff()
+#' @description Use reapportionment information to recalculate Landings-at-age. This function calls get_intermediate_stockeff()
 #' @param species_itis A string specifying a single itis code to query stockeff 
 #' @param out_of_sample_predictions A data frame specifying reapportioned metric tons across market categories. This dataframe must be be zero padded.  If there are 3 market categories in every year in the original data, there must be 3 in this dataframe. 
 #' \itemize{
@@ -37,7 +37,7 @@ library(glue)
 library("conflicted")
 conflicts_prefer(dplyr::filter())
 
-source(here("R_code","LAA_calculation","get_stockeff.R"))
+source(here("R_code","LAA_calculation","get_intermediate_stockeff.R"))
 
 
 LAA_calculation <- function(species_itis = NULL,
@@ -54,7 +54,7 @@ LAA_calculation <- function(species_itis = NULL,
 ################################################################################
 # Query StockEff
 ################################################################################
-bsb_stockeff<-get_stockeff(species_itis=species_itis,
+bsb_stockeff<-get_intermediate_stockeff(species_itis=species_itis,
     fyr=fyr,
     lyr=lyr,
     connection=connection)
