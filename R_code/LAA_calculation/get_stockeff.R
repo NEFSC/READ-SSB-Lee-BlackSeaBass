@@ -3,8 +3,8 @@ library(glue)
 library(conflicted)
 conflicts_prefer(dplyr::filter())
 
-#' @title get_stockeff
-#' @description Query three StockEff tables needed for landings-at-age calculation:
+#' @title get_intermediate_stockeff
+#' @description Query three intermediate StockEff tables needed for landings-at-age calculation:
 #'   market category lookup, aggregate landings by block, and landings by length and age.
 #'
 #' @param species_itis A single character string specifying the ITIS code to query.
@@ -33,7 +33,7 @@ conflicts_prefer(dplyr::filter())
 #' comm.land.res          <- stockeff_data$comm.land.res
 #' comm.land.length.age.res <- stockeff_data$comm.land.length.age.res
 
-get_stockeff <- function(species_itis = NULL,
+get_intermediate_stockeff <- function(species_itis = NULL,
                          fyr          = NULL,
                          lyr          = NULL,
                          connection   = NULL) {
