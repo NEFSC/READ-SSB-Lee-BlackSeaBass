@@ -1,14 +1,66 @@
-library(here)
-library(glue)
+################################################################################
+################################################################################
+# Script:       LAA_test_script.R
+# Purpose:      Exercises the older monolithic LAA_calculation() against the
+#               conservative and ambitious random-forest prediction files and
+#               compares the two results. 
+# Inputs:       out_of_sample_predictions_YRS_nocluster<vintage>.Rds
+#               ambitious_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
+#               StockEff, direct queries (ITIS 167687, 1989-2024)
+# Outputs:      NONE. Nothing is written to disk; results are inspected in the
+#               viewer and with table().
+# Dependencies: LAA_calculation.R, sourced at line 8 - this brings in ROracle,
+#               tidyverse, here and glue as well as the function itself. Also
+#               needs `nefscdb_con` to already exist in the session; nothing in
+#               this repository defines it.
+# Pipeline:     Hand-run. No wrapper calls this script and it calls no other
+#               script. Parallel to LAA_calc_script.R, which exercises the
+#               REFACTORED path (get_stockeff + get_ages) over the same problem.
+#
+# INTERACTIVE ONLY. There are two View() calls below, so this file cannot be
+# run under Rscript - it is meant to be stepped through in RStudio. Treat it as
+# a worksheet, not as a reproducible script.
+#
+# FINDING. Both prediction files are
+# confirmed to carry the same total kilograms at the year x semester x stock
+# level to within 1e-6, yet the resulting landings-at-age totals differ.
+
+# LAA is counted in FISH, not kilograms. Equal mass distributed differently across
+# categories that are DEFINED BY FISH SIZE must yield different counts: a
+# kilogram of Small is many more fish than a kilogram of Jumbo. 
+# The prediction file must have at most one row per (SPECIES_ITIS, YEAR, STOCK_ABBREV, MARKET_DESC,
+# SEMESTER) or the left join duplicates StockEff rows and inflates everything.
+# A row-count assertion across the join would separate the two explanations
+# cleanly. 
+
+# ALSO WORTH KNOWING: for the assessment itself this level discrepancy largely
+# washes out. fit_BSB_WHAM.R row-normalizes catch-at-age into proportions
+# before handing it to WHAM, so what reaches the model is the age SHAPE, not
+# the absolute numbers.
+################################################################################
+################################################################################
+
+library("here")
+library("ROracle")
+library("tidyverse")
+library("glue")
 library("conflicted")
 conflicts_prefer(dplyr::filter())
 
-
 here::i_am("R_code/LAA_calculation/LAA_test_script.R")
+
+# LAA_calculation() loads the MONOLITHIC version of the calculation, which does its own StockEff queries
+# internally (including a stockeff_pre_prod fallback) and returns CAA_OLD and
+# CAA_NEW side by side. LAA_calc_script.R uses the refactored path instead.
+
 source(here("R_code/LAA_calculation/LAA_calculation.R"))
 
 drv<-dbDriver("Oracle")
 connection <- eval(nefscdb_con)
+
+# Vintage-selection idiom used throughout this project: glob the folder, strip
+# the fixed prefix and suffix to leave a bare ISO date, then max() for the
+# newest. Lexicographic max is correct on YYYY-MM-DD.
 
 predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
 predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
@@ -23,22 +75,24 @@ out_of_sample_predictions1<-readRDS(predictions_full_location1)
 out_of_sample_predictions2<-readRDS(predictions_full_location2)
 
 
+# out_of_sample_predictions1 = conservative (the model may abstain, leaving
+#   some fish UNCLASSIFIED); out_of_sample_predictions2 = ambitious (every
+#   unclassified transaction is assigned to a real market category).
+#
+
 CAA<- LAA_calculation(species_itis = 167687,
-                             out_of_sample_predictions = readRDS(predictions_full_location1),
+                             out_of_sample_predictions = out_of_sample_predictions1,
                            fyr = 1989,
                            lyr = 2024,
                              connection = connection)
 
 CAA2<- LAA_calculation(species_itis = 167687,
-                      out_of_sample_predictions = readRDS(predictions_full_location2),
+                      out_of_sample_predictions = out_of_sample_predictions2,
                       fyr = 1989,
                       lyr = 2024,
                       connection = connection)
 dbDisconnect(connection)
 
-
-# kind of trivial, since they are the same query.
-table(CAA$CAA_OLD==CAA2$CAA_OLD)
 
 test1<-CAA %>%
   group_by(STOCK_ABBREV, YEAR) %>%
@@ -48,7 +102,15 @@ test2<-CAA2 %>%
   group_by(STOCK_ABBREV, YEAR) %>%
   summarise(CAA2_NEW=sum(CAA_NEW))
 
-# these do not match and I don't know why.
+# These do not match and are not supposed to match. test1 and test2 sum CAA_NEW, which is a count of FISH.
+# The two prediction files carry the same total KILOGRAMS - but they distribute those kilograms differently across
+# market categories, and market categories are defined by fish size. The
+# scaling chain divides by AVG_FISH_WT and IND_AVG_WT_KG, both of which are
+# category-specific, so the same mass allocated to Small yields far more fish
+# than allocated to Jumbo.
+
+
+
 verify<-test1 %>%
   left_join(test2, by=join_by(STOCK_ABBREV, YEAR)) %>%
   mutate(diff=CAA2_NEW-CAA_NEW)
@@ -66,6 +128,12 @@ View(v2)
 
 
 #total landings matches
+
+# This block is the mass-conservation check, and it passes at both the grand
+# total and the year x semester x stock level (the table() at the end of the
+# block reads TRUE where |diff| < 1e-6). That is the evidence that the two
+# prediction files agree on kilograms - which is exactly why the count-level
+# disagreement above is expected rather than alarming.
 
 oos_test1<-out_of_sample_predictions1 %>%
   summarise(landings=sum(LANDINGS_KG_CATEGORY_APPORTION))
@@ -90,117 +158,5 @@ verify<-oos_test1 %>%
 table(verify$diff<1e-6)
 
 
-# I've got a bad join/merge going on somewhere, right?
-# unpack the
-
-species_itis = 167687
-out_of_sample_predictions = readRDS(predictions_full_location1)
-fyr = 1989
-lyr = 2024
-
-
-drv<-dbDriver("Oracle")
-connection <- eval(nefscdb_con)
-################################################################################
-# Query StockEff
-################################################################################
-
-# Query the market categories from StockEff:
-mkt.qry <- glue("select NESPP4, market_desc 
-                          from stockeff.e_cf_market_c 
-                          where species_itis in ({species_itis})" )
-mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
-# Query the aggregate landings from StockEff:
-
-comm.land.qry <- glue("select * 
-                          from stockeff.mv_cf_stock_caa_land_block_o 
-                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
-                          and LANDINGS_KG IS NOT NULL")
-
-
-comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
-# Query the landings by age and length from StockEff:
-comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o 
-                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
-comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
-
-
-out_of_sample_predictions1 <- out_of_sample_predictions1 %>% 
-  mutate(has_rf_pred = 1)
-## Combine the stockeff files and apportionment file
-
-
-comm.land.length.age1 <- comm.land.res  %>% 
-  left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
-  left_join(mkt.res, by=join_by(NESPP4)) %>% 
-  left_join(out_of_sample_predictions1, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
-
-
-#bring market desc into land.res. use that to bring in out of sample predictions
-# this will break if comm.land.res is not full (zero padded) and I try to merge in something.
-comm.land.length.ageAA <- comm.land.res  %>% 
-  left_join(mkt.res, by=join_by(NESPP4)) %>% 
-  left_join(out_of_sample_predictions1, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
-
-
-comm.land.length.ageAA2 <- comm.land.length.ageAA%>%
-  filter(YEAR>2013) #%>%
-  #group_by(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC) 
-  
-  
-comm.land.length.ageAA2<-comm.land.length.ageAA2 %>%
-  mutate(LANDINGS_KG_ADJUSTED = case_when(
-    is.na(has_rf_pred) ~ LANDINGS_KG,
-    MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
-    MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
-  ) %>%
-  arrange(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC) %>%
-  relocate(YEAR,STOCK_ABBREV, BLOCK_ID, MARKET_DESC,LANDINGS_KG_ADJUSTED, LANDINGS_KG,LANDINGS_KG_CATEGORY_APPORTION )
-
-
-# before 2013 check
-
-
-#after 2013 check
-comm.land.length.ageAA2 <-comm.land.length.ageAA2 %>%
-  filter(YEAR>2013) %>%
-  filter(MARKET_DESC !="UNCLASSIFIED") %>%
-  mutate(check=LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION) %>%
-  mutate(diff=LANDINGS_KG_ADJUSTED-check)
-
- 
-testAA2<-comm.land.length.ageAA2 %>%
-  group_by(YEAR, BLOCK_ID, STOCK_ABBREV) %>%
-  summarise(landings_kg_adjusted=sum(LANDINGS_KG_ADJUSTED),
-            landings_kg=sum(LANDINGS_KG)) %>%
-  mutate(diff=(landings_kg-landings_kg_adjusted)/1000)
-
-
-#for the non-unclassifieds, landings_kg +landings_kg_category_apportion
-
-
-
-View(comm.land.length.ageAA2)
-
-
-comm.land.length.age2 <- comm.land.res  %>% 
-  left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
-  left_join(mkt.res, by=join_by(NESPP4)) %>% 
-  left_join(out_of_sample_predictions2, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
-
-
-# does the 'merge' work?
-
-TM1 <- comm.land.res  %>% 
-  left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
-
-TM2 <- comm.land.res  %>% 
-  left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>%
-left_join(mkt.res, by=join_by(NESPP4)) 
-  
-# Couple of odd things here
-View(comm.land.res %>% filter(YEAR==2020 & STOCK_ABBREV=="NORTH"))
-
-View(comm.land.res %>% filter(is.na(LANDINGS_KG)))
 
      
