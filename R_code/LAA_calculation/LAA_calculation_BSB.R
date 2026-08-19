@@ -65,16 +65,20 @@ LAA_calculation <- function(species_itis = NULL,
   mkt.res <- fetch(dbSendQuery(connection, mkt.qry))
   # Query the aggregate landings from StockEff:
   
+  # --- Aggregate landings by block --------------------------------------
+  # mv_cf_stock_caa_land_block_o: one row per stock/year/semester/market category.
+  # Filtered to the requested year range; rows with null LANDINGS_KG excluded.
   comm.land.qry <- glue("select * 
                           from stockeff.mv_cf_stock_caa_land_block_o 
-                          where species_itis in ({species_itis}) and year between {fyr} and {lyr}
+                          where species_itis in ({species_itis}) 
+						  and year between {fyr} and {lyr}
                           and LANDINGS_KG IS NOT NULL")
   
   
   
   comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
   
-  # If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
+    # If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
   if(dim(comm.land.res)[1]==0){
     comm.land.qry <- glue("select * 
                           from stockeff_pre_prod.mv_cf_stock_caa_land_block_o 
@@ -85,10 +89,20 @@ LAA_calculation <- function(species_itis = NULL,
     
     comm.land.res <- fetch(dbSendQuery(connection, comm.land.qry))
   }
+
+  # --- Query Landings by length and age from StockEff---------------------------------------
+  # v_cf_stock_caa_num_len_age_o: proportions at length and age used to
+  # convert landings into numbers at age.
+
   # Query the landings by age and length from StockEff:
-  comm.land.length.age.qry <- glue("select * from stockeff.v_cf_stock_caa_num_len_age_o 
-                                   where SPECIES_ITIS in ({species_itis})  and year between {fyr} and {lyr}")
+comm.land.length.age.qry <- glue("select *
+                                    from stockeff.v_cf_stock_caa_num_len_age_o
+                                    where SPECIES_ITIS in ({species_itis})
+                                    and year between {fyr} and {lyr}")
+
   comm.land.length.age.res <- fetch(dbSendQuery(connection, comm.land.length.age.qry))
+
+# If there's nothing there, then its likely the stock is in PREproduction, not production in stockeff:
   
   if(dim(comm.land.length.age.res)[1]==0){
     comm.land.length.age.qry <- glue("select * from stockeff_pre_prod.v_cf_stock_caa_num_len_age_o 
@@ -124,10 +138,23 @@ LAA_calculation <- function(species_itis = NULL,
   ################################################################################
   
 
-  comm.land.length.age <- comm.land.length.age %>% mutate(SCALING_FACTOR_NEW = LANDINGS_KG_ADJUSTED/AVG_FISH_WT)
-  comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_LENGTH_NEW = PROP_WT_LENGTH*SCALING_FACTOR_NEW)
-  comm.land.length.age <- comm.land.length.age %>% mutate(WT_AT_AGE_LENGTH_NEW = WT_AT_LENGTH_NEW*PROP_AT_AGE)
-  comm.land.length.age <- comm.land.length.age %>% mutate(NO_AT_AGE_LENGTH_NEW = WT_AT_AGE_LENGTH_NEW/IND_AVG_WT_KG)
+  # --- Scaling chain ----------------------------------------------------
+  # Disaggregate adjusted landings into numbers at age via the proportions
+  # stored in the length-age view.
+  #
+  # SCALING_FACTOR_NEW:    total number of fish implied by landings
+  #                        (LANDINGS_KG_ADJUSTED / AVG_FISH_WT) or (LANDINGS_KG / AVG_FISH_WT) 
+  # WT_AT_LENGTH_NEW:      weight allocated to each length bin
+  #                        (PROP_WT_LENGTH * SCALING_FACTOR_NEW)
+  # WT_AT_AGE_LENGTH_NEW:  weight allocated to each age within each length bin
+  #                        (WT_AT_LENGTH_NEW * PROP_AT_AGE)
+  # NO_AT_AGE_LENGTH_NEW:  numbers at age within each length bin
+  #                        (WT_AT_AGE_LENGTH_NEW / IND_AVG_WT_KG)
+  comm.land.length.age <- comm.land.length.age %>%
+	mutate(SCALING_FACTOR_NEW = LANDINGS_KG_ADJUSTED/AVG_FISH_WT,
+      WT_AT_LENGTH_NEW      = PROP_WT_LENGTH * SCALING_FACTOR_NEW,
+      WT_AT_AGE_LENGTH_NEW  = WT_AT_LENGTH_NEW * PROP_AT_AGE,
+      NO_AT_AGE_LENGTH_NEW  = WT_AT_AGE_LENGTH_NEW / IND_AVG_WT_KG
   
   ################################################################################
   # RETURN
@@ -147,6 +174,11 @@ LAA_calculation <- function(species_itis = NULL,
     summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW)) %>%
     mutate(CAA_TYPE = 'Apportioned') %>%
     ungroup()
+  
+  ################################################################################
+  # PLOT
+  ################################################################################
+
   
   land.CAA <- land.CAA.OLD %>% full_join(land.CAA.NEW)
   
@@ -213,6 +245,7 @@ LAA_calculation <- function(species_itis = NULL,
   
   land.CAL <- land.CAL.OLD %>% full_join(land.CAL.NEW)
   
+    
   fyr.plot <- 2020
   land.CAL.yrs <- land.CAL %>% filter(YEAR>=fyr.plot)
   
@@ -252,7 +285,6 @@ LAA_calculation <- function(species_itis = NULL,
     units  = "mm",
     device = cairo_pdf
   )
-
 #########################################
 # Compute Differences in Ages and Lengths
 #########################################
