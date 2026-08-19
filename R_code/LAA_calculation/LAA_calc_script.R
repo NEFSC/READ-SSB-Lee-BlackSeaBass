@@ -36,7 +36,7 @@
 #
 # WHY THE CAMS DETOUR. The prediction files are built from CAMS transaction
 # data; StockEff's landings have different data processing and initially did not agree.
-Importing this project's own combined dataset makes the comparison
+# Importing this project's own combined dataset makes the comparison
 # internally consistent even though it is not the production path - the
 # original comment at Section 2 calls this "a stopgap that allows for testing".
 #
