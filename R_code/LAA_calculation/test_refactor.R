@@ -32,7 +32,7 @@ CAA_OLD<- LAA_calculation_old(species_itis = '167687',
                       connection = connection)
 
 
-source(here("R_code","LAA_calculation","get_stockeff.R"))
+source(here("R_code","LAA_calculation","get_intermediate_stockeff.R"))
 source(here("R_code","LAA_calculation","LAA_calculation_BSB.R"))
 
 
