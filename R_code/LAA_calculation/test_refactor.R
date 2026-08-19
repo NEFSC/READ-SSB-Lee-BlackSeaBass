@@ -42,7 +42,7 @@ CAA_SOLO_NEW<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="solo",
-                          plotstub="solo_new")
+                          plotstub="new")
 
 CAA_NEW<- LAA_calculation(species_itis = '167687',
                                out_of_sample_predictions = out_of_sample_predictions,
@@ -50,7 +50,7 @@ CAA_NEW<- LAA_calculation(species_itis = '167687',
                                lyr = 2024,
                                connection = connection,
                                sumflag="sum",
-                               plotstub="sum_new")
+                               plotstub="new")
 
 
 
