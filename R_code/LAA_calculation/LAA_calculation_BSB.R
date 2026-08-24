@@ -76,7 +76,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   comm.land.length.age <- comm.land.res  %>% 
     left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
     left_join(mkt.res, by=join_by(NESPP4)) %>% 
-    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, MARKET_DESC, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
+    full_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, MARKET_DESC, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
   
   # Two ways to Construct  LANDINGS_KG_ADJUSTED
   # method 1 - sum things together 
@@ -87,7 +87,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   # MARKET_DESC!="UNCLASSIFIED", add category apportion value to the original landings
   # MARKET_DESC is the RF classified new market category.
   
-  # Method 2 -- Examine just the UNCLASSIFIEDS.
+  # Method 2 -- Examine just the out_of_sample_predictions dataframe 
   # is.na(has_rf_pred) Where the isn't an RF prediction, set LANDINGS_KG to 0 
   # when we do have a RF prediction, set LANDINGS_KG to LANDINGS_KG_CATEGORY_APPORTION  
   if (sumflag=="sum"){
@@ -145,15 +145,15 @@ comm.land.res<-bsb_stockeff$comm.land.res
   #################
   land.CAA.OLD <- comm.land.length.age %>%
     group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH),
-              WAA=sum(WT_AT_AGE_LENGTH)) %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH, na.rm=TRUE),
+              WAA=sum(WT_AT_AGE_LENGTH, na.rm=TRUE)) %>%
     mutate(CAA_TYPE = 'Original') %>%
     ungroup()
   
   land.CAA.NEW <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW),
-              WAA=sum(WT_AT_AGE_LENGTH_NEW)) %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE),
+              WAA=sum(WT_AT_AGE_LENGTH_NEW, na.rm=TRUE)) %>%
         mutate(CAA_TYPE = 'Apportioned') %>%
     ungroup()
   
