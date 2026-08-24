@@ -108,7 +108,7 @@ connection <- eval(nefscdb_con)
 
 bsb_stockeff<-get_intermediate_stockeff(species_itis = 167687,
                            fyr = 2013, #Just 2013
-                           lyr = 2024,
+                           lyr = 2024, #through 2024, 2025 not yet ready
                            connection = connection)
 
 # Everything below this line works on the three data frames already
@@ -119,6 +119,8 @@ bsb_stockeff<-get_intermediate_stockeff(species_itis = 167687,
 
 # Construct a dataset of Unclassifieds,that is zero-filled for all other market categories.
 # dropping LANDINGS_KG will cause the LAA_calcuation_BSB to error when run with sumflag="sum" This is by design.
+
+# Merge and zero fill
 stockeff_unclass_only<-bsb_stockeff$comm.land.res %>%
   left_join(bsb_stockeff$mkt.res, by=join_by(NESPP4)) %>%
  mutate(LANDINGS_KG_CATEGORY_APPORTION = case_when(
@@ -129,6 +131,43 @@ stockeff_unclass_only<-bsb_stockeff$comm.land.res %>%
   relocate(YEAR, SPECIES_ITIS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, BLOCK_ID) %>%
   select(-c(LANDINGS_KG_NOADJ, LANDINGS_KG,EXP_RATIO))
 
+
+total_stockeff<-bsb_stockeff$comm.land.res %>%
+  summarise(LANDINGS_KG=sum(LANDINGS_KG))
+
+
+
+# check that you did the zero out properly
+total_stockeff_unc<-bsb_stockeff$comm.land.res %>%
+  left_join(bsb_stockeff$mkt.res, by=join_by(NESPP4)) %>%
+  filter(MARKET_DESC=="UNCLASSIFIED") %>%
+  summarise(LANDINGS_KG=sum(LANDINGS_KG)) %>%
+  pull(LANDINGS_KG)
+
+processed_unc<-stockeff_unclass_only %>%
+  summarise(LANDINGS_KG_CATEGORY_APPORTION=sum(LANDINGS_KG_CATEGORY_APPORTION)) %>%
+  pull(LANDINGS_KG_CATEGORY_APPORTION)
+
+
+message("There are ", total_stockeff_unc, "kg of Unclassified in Stockeff")
+message("There are ", processed_unc, "kg of Unclassified that are prepped and going into Stockeff")
+
+stopifnot(processed_unc==total_stockeff_unc)
+# you did.
+
+
+# prep stockeff by hand
+bsb_sf_prepped<-bsb_stockeff$comm.land.res %>%
+  left_join(bsb_stockeff$mkt.res, by=join_by(NESPP4)) %>%
+  rename(LANDINGS_KG_CATEGORY_APPORTION = LANDINGS_KG) %>%
+  relocate(YEAR, SPECIES_ITIS, STOCK_ABBREV, SEX_TYPE, NESPP4, REGION_ID, BLOCK_ID) %>%
+  select(-c(LANDINGS_KG_NOADJ, EXP_RATIO))
+
+processed_all<-bsb_sf_prepped %>%
+  summarise(LANDINGS_KG_CATEGORY_APPORTION=sum(LANDINGS_KG_CATEGORY_APPORTION)) %>%
+  pull(LANDINGS_KG_CATEGORY_APPORTION)
+
+message("There are ", processed_all, "kg of total landings prepped and going into STOCKEFF")
 
 
 stopifnot(!anyNA(stockeff_unclass_only$NESPP4))
@@ -149,6 +188,7 @@ out_of_sample_predictions_reg<-out_of_sample_predictions_reg %>%
          REGION_ID=1,
          BLOCK_ID=as.integer(SEMESTER)
   ) %>%
+  filter(YEAR<=2024) %>%
   select(-SEMESTER)
 
 out_of_sample_predictions_reg<-out_of_sample_predictions_reg %>%
@@ -163,6 +203,7 @@ out_of_sample_predictions_amb<-out_of_sample_predictions_amb %>%
          REGION_ID=1,
          BLOCK_ID=as.integer(SEMESTER)
   )  %>%
+  filter(YEAR<=2024) %>%
   select(-SEMESTER)
 
 out_of_sample_predictions_amb<-out_of_sample_predictions_amb %>%
@@ -213,47 +254,257 @@ CAA_solo_amb<- LAA_calculation(species_itis = '167687',
 # pass in just the stockeff Unclassified fish
 # and see what the business as usual case thinks about the unclassified fish
 ####################################
-CAA_bau<- LAA_calculation(species_itis = '167687',
+
+CAA_sum_bau<- LAA_calculation(species_itis = '167687',
+                          out_of_sample_predictions = stockeff_unclass_only,
+                          fyr = 2013,
+                          lyr = 2024,
+                          connection = connection,
+                          sumflag="sum",
+                          plotstub="bau")
+
+# When I pass in the unclassified, this works just fine
+test5<-CAA_sum_bau %>%
+  group_by(CAA_TYPE) %>%
+  summarise(sum=sum(WAA))
+test5
+
+
+# Feed in the stockeff landings.  When I do this, this is completely 'business as usual'
+#  I'm sending in a dataframe of "Unclassified" landings that is reclassified to "unclassified"
+# it exactly matches what you'd get out if you just didn't do anything (and looked at the "Original"
+# however, doing it this way with the sumflag=solo lets me pull just the unclassified lengths
+
+CAA_solo_bau<- LAA_calculation(species_itis = '167687',
                                out_of_sample_predictions = stockeff_unclass_only,
                                fyr = 2013,
                                lyr = 2024,
                                connection = connection,
                                sumflag="solo",
                                plotstub="bau")
-# I think the figures that come out of this are incorrect for the "original"
-# I think the figures that come out of all the sumflag=solo are incorrect.
+
+
+CAA_solo_bau2<- LAA_calculation(species_itis = '167687',
+                          out_of_sample_predictions = bsb_sf_prepped,
+                          fyr = 2013,
+                          lyr = 2024,
+                          connection = connection,
+                          sumflag="solo",
+                          plotstub="bau")
+
+CAA_solo_bau2<-CAA_solo_bau2 %>%
+  filter(CAA_TYPE=="Apportioned") %>%
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
+  mutate(CAA_sum=sum(CAA, na.rm=TRUE),
+            WAA_sum=sum(WAA, na.rm=TRUE)) %>%
+  mutate(CAA_prop=CAA/CAA_sum,
+         WAA_prop=WAA/WAA_sum) %>%
+  ungroup() %>%
+  select(-c(CAA_sum, WAA_sum))  %>%
+  mutate(CAA_TYPE="StockEff_All")
+
+
+CAA_solo_bau<-CAA_solo_bau %>%
+  filter(CAA_TYPE=="Apportioned") %>%
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
+  mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
+            WAA_orig_sum=sum(WAA, na.rm=TRUE)) %>%
+  mutate(CAA_prop=CAA/CAA_orig_sum,
+         WAA_prop=WAA/WAA_orig_sum) %>%
+  ungroup() %>%
+  select(-c(CAA_orig_sum, WAA_orig_sum)) %>%
+  mutate(CAA_TYPE="StockEff_Unclass")
+
+
+CAA_solo_amb<-CAA_solo_amb %>%
+  filter(CAA_TYPE=="Apportioned") %>%
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
+  mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
+         WAA_orig_sum=sum(WAA, na.rm=TRUE)) %>%
+  mutate(CAA_prop=CAA/CAA_orig_sum,
+         WAA_prop=WAA/WAA_orig_sum) %>%
+  ungroup() %>%
+  select(-c(CAA_orig_sum, WAA_orig_sum)) %>%
+  mutate(CAA_TYPE="Econ_Unclass")
+
+
+
+
+
+CAA_comp<-CAA_solo_bau%>%
+  rbind(CAA_solo_bau2) %>%
+  rbind(CAA_solo_amb)
+
+########### I want to look at the Apportion from 
+CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
+                   aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
+  geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 5, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 8),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    legend.position  =  "bottom",
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  ) + 
+  labs(
+    x = "Age",
+    y = "Catch-at-Age proportions (based on numbers)",
+    color = NULL, 
+    fill = NULL,
+    title = "Catch at age proportions based on numbers of fish"
+  ) +
+  facet_grid(YEAR ~ STOCK_ABBREV)  
+
+CAA_PLOT
+
+
+ggsave(
+  filename = here("results",glue("CAA_comp.pdf")),
+  plot = CAA_PLOT,
+  width  = 84,
+  height = 168,
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
+                   aes(x=AGE,y=WAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
+  geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
+  theme_bw(base_size = 9) +
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 8),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    legend.position  =  "bottom",
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  ) + 
+  labs(
+    x = "Age",
+    y = "Catch-at-Age proportions (Unclassified Only) using weights",
+    color = NULL, 
+    fill = NULL,
+    title = "Catch at age proportions based on kg landed"
+    
+  ) +
+  facet_grid(YEAR ~ STOCK_ABBREV)
+CAA_PLOT
+
+ggsave(
+  filename = here("results",glue("WAA_comp.pdf")),
+  plot = CAA_PLOT,
+  width  = 84,
+  height = 168,
+  units  = "mm",
+  device = cairo_pdf
+)
+
+# 
+# 
+# #mass check
+# test1<-CAA_sum_reg %>%
+#   group_by(CAA_TYPE) %>%
+#   summarise(sum=sum(WAA))
+# test1
+# 
+# test2<-CAA_sum_amb %>%
+#   group_by(CAA_TYPE) %>%
+#   summarise(sum=sum(WAA))
+# test2
+# 
+# 
+# test3<-CAA_solo_reg %>%
+#   group_by(CAA_TYPE) %>%
+#   summarise(sum=sum(WAA))
+# test3
+# 
+# test4<-CAA_solo_amb %>%
+#   group_by(CAA_TYPE) %>%
+#   summarise(sum=sum(WAA))
+# test4
+# 
+# 
+# # note -- there's a differnt amount of weight passed through with the BAU and the other types.
+# # It's a difference between CAMS combined with the RF data processing compared to the StockEff processing
+# # We were aware of this and not particularly concerned.
+# test5<-CAA_bau %>%
+#   group_by(CAA_TYPE) %>%
+#   summarise(sum=sum(WAA))
+# test5
+# 
+# 
+# 
+# 
+# 
+# 
+# ##########test code
+# 
+# species_itis = '167687'
+# out_of_sample_predictions = out_of_sample_predictions_reg
+# fyr = 2013
+# lyr = 2024
+# connection = connection
+# sumflag="solo"
+# plotstub="reg"
+# 
+# 
+# bsb_stockeff<-get_intermediate_stockeff(species_itis=species_itis,
+#                                         fyr=fyr,
+#                                         lyr=lyr,
+#                                         connection=connection)
+# 
+# #unpack
+# comm.land.length.age.res<-bsb_stockeff$comm.land.length.age.res
+# mkt.res <- bsb_stockeff$mkt.res
+# comm.land.res<-bsb_stockeff$comm.land.res
+# 
+# 
+# nrow(out_of_sample_predictions)
+# table(out_of_sample_predictions$MARKET_DESC)
+# table(out_of_sample_predictions$MARKET_DESC, out_of_sample_predictions$YEAR)
+# table(out_of_sample_predictions$MARKET_DESC, out_of_sample_predictions$BLOCK_ID)
+# table(out_of_sample_predictions$MARKET_DESC, out_of_sample_predictions$STOCK_ABBREV)
+# 
+# out_of_sample_predictions <- out_of_sample_predictions %>%
+#   mutate(has_rf_pred = 1)
+# nrow(out_of_sample_predictions)
+# 
+# ## Combine the stockeff files and apportionment file
+# 
+# comm.land.length.age2 <- comm.land.res  %>%
+#   left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>%
+#   left_join(mkt.res, by=join_by(NESPP4))
+# nrow(comm.land.length.age2)
+# 
+# 
+# 
+# comm.land.length.age2$merge_marker=1
+# comm.land.length.age2<-comm.land.length.age2 %>%
+#   full_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, MARKET_DESC, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
+# nrow(comm.land.length.age2)
+# 
+# 
+# table(comm.land.length.age2$has_rf_pred, comm.land.length.age2$merge_marker)
+
 dbDisconnect(connection)
-
-
-
-#mass check
-test1<-CAA_sum_reg %>%
-  group_by(CAA_TYPE) %>%
-  summarise(sum=sum(WAA))
-test1
-
-test2<-CAA_sum_amb %>%
-  group_by(CAA_TYPE) %>%
-  summarise(sum=sum(WAA))
-test2
-
-
-test3<-CAA_solo_reg %>%
-  group_by(CAA_TYPE) %>%
-  summarise(sum=sum(WAA))
-test3
-
-test4<-CAA_solo_amb %>%
-  group_by(CAA_TYPE) %>%
-  summarise(sum=sum(WAA))
-test4
-
-
-# note -- there's a differnt amount of weight passed through with the BAU and the other types.
-# It's a difference between CAMS combined with the RF data processing compared to the StockEff processing
-# We were aware of this and not particularly concerned.
-test5<-CAA_bau %>%
-  group_by(CAA_TYPE) %>%
-  summarise(sum=sum(WAA))
-test5
 
