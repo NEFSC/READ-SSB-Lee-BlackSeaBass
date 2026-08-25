@@ -17,8 +17,9 @@
 #' @param lyr last year for which you want LAA data
 #' @param connection the connection information to access stockeff using sql
 #' @param sumflag ="sum" add the reapportioned to the original. ="solo" just report age structure of the reapportioned 
+#' @param plotson Default=TRUE, =FALSE will skip the plotting routine. 
 #' @param plotstub character suffix for plot file names 
-
+#'
 #' @return A data frame of the landings at age 
 #' \itemize{
 #'   \item{indices - FILL IN }
@@ -48,7 +49,9 @@ LAA_calculation <- function(species_itis = NULL,
                             lyr = NULL,
                             connection = NULL,
                             sumflag="sum",
-                            plotstub=NULL){
+                            plotson=TRUE,
+                            plotstub=NULL 
+                            ){
 
   if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
   else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
@@ -166,7 +169,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   
   fyr.plot <- 2020
   land.CAA.yrs <- land.CAA %>% filter(YEAR>=fyr.plot)
-  
+  if(plotson==TRUE){
   CAA_PLOT <- ggplot(data=land.CAA.yrs %>% 
                        mutate(CAA=CAA/1000) %>% 
                        filter(YEAR>=fyr.plot),
@@ -197,14 +200,14 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAA_PLOT
   
   ggsave(
-    filename = here("results",glue("CAA_PLOT_{sumflag}_{plotstub}.pdf")),
+    filename = here("results",glue("CAA_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAA_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+  }
   
   #################
   # Landings at Length
@@ -241,7 +244,8 @@ comm.land.res<-bsb_stockeff$comm.land.res
   fyr.plot <- 2020
   land.CAL.yrs <- land.CAL %>% 
     filter(YEAR>=fyr.plot)
-  
+  if(plotson==TRUE){
+    
   CAL_PLOT <- ggplot(data=land.CAL %>%
                        filter(YEAR>=fyr.plot),
                      aes(x=LENGTH,y=CAL_PROP,col=CAL_TYPE,fill = CAL_TYPE)) + 
@@ -271,13 +275,14 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAL_PLOT
   
   ggsave(
-    filename = here("results",glue("CAL_PLOT_{sumflag}_{plotstub}.pdf")),
+    filename = here("results",glue("CAL_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAL_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
+  }
 #########################################
 # Compute Differences in Ages and Lengths
 #########################################
@@ -307,7 +312,8 @@ land.CAA_DIFF <- land.CAA.OLD %>%
            DIFF_CAL=ORIGINAL-APPORTION)
   
     
-    
+    if(plotson==TRUE){
+      
     DIFF_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
                                  filter(YEAR>=fyr.plot),
                                aes(x=AGE,y=DIFF_CAA/1000)) + 
@@ -337,16 +343,17 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     DIFF_AGE_PLOT
     
     ggsave(
-      filename = here("results",glue("DIFF_AGE_PLOT_{sumflag}_{plotstub}.pdf")),
+      filename = here("results",glue("DIFF_AGE_PLOT_{sumflag}{plotstub}.pdf")),
       plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
       units  = "mm",
       device = cairo_pdf
     )
+    }
     
-    
-  
+    if(plotson==TRUE){
+      
   DIFF_LENGTH_PLOT <- ggplot(data=land.CAL_DIFF %>%
                        filter(YEAR>=fyr.plot),
                      aes(x=LENGTH,y=DIFF_CAL/1000)) + 
@@ -376,14 +383,17 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   DIFF_LENGTH_PLOT
   
   ggsave(
-    filename = here("results",glue("DIFF_LENGTH_{sumflag}_{plotstub}.pdf")),
+    filename = here("results",glue("DIFF_LENGTH_{sumflag}{plotstub}.pdf")),
     plot = DIFF_LENGTH_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+    }
+    
+  if(plotson==TRUE){
+      
   # SOUTH ONLY
   S_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
                             filter(YEAR>=2013 & STOCK_ABBREV=="SOUTH"),
@@ -414,14 +424,14 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   S_AGE_PLOT
   
   ggsave(
-    filename = here("results",glue("S_AGE_PLOT_{sumflag}_{plotstub}.pdf")),
+    filename = here("results",glue("S_AGE_PLOT_{sumflag}{plotstub}.pdf")),
     plot = S_AGE_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+  }
   
   
   
