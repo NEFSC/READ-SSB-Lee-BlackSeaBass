@@ -221,6 +221,7 @@ CAA_sum_reg<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="sum",
+                          plotson=FALSE,
                           plotstub="reg")
 CAA_sum_amb<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = out_of_sample_predictions_amb,
@@ -228,6 +229,7 @@ CAA_sum_amb<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="sum",
+                          plotson=FALSE,
                           plotstub="amb")
 
 ####################################
@@ -240,6 +242,7 @@ CAA_solo_reg<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="solo",
+                          plotson=FALSE,
                           plotstub="reg")
 
 CAA_solo_amb<- LAA_calculation(species_itis = '167687',
@@ -248,6 +251,7 @@ CAA_solo_amb<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="solo",
+                          plotson=FALSE,
                           plotstub="amb")
 
 ####################################
@@ -261,6 +265,7 @@ CAA_sum_bau<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="sum",
+                          plotson=FALSE,
                           plotstub="bau")
 
 # When I pass in the unclassified, this works just fine
@@ -281,6 +286,7 @@ CAA_solo_bau<- LAA_calculation(species_itis = '167687',
                                lyr = 2024,
                                connection = connection,
                                sumflag="solo",
+                               plotson=FALSE,
                                plotstub="bau")
 
 
@@ -290,6 +296,7 @@ CAA_solo_bau2<- LAA_calculation(species_itis = '167687',
                           lyr = 2024,
                           connection = connection,
                           sumflag="solo",
+                          plotson=FALSE,
                           plotstub="bau")
 
 CAA_solo_bau2<-CAA_solo_bau2 %>%
@@ -307,35 +314,37 @@ CAA_solo_bau2<-CAA_solo_bau2 %>%
 
 CAA_solo_bau<-CAA_solo_bau %>%
   filter(CAA_TYPE=="Apportioned") %>%
-  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
-  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
+  mutate(CAA_TYPE="Original") %>% # This looks shady, but I've passed in unclassifieds, so it is correct
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA, CAA_TYPE) %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR,CAA_TYPE) %>%
   mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
             WAA_orig_sum=sum(WAA, na.rm=TRUE)) %>%
   mutate(CAA_prop=CAA/CAA_orig_sum,
          WAA_prop=WAA/WAA_orig_sum) %>%
   ungroup() %>%
-  select(-c(CAA_orig_sum, WAA_orig_sum)) %>%
-  mutate(CAA_TYPE="StockEff_Unclass")
+  select(-c(CAA_orig_sum, WAA_orig_sum)) 
 
 
 CAA_solo_amb<-CAA_solo_amb %>%
   filter(CAA_TYPE=="Apportioned") %>%
-  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
-  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
+  select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA, CAA_TYPE) %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR,CAA_TYPE) %>%
   mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
          WAA_orig_sum=sum(WAA, na.rm=TRUE)) %>%
   mutate(CAA_prop=CAA/CAA_orig_sum,
          WAA_prop=WAA/WAA_orig_sum) %>%
   ungroup() %>%
-  select(-c(CAA_orig_sum, WAA_orig_sum)) %>%
-  mutate(CAA_TYPE="Econ_Unclass")
+  select(-c(CAA_orig_sum, WAA_orig_sum)) 
 
 
 
+
+
+################################PLOTS################################
+# Just the landings that were originally unclassified
 
 
 CAA_comp<-CAA_solo_bau%>%
-  rbind(CAA_solo_bau2) %>%
   rbind(CAA_solo_amb)
 
 ########### I want to look at the Apportion from 
@@ -343,10 +352,13 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
+  scale_x_continuous(breaks = 2:8) +
+  scale_fill_grey(start = 0.2, end = 0.7) +
+  scale_color_grey(start = 0.2, end = 0.7) +
   theme(
     axis.text.x      = element_text(size = 7, colour = "grey20",
                                     angle = 45, hjust = 1),
-    axis.text.y      = element_text(size = 5, colour = "grey20"),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
     axis.title       = element_text(size = 8),
     legend.title     = element_text(size = 7),
     legend.text      = element_text(size = 8),
@@ -370,7 +382,7 @@ CAA_PLOT
 
 
 ggsave(
-  filename = here("results",glue("CAA_comp.pdf")),
+  filename = here("results",glue("CAA_comparison_UNC_only.pdf")),
   plot = CAA_PLOT,
   width  = 84,
   height = 168,
@@ -385,6 +397,10 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=WAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
+  scale_x_continuous(breaks = 2:8) +
+  scale_fill_grey(start = 0.2, end = 0.7) +
+  scale_color_grey(start = 0.2, end = 0.7) +
+  
   theme(
     axis.text.x      = element_text(size = 7, colour = "grey20",
                                     angle = 45, hjust = 1),
@@ -411,13 +427,126 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
 CAA_PLOT
 
 ggsave(
-  filename = here("results",glue("WAA_comp.pdf")),
+  filename = here("results",glue("WAA_comparison_UNC_only.pdf")),
   plot = CAA_PLOT,
   width  = 84,
   height = 168,
   units  = "mm",
   device = cairo_pdf
 )
+
+
+
+
+
+
+#Overall re-apportion#
+
+CAA_sum_amb<-CAA_sum_amb %>%
+  group_by(SPECIES_ITIS, STOCK_ABBREV, CAA_TYPE, YEAR) %>%
+  mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
+         WAA_orig_sum=sum(WAA, na.rm=TRUE)) %>%
+  mutate(CAA_prop=CAA/CAA_orig_sum,
+         WAA_prop=WAA/WAA_orig_sum) %>%
+  ungroup() %>%
+  select(-c(CAA_orig_sum, WAA_orig_sum)) 
+
+
+
+CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
+                   aes(x=AGE,y=WAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
+  geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
+  theme_bw(base_size = 9) +
+  scale_x_continuous(breaks = 2:8) +
+  scale_fill_grey(start = 0.2, end = 0.7) +
+  scale_color_grey(start = 0.2, end = 0.7) +
+  
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 8),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    legend.position  =  "bottom",
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  ) + 
+  labs(
+    x = "Age",
+    y = "Catch-at-Age proportions (All Landings) using weights",
+    color = NULL, 
+    fill = NULL,
+    title = "Catch at age proportions based on kg landed"
+    
+  ) +
+  facet_grid(YEAR ~ STOCK_ABBREV)
+CAA_PLOT
+
+
+ggsave(
+  filename = here("results",glue("WAA_comparison_all.pdf")),
+  plot = CAA_PLOT,
+  width  = 84,
+  height = 168,
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
+                   aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
+  geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
+  theme_bw(base_size = 9) +
+  scale_x_continuous(breaks = 2:8) +
+  scale_fill_grey(start = 0.2, end = 0.7) +
+  scale_color_grey(start = 0.2, end = 0.7) +
+  
+  theme(
+    axis.text.x      = element_text(size = 7, colour = "grey20",
+                                    angle = 45, hjust = 1),
+    axis.text.y      = element_text(size = 7, colour = "grey20"),
+    axis.title       = element_text(size = 8),
+    legend.title     = element_text(size = 7),
+    legend.text      = element_text(size = 8),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width  = unit(0.3, "cm"),
+    legend.position  =  "bottom",
+    panel.grid       = element_blank(),
+    panel.border     = element_rect(colour = "grey40", linewidth = 0.5),
+    plot.margin      = margin(4, 4, 4, 4, "pt")
+  ) + 
+  labs(
+    x = "Age",
+    y = "Catch-at-Age proportions (All Landings) using numbers",
+    color = NULL, 
+    fill = NULL,
+    title = "Catch at age proportions based on numbers landed"
+    
+  ) +
+  facet_grid(YEAR ~ STOCK_ABBREV)
+CAA_PLOT
+
+
+ggsave(
+  filename = here("results",glue("CAA_comparison_all.pdf")),
+  plot = CAA_PLOT,
+  width  = 84,
+  height = 168,
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+
+
 
 # 
 # 
