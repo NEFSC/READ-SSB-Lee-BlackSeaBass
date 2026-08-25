@@ -33,7 +33,7 @@
 ################################################################################
 
 # This script has two goals
-# 1. Make sure that the refactoring of the LAA calculation into constituent partsworks
+# 1. Make sure that the refactoring of the LAA calculation into constituent parts works
 # 2. show how to get NAA.
 
 
@@ -301,6 +301,11 @@ CAA_solo_bau2<- LAA_calculation(species_itis = '167687',
 
 CAA_solo_bau2<-CAA_solo_bau2 %>%
   filter(CAA_TYPE=="Apportioned") %>%
+  mutate(AGE = case_when(
+    AGE<9 ~ AGE,
+    AGE>8 ~ 8
+  )) %>%
+  group_by(SPECIES_ITIS,STOCK_ABBREV,YEAR,AGE,CAA_TYPE) %>% summarise(CAA=sum(CAA),WAA=sum(WAA)) %>%
   select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA) %>%
   group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR) %>%
   mutate(CAA_sum=sum(CAA, na.rm=TRUE),
@@ -315,6 +320,11 @@ CAA_solo_bau2<-CAA_solo_bau2 %>%
 CAA_solo_bau<-CAA_solo_bau %>%
   filter(CAA_TYPE=="Apportioned") %>%
   mutate(CAA_TYPE="Original") %>% # This looks shady, but I've passed in unclassifieds, so it is correct
+  mutate(AGE = case_when(
+    AGE<9 ~ AGE,
+    AGE>8 ~ 8
+  )) %>%
+  group_by(SPECIES_ITIS,STOCK_ABBREV,YEAR,AGE,CAA_TYPE) %>% summarise(CAA=sum(CAA),WAA=sum(WAA)) %>%
   select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA, CAA_TYPE) %>%
   group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR,CAA_TYPE) %>%
   mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
@@ -327,6 +337,11 @@ CAA_solo_bau<-CAA_solo_bau %>%
 
 CAA_solo_amb<-CAA_solo_amb %>%
   filter(CAA_TYPE=="Apportioned") %>%
+  mutate(AGE = case_when(
+    AGE<9 ~ AGE,
+    AGE>8 ~ 8
+  )) %>%
+  group_by(SPECIES_ITIS,STOCK_ABBREV,YEAR,AGE,CAA_TYPE) %>% summarise(CAA=sum(CAA),WAA=sum(WAA)) %>%
   select(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE, CAA, WAA, CAA_TYPE) %>%
   group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR,CAA_TYPE) %>%
   mutate(CAA_orig_sum=sum(CAA, na.rm=TRUE),
