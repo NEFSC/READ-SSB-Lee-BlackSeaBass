@@ -15,7 +15,10 @@
 #' 
 #' @param fyr first year for which you want LAA data
 #' @param lyr last year for which you want LAA data
-#' @param connection the connection information to access stockeff using sql 
+#' @param connection the connection information to access stockeff using sql
+#' @param sumflag ="sum" add the reapportioned to the original. ="solo" just report age structure of the reapportioned 
+#' @param plotson Default=TRUE, =FALSE will skip the plotting routine. 
+#' @param plotstub character suffix for plot file names 
 #'
 #' @return A data frame of the landings at age 
 #' \itemize{
@@ -44,7 +47,11 @@ LAA_calculation <- function(species_itis = NULL,
                             out_of_sample_predictions = NULL,
                             fyr = NULL,
                             lyr = NULL,
-                            connection = NULL){
+                            connection = NULL,
+                            sumflag="sum",
+                            plotson=TRUE,
+                            plotstub=NULL 
+                            ){
 
   if(length(species_itis)!=1){stop("Only 1 species_itis code allowed")}
   else if(unique(out_of_sample_predictions$SPECIES_ITIS) != species_itis){stop("species_itis doesn't match between requested and what provided by apportion file")}
@@ -72,22 +79,41 @@ comm.land.res<-bsb_stockeff$comm.land.res
   comm.land.length.age <- comm.land.res  %>% 
     left_join(comm.land.length.age.res, by=join_by(SPECIES_ITIS, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID)) %>% 
     left_join(mkt.res, by=join_by(NESPP4)) %>% 
-    left_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, YEAR,STOCK_ABBREV, MARKET_DESC, BLOCK_ID==SEMESTER))
+    full_join(out_of_sample_predictions, by=join_by(SPECIES_ITIS, MARKET_DESC, NESPP4, YEAR, SEX_TYPE, STOCK_ABBREV, REGION_ID, BLOCK_ID))
   
-  # CONSTRUCT LANDINGS_KG_ADJUSTED
+  # Two ways to Construct  LANDINGS_KG_ADJUSTED
+  # method 1 - sum things together 
   # is.na(has_rf_pred) Where the isn't an RF prediction, use the original landings from stockeff (LANDINGS_KG)
   # MARKET_DESC=="UNCLASSIFIED" Where the original market category is unclassified, use the new apportion value.  This is correct because 
   ##    1.  The RF model may "decline" to make a classifcation for some unclassified observations and we want to retain them as UNCLASSIFIED here. 
-  ##    2.  THe RF model may classify "all" the unclassifeds. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
+  ##    2.  THe RF model may classify "all" of the unclassifeds into categories. When it does, the value of LANDINGS_KG_CATEGORY_APPORTION is zero.
   # MARKET_DESC!="UNCLASSIFIED", add category apportion value to the original landings
-  # MARKET_DESC_ORIG refers the original market category and MARKET_DESC is the RF classified new market category.
+  # MARKET_DESC is the RF classified new market category.
   
+  # Method 2 -- Examine just the out_of_sample_predictions dataframe 
+  # is.na(has_rf_pred) Where the isn't an RF prediction, set LANDINGS_KG to 0 
+  # when we do have a RF prediction, set LANDINGS_KG to LANDINGS_KG_CATEGORY_APPORTION  
+  if (sumflag=="sum"){
   comm.land.length.age <- comm.land.length.age %>% 
     mutate(LANDINGS_KG_ADJUSTED = case_when(
       is.na(has_rf_pred) ~ LANDINGS_KG,
       MARKET_DESC=="UNCLASSIFIED" ~ LANDINGS_KG_CATEGORY_APPORTION,
       MARKET_DESC!="UNCLASSIFIED" ~ LANDINGS_KG+LANDINGS_KG_CATEGORY_APPORTION)
     ) 
+  } else if (sumflag=="solo"){
+    comm.land.length.age <- comm.land.length.age %>% 
+      mutate(LANDINGS_KG_ADJUSTED = case_when(
+        is.na(has_rf_pred) ~ 0,
+        !is.na(has_rf_pred) ~ LANDINGS_KG_CATEGORY_APPORTION)
+      ) 
+  }
+  # I dont't think is quite right. For Solo, I want to pass in 
+  # Just the reapportioned landings. 
+  # mabye I want to filter on MARKET_DESC_ORIG="UNCLASSIFIED"
+  # I think I also need to zero out NO_AT_AGE_LENGTH
+  # but I don't know how to do this. Perhaps also on !is.na(has_rf_pred)?  
+  # I dont' intend to compare solo to "original", so maybe this isn't a big deal and I can just filter out
+  # and delete the figures.
   
   ################################################################################
   # Calculate weight at age and length using LANDINGS_KG_ADJUSTED
@@ -122,14 +148,16 @@ comm.land.res<-bsb_stockeff$comm.land.res
   #################
   land.CAA.OLD <- comm.land.length.age %>%
     group_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH)) %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH, na.rm=TRUE),
+              WAA=sum(WT_AT_AGE_LENGTH, na.rm=TRUE)) %>%
     mutate(CAA_TYPE = 'Original') %>%
     ungroup()
   
   land.CAA.NEW <- comm.land.length.age %>%
     group_by(SPECIES_ITIS,STOCK_ABBREV, YEAR, AGE) %>%
-    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW)) %>%
-    mutate(CAA_TYPE = 'Apportioned') %>%
+    summarize(CAA = sum(NO_AT_AGE_LENGTH_NEW, na.rm=TRUE),
+              WAA=sum(WT_AT_AGE_LENGTH_NEW, na.rm=TRUE)) %>%
+        mutate(CAA_TYPE = 'Apportioned') %>%
     ungroup()
   
   ################################################################################
@@ -141,7 +169,7 @@ comm.land.res<-bsb_stockeff$comm.land.res
   
   fyr.plot <- 2020
   land.CAA.yrs <- land.CAA %>% filter(YEAR>=fyr.plot)
-  
+  if(plotson==TRUE){
   CAA_PLOT <- ggplot(data=land.CAA.yrs %>% 
                        mutate(CAA=CAA/1000) %>% 
                        filter(YEAR>=fyr.plot),
@@ -172,14 +200,14 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAA_PLOT
   
   ggsave(
-    filename = here("results","CAA_PLOT.pdf"),
+    filename = here("results",glue("CAA_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAA_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+  }
   
   #################
   # Landings at Length
@@ -216,7 +244,8 @@ comm.land.res<-bsb_stockeff$comm.land.res
   fyr.plot <- 2020
   land.CAL.yrs <- land.CAL %>% 
     filter(YEAR>=fyr.plot)
-  
+  if(plotson==TRUE){
+    
   CAL_PLOT <- ggplot(data=land.CAL %>%
                        filter(YEAR>=fyr.plot),
                      aes(x=LENGTH,y=CAL_PROP,col=CAL_TYPE,fill = CAL_TYPE)) + 
@@ -246,13 +275,14 @@ comm.land.res<-bsb_stockeff$comm.land.res
   CAL_PLOT
   
   ggsave(
-    filename = here("results","CAL_PLOT.pdf"),
+    filename = here("results",glue("CAL_PLOT_{sumflag}{plotstub}.pdf")),
     plot = CAL_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
+  }
 #########################################
 # Compute Differences in Ages and Lengths
 #########################################
@@ -282,7 +312,8 @@ land.CAA_DIFF <- land.CAA.OLD %>%
            DIFF_CAL=ORIGINAL-APPORTION)
   
     
-    
+    if(plotson==TRUE){
+      
     DIFF_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
                                  filter(YEAR>=fyr.plot),
                                aes(x=AGE,y=DIFF_CAA/1000)) + 
@@ -312,16 +343,17 @@ land.CAA_DIFF <- land.CAA.OLD %>%
     DIFF_AGE_PLOT
     
     ggsave(
-      filename = here("results","DIFF_AGE_PLOT.pdf"),
+      filename = here("results",glue("DIFF_AGE_PLOT_{sumflag}{plotstub}.pdf")),
       plot = DIFF_AGE_PLOT,
       width  = 84,
       height = 84,
       units  = "mm",
       device = cairo_pdf
     )
+    }
     
-    
-  
+    if(plotson==TRUE){
+      
   DIFF_LENGTH_PLOT <- ggplot(data=land.CAL_DIFF %>%
                        filter(YEAR>=fyr.plot),
                      aes(x=LENGTH,y=DIFF_CAL/1000)) + 
@@ -351,14 +383,17 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   DIFF_LENGTH_PLOT
   
   ggsave(
-    filename = here("results","DIFF_LENGTH_PLOT.pdf"),
+    filename = here("results",glue("DIFF_LENGTH_{sumflag}{plotstub}.pdf")),
     plot = DIFF_LENGTH_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+    }
+    
+  if(plotson==TRUE){
+      
   # SOUTH ONLY
   S_AGE_PLOT <- ggplot(data=land.CAA_DIFF %>%
                             filter(YEAR>=2013 & STOCK_ABBREV=="SOUTH"),
@@ -389,14 +424,14 @@ land.CAA_DIFF <- land.CAA.OLD %>%
   S_AGE_PLOT
   
   ggsave(
-    filename = here("results","S_AGE_PLOT.pdf"),
+    filename = here("results",glue("S_AGE_PLOT_{sumflag}{plotstub}.pdf")),
     plot = S_AGE_PLOT,
     width  = 84,
     height = 84,
     units  = "mm",
     device = cairo_pdf
   )
-  
+  }
   
   
   
