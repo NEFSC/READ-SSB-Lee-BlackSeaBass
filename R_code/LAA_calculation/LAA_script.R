@@ -108,7 +108,7 @@ connection <- eval(nefscdb_con)
 
 bsb_stockeff<-get_intermediate_stockeff(species_itis = 167687,
                            fyr = 2013, #Just 2013
-                           lyr = 2024, #through 2024, 2025 not yet ready
+                           lyr = 2025, #through 2024, 2025 not yet ready
                            connection = connection)
 
 # Everything below this line works on the three data frames already
@@ -188,7 +188,7 @@ out_of_sample_predictions_reg<-out_of_sample_predictions_reg %>%
          REGION_ID=1,
          BLOCK_ID=as.integer(SEMESTER)
   ) %>%
-  filter(YEAR<=2024) %>%
+  filter(YEAR<=2025) %>%
   select(-SEMESTER)
 
 out_of_sample_predictions_reg<-out_of_sample_predictions_reg %>%
@@ -203,7 +203,7 @@ out_of_sample_predictions_amb<-out_of_sample_predictions_amb %>%
          REGION_ID=1,
          BLOCK_ID=as.integer(SEMESTER)
   )  %>%
-  filter(YEAR<=2024) %>%
+  filter(YEAR<=2025) %>%
   select(-SEMESTER)
 
 out_of_sample_predictions_amb<-out_of_sample_predictions_amb %>%
@@ -218,7 +218,7 @@ stopifnot(!anyNA(out_of_sample_predictions_amb$NESPP4))
 CAA_sum_reg<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = out_of_sample_predictions_reg,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="sum",
                           plotson=FALSE,
@@ -226,7 +226,7 @@ CAA_sum_reg<- LAA_calculation(species_itis = '167687',
 CAA_sum_amb<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = out_of_sample_predictions_amb,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="sum",
                           plotson=FALSE,
@@ -239,7 +239,7 @@ CAA_sum_amb<- LAA_calculation(species_itis = '167687',
 CAA_solo_reg<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = out_of_sample_predictions_reg,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="solo",
                           plotson=FALSE,
@@ -248,7 +248,7 @@ CAA_solo_reg<- LAA_calculation(species_itis = '167687',
 CAA_solo_amb<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = out_of_sample_predictions_amb,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="solo",
                           plotson=FALSE,
@@ -262,7 +262,7 @@ CAA_solo_amb<- LAA_calculation(species_itis = '167687',
 CAA_sum_bau<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = stockeff_unclass_only,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="sum",
                           plotson=FALSE,
@@ -283,7 +283,7 @@ test5
 CAA_solo_bau<- LAA_calculation(species_itis = '167687',
                                out_of_sample_predictions = stockeff_unclass_only,
                                fyr = 2013,
-                               lyr = 2024,
+                               lyr = 2025,
                                connection = connection,
                                sumflag="solo",
                                plotson=FALSE,
@@ -293,7 +293,7 @@ CAA_solo_bau<- LAA_calculation(species_itis = '167687',
 CAA_solo_bau2<- LAA_calculation(species_itis = '167687',
                           out_of_sample_predictions = bsb_sf_prepped,
                           fyr = 2013,
-                          lyr = 2024,
+                          lyr = 2025,
                           connection = connection,
                           sumflag="solo",
                           plotson=FALSE,
@@ -367,7 +367,10 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
-  scale_x_continuous(breaks = 2:8) +
+  scale_x_continuous(
+    breaks = 2:8,
+    labels = c("2", "3", "4", "5", "6", "7", "8+")
+  ) +
   scale_fill_grey(start = 0.2, end = 0.7) +
   scale_color_grey(start = 0.2, end = 0.7) +
   theme(
@@ -386,10 +389,10 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
   ) + 
   labs(
     x = "Age",
-    y = "Catch-at-Age proportions (based on numbers)",
+    y = "Catch-at-Age proportions of Unclassified (based on numbers)",
     color = NULL, 
-    fill = NULL,
-    title = "Catch at age proportions based on numbers of fish"
+    fill = NULL#,
+#    title = "Catch at age proportions based on numbers of fish"
   ) +
   facet_grid(YEAR ~ STOCK_ABBREV)  
 
@@ -412,7 +415,10 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=WAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
-  scale_x_continuous(breaks = 2:8) +
+  scale_x_continuous(
+    breaks = 2:8,
+    labels = c("2", "3", "4", "5", "6", "7", "8+")
+  ) +
   scale_fill_grey(start = 0.2, end = 0.7) +
   scale_color_grey(start = 0.2, end = 0.7) +
   
@@ -432,10 +438,10 @@ CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
   ) + 
   labs(
     x = "Age",
-    y = "Catch-at-Age proportions (Unclassified Only) using weights",
+    y = "Catch-at-Age proportions of Unclassified (based on numbers)",
     color = NULL, 
-    fill = NULL,
-    title = "Catch at age proportions based on kg landed"
+    fill = NULL#,
+#    title = "Catch at age proportions based on kg landed"
     
   ) +
   facet_grid(YEAR ~ STOCK_ABBREV)
@@ -472,7 +478,10 @@ CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=WAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
-  scale_x_continuous(breaks = 2:8) +
+  scale_x_continuous(
+    breaks = 2:8,
+    labels = c("2", "3", "4", "5", "6", "7", "8+")
+  ) +
   scale_fill_grey(start = 0.2, end = 0.7) +
   scale_color_grey(start = 0.2, end = 0.7) +
   
@@ -492,10 +501,10 @@ CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
   ) + 
   labs(
     x = "Age",
-    y = "Catch-at-Age proportions (All Landings) using weights",
+    y = "Catch-at-Age proportions (all landings) using weights",
     color = NULL, 
-    fill = NULL,
-    title = "Catch at age proportions based on kg landed"
+    fill = NULL#,
+#    title = "Catch at age proportions based on kg landed"
     
   ) +
   facet_grid(YEAR ~ STOCK_ABBREV)
@@ -518,7 +527,10 @@ CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
                    aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
-  scale_x_continuous(breaks = 2:8) +
+  scale_x_continuous(
+    breaks = 2:8,
+    labels = c("2", "3", "4", "5", "6", "7", "8+")
+  ) +
   scale_fill_grey(start = 0.2, end = 0.7) +
   scale_color_grey(start = 0.2, end = 0.7) +
   
@@ -538,10 +550,10 @@ CAA_PLOT <- ggplot(data=CAA_sum_amb %>% filter(AGE<=8, AGE>=2),
   ) + 
   labs(
     x = "Age",
-    y = "Catch-at-Age proportions (All Landings) using numbers",
+    y = "Catch-at-Age proportions (all landings) using numbers",
     color = NULL, 
-    fill = NULL,
-    title = "Catch at age proportions based on numbers landed"
+    fill = NULL#,
+#    title = "Catch at age proportions based on numbers landed"
     
   ) +
   facet_grid(YEAR ~ STOCK_ABBREV)
