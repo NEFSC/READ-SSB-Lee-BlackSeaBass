@@ -326,7 +326,7 @@ tune_resB <- tune_grid(
 message("Grid Tuning B Finished. Saving summary results from B", Sys.time())
 
 metrics_by_fold <- collect_metrics(tune_resB, summarize = FALSE)  # fold-level
-saveRDS(metrics_by_fold,  "tuning_metrics_by_fold.rds")
+saveRDS(metrics_by_fold,  here("results","ranger", "TB_tuning_metrics_by_fold.rds"))
 write_rds(metrics_by_fold, file=here("results","ranger", glue("TB_tuning_metrics_by_fold{tuning_vintage}.Rds")))
 
 rm(metrics_by_fold)
@@ -395,7 +395,7 @@ tune_res2 %>%
   print(width = 200)
 
 metrics_by_fold <- collect_metrics(tune_res2, summarize = FALSE)  # fold-level
-saveRDS(metrics_by_fold,  "tuning_metrics_by_fold.rds")
+saveRDS(metrics_by_fold,  here("results","ranger", "tuning_metrics_by_fold.rds"))
 write_rds(metrics_by_fold, file=here("results","ranger", glue("tuning_metrics_by_fold{tuning_vintage}.Rds")))
 
 
