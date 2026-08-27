@@ -17,6 +17,12 @@ editor_options:
 fontsize: 12pt
 ---
 
+<!--- RETIRED. This report read the A0*-stem .dta files produced by the
+     Stata commercial processing chain (stata_code/.../commercial/A01-A04.do),
+     which was retired. The live R chain writes .Rds only, so the read_dta()
+     calls below can no longer be satisfied. Retained for reference; do not
+     expect this to knit against a current data vintage. --->
+
 # Exploring Unclassifieds and CAMS status
 
 <!---- 
