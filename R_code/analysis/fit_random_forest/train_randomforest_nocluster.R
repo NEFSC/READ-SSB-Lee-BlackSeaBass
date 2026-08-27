@@ -264,8 +264,15 @@ train_baked <- bake(
 rm(train_data, train_expanded)
 gc()
 ############################################
-run_me = 0
-if (run_me == 1){
+
+# I wrote a little cut-out here because fitting the model takes alot of time
+# I wanted to add the augment and calibration work to this script without havng to re-fit. 
+# set fit_model=1 to fit the whole model from start to finish.
+# set fit_model=0 if you're short-cutting.
+fit_model = 1
+
+
+if (fit_model == 1){
 # Final model fitting on the baked dataset
 message("Fitting final model:...")
 final_ranger_fit <- ranger(
@@ -290,7 +297,7 @@ write_rds(final_ranger_fit, file=here("results","ranger",final_fit_file_name))
 rm(train_baked)
 gc()
 }
-if (run_me==0){
+if (fit_model==0){
   
   final_ranger_fit<-read_rds(file=here("results","ranger",final_fit_file_name))
   prepped_recipe_file_name<-glue("{prepped_recipe}{tuning_vintage}.Rds")
