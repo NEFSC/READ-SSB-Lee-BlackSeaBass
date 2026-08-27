@@ -21,7 +21,7 @@ connection<-eval(nefscdb_con)
 
 # Testing procedure for refactor:
 #   #
-source(here("R_code","LAA_calculation","LAA_calculation_BSB_old.R"))
+source(here("R_code","LAA_calculation","test_refactor_script.R"))
 # 
 # 
 # 
