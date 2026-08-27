@@ -1,3 +1,5 @@
+/* this chain has been retired */
+
 global in_string 2026_05_01
 do "$processing_code/commercial/A01_make_landings_cleaned.do"
 do "$processing_code/commercial/A02_make_daily_stats.do"
