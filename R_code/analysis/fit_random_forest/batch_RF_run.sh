@@ -75,6 +75,10 @@ echo "batch_RF_run.sh: all steps completed successfully."
 
 
 ########################
-# TO DO:
-#  render the manuscript - you're not actually going to do this, but
+# Next steps (deliberately not in pipeline):
+
+
+#  render the manuscript -
 # Rscript -e "rmarkdown::render('writing/Economic_informed_stock_assessments.Rmd', output_format='pdf_document')"
+
+
