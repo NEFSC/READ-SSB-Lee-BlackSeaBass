@@ -1,4 +1,4 @@
-global in_string 2026-03-16
+global in_string 2026-05-28
 
 /* estimate a simple hedonic model */
 do "$analysis_code/bsb_simple_hedonic.do"
