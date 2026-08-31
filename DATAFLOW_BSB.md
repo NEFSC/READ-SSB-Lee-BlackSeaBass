@@ -9,15 +9,14 @@ Companion document: [`README.md`](README.md) (orientation + onboarding).
 The repository contains **six wrapper scripts**: two R `source()` wrappers, two bash `Rscript` wrappers, one live Stata `do` wrapper, and one Stata `do` wrapper that has been **retired in place**. A seventh script, `writing/knit_ranger_results_in_loop.R`, drives one report in a loop and is documented alongside them. Across the repo there are **54 `.R` files, 12 `.do` files, 18 `.Rmd` files, 2 `.sh` files, and 2 `.ado` programs** — 88 scripts in all. Roughly **30 are reachable from a wrapper** (23 invoked directly, plus 7 more pulled in by `source()`). The remainder are hand-run.
 
 
-**Eight open issues are catalogued below** (F-1 … F-8), ranging from a vintage skew between the R and Stata halves of the pipeline to two different functions that share a name.
+**Seven open issues are catalogued below** (F-1 … F-8; F2 is fixed), ranging from a vintage skew between the R and Stata halves of the pipeline to two different functions that share a name.
 
 Three structural facts dominate everything below and should be read before the detail sections:
 
 1. **The R `A01`–`A04` chain is the live commercial-processing path; the Stata `A01`–`A04` chain is retired**, marked as such at `00_commercial_processing_wrapper.do:1`. Both write the same file stems, differing only in extension (`.dta` vs `.Rds`); only the `.Rds` side is current. The retirement covers commercial *processing* only — the Stata *analysis* chain (`00_analysis_wrapper.do` and its five do-files) is live, and consumes `.dta` files written by `B01_data_prep_ml.R:507`.
-2. **Stata passes vintages by explicit global macro; R passes them by scanning the disk.** Every downstream R script re-derives its vintage with `list.files(...)` then `max()`. This means the R wrapper's `vintage_string` assignment does **not** propagate past the `A0*` scripts — `B01` silently overwrites it. These are genuinely different mechanisms and are documented separately.
-3. **`$in_string` is assigned a different value by each live wrapper**, pointing each pipeline at a different DataPull vintage (`2026-03-16` for the Stata analysis chain, `2026-05-01` commercial, `2026-06-09` tilefish). All live assignments share the hyphenated format; the odd underscore form survives only in the retired wrapper. Flagged, not resolved — see [F-1](#f-1-in_string-points-each-pipeline-at-a-different-vintage).
+2. **Stata passes vintages by explicit global macro; R passes them by scanning the disk.** Every downstream R script re-derives its vintage with `list.files(...)` then `max()`.
+3. **`$in_string` is assigned a different value by each live wrapper**, pointing each pipeline at a different DataPull vintage (`2026-05-01` for commercial, `2026-05-28` for the Stata analysis chain, and `2026-06-09` tilefish). All live assignments share the hyphenated format.  This is expected, but not ideal. Flagged, not resolved — see [F-1](#f-1-in_string-points-each-pipeline-at-a-different-vintage).
 
-**Method note.** Everything below comes from reading the code, not from running it. Where a claim would require execution to confirm, it says so.
 
 ---
 
@@ -46,7 +45,7 @@ Scripts it calls, in order:
 | Name | Line | Default | What it gates |
 |---|---|---|---|
 | `in_string` | `:32` | `"2026-05-01"` | Vintage suffix of the **input** files read from the external DataPull repo. Comment says "matches Stata `in_string`". |
-| `vintage_string` | `:33` | `Sys.Date()` | Vintage suffix of **output** files. **Governs only `A01`–`A04`** — `B01` overwrites it at `B01_data_prep_ml.R:66-69`. See [F-2](#f-2-r-vintage_string-is-overwritten-mid-wrapper). |
+| `vintage_string` | `:33` | `Sys.Date()` | Vintage suffix of **output** files.  |
 | `my_datapull` | `:25-26` | `dirname(here())/READ-SSB-Lee-BSB-DataPull` | Path to the **external** upstream repo. Sibling-directory assumption. |
 | `bsb_data_dir` | `:28-29` | `data_folder/main/commercial` | Output directory, **created by the wrapper** via `dir.create(..., showWarnings=FALSE)`. That directory is absent on a fresh checkout, so this call is what makes `A01`'s first `saveRDS` succeed. Note the variable itself is never read downstream — the commercial `A0*`/`B0*` scripts all build paths with `here(...)` directly. |
 | `lbs_to_kg` | `:34` | `2.20462` | Unit conversion constant used downstream. |
@@ -78,7 +77,7 @@ Scripts it calls, in order:
 | Name | Line | Default | What it gates |
 |---|---|---|---|
 | `in_string` | `:31` | `"2026-06-09"` | Input vintage from the DataPull repo. **Differs from the commercial wrapper's `2026-05-01`.** |
-| `vintage_string` | `:32` | `Sys.Date()` | Output vintage. Same overwrite caveat as commercial (`B01_data_prep_tilefish_ml.R:21-24`). |
+| `vintage_string` | `:32` | `Sys.Date()` | Output vintage. |
 | `tile_data_dir` | `:28-29` | `data_folder/main/tilefish` | Output directory; **created by the wrapper** via `dir.create(..., showWarnings=FALSE)`. Unlike the commercial `bsb_data_dir`, this variable *is* read downstream — tilefish `A01`–`A03` build their output paths with `file.path(tile_data_dir, ...)`. |
 | `my_datapull` | `:25-26` | sibling `READ-SSB-Lee-BSB-DataPull` | External repo path. |
 | `lbs_to_kg` | `:33` | `2.20462` | Unit conversion. |
@@ -333,7 +332,6 @@ NOTE: the Stata-side extraction folder
 4.  A03_make_dealer_stats.R     → dlrid_historical_stats_, dlrid_lag_stats_ (:87, :157)
 5.  A04_make_moving_average_prices.R → grand_moving_average_prices_ (:275)
 6.  B01_data_prep_ml.R
-      RE-DERIVES vintage_string from disk (:66-69)  ← see F-2
       Sets out_data_string <- Sys.Date() (:73)
       READS the nine A0* outputs (:107-142)
       SOURCES BSB.Classification.Recipe.R (:559)
@@ -341,7 +339,6 @@ NOTE: the Stata-side extraction folder
       WRITES BSB_unclassified_dataset{out_data_string}.{Rds,dta}      (:516-517)
       WRITES BSB_estimation_dataset{out_data_string}.{Rds,dta}        (:526-527)
 7.  B02_handle_not_in_estimation_dataset.R
-      RE-DERIVES vintage_string from BSB_original_combined_dataset* (:63-66)
       READS questionable_status_{vintage_string}.Rds (:97)
       WRITES data_folder/predictions/excluded_from_estimation_dataset_{...}.Rds (:117)
 
@@ -373,11 +370,9 @@ NOTE: the Stata-side extraction folder
       NOTE: no dlrid_historical_ equivalent — commercial writes two, tilefish one.
 11. A04_make_tilefish_moving_average_prices.R → tile_grand_moving_average_prices_ (:162)
 12. B01_data_prep_tilefish_ml.R
-      RE-DERIVES vintage_string from disk (:21-24); out_data_string <- Sys.Date() (:28)
       WRITES tilefish_{original_combined,unclassified,estimation}_dataset*
              (:343, :352, :361)  — .Rds only, no .dta twin
 13. B02_handle_not_in_tilefish_estimation_dataset.R
-      RE-DERIVES vintage_string (:24-27)
       READS  tilefish_original_combined_dataset{vintage_string}.Rds (:33)
              questionable_tilefish_status_{vintage_string}.Rds      (:57)
       WRITES data_folder/predictions/excluded_from_tilefish_estimation_dataset_{...}.Rds (:76)
@@ -462,7 +457,7 @@ NOTE: the Stata-side extraction folder
 ### Stage 7 — Landings-at-age / catch-at-age → WHAM
 
 ```
-[INFERRED FROM DATA DEPENDENCY — not wrapper-controlled]
+[DATA DEPENDENCY — not wrapper-controlled]
 Each script's own header states "Hand-run. No wrapper calls this script."
 (LAA_script.R:18-19)
 
@@ -510,7 +505,7 @@ Each script's own header states "Hand-run. No wrapper calls this script."
              of it. The reapportionment goes through reallocate_market_categories()
              instead, so the name collision is latent here rather than live.
 
-[UNCLEAR / STANDALONE — LAA cluster, relationship not resolved]
+[ STANDALONE — LAA cluster, relationship not finalized]
 - LAA_calculation.R              (defines LAA_calculation() at :41; exercised by
                                   LAA_test_script.R:56)
 - LAA_calculation_BSB.R          (defines LAA_calculation() at :46 — SAME NAME,
@@ -546,7 +541,7 @@ Each script's own header states "Hand-run. No wrapper calls this script."
         - writing/CRediT.Rmd                 (:881)
 ```
 
-### Scripts that could not be placed
+### Scripts not linked together
 
 | Script | Why |
 |---|---|
@@ -864,7 +859,7 @@ HARD-CODED (does not scan):
   market_category_price_plots.R:36                    →  "2025-07-28"
   market_category_bau_allocation.R:33                 →  "2026-05-28"
   writing/Economic_informed_stock_assessments.Rmd:134 →  "2026-05-28"
-Assessment: This is a fundamentally different contract from Stata's. See F-2.
+ This is a fundamentally different contract from Stata's.
 ```
 
 ```
@@ -962,27 +957,14 @@ Catalogued but **not** placed in a relative order. `writing/` holds 16 `.Rmd` fi
 
 | Where | Line | Value |
 |---|---|---|
-| `00_analysis_wrapper.do` | `:1` | `2026-03-16` |
+| `00_analysis_wrapper.do` | `:1` | `2026-05-28` |
 | `00_commercial_processing_wrapper.R` | `:32` | `"2026-05-01"` |
 | `00_tilefish_processing_wrapper.R` | `:31` | `"2026-06-09"` |
 
-All three use the hyphenated `YYYY-MM-DD` form, so filenames are consistent. The values differ because each pipeline points at an independently-refreshed DataPull vintage. The practical consequence is that the Stata analysis chain reads a **March** combined dataset while the R commercial chain was built from a **May** pull.
+All three use the hyphenated `YYYY-MM-DD` form, so filenames are consistent. Both the commercial and stata are built from the same DataPull vintage.  Tilefish is different.
 
 The retired `00_commercial_processing_wrapper.do` would set `$in_string` at `:3` using an underscore form (`2026_05_01`). That line is inside the file's comment block, so it does not currently execute; un-commenting the chain would leave that value, and that format, in effect for the rest of the Stata session.
 
-Needs review.
-
-### F-2: R `vintage_string` is overwritten mid-wrapper
-
-`00_commercial_processing_wrapper.R:33` sets `vintage_string <- Sys.Date()`. That value governs `A01`–`A04`. Then `B01_data_prep_ml.R:66-69` discards it and re-derives `vintage_string` by scanning `data_folder/main/commercial/` for `landings_cleaned_*.Rds` and taking `max()`.
-
-In a same-day run these agree. They diverge if:
-
-- `A01`–`A04` ran on a different day than `B01`;
-- an older `landings_cleaned_*.Rds` sorts lexicographically higher than the new one;
-- the folder contains files from an unrelated run.
-
-`max()` on a character vector is a lexicographic comparison. It happens to be correct for `YYYY-MM-DD`, but it is not a date comparison, and on an empty vector it returns `-Inf` with a warning rather than failing loudly. The tilefish wrapper has the identical pattern at `B01_data_prep_tilefish_ml.R:21-24`.
 
 ### F-3: Duplicated and divergent `modeltype` dispatcher
 
@@ -1026,7 +1008,7 @@ So both definitions are evaluated, in `list.files()` order, and the later one si
 
 Every script that actually *calls* the function avoids the ambiguity. The hand-run scripts source one file explicitly (`LAA_script.R:61` takes `LAA_calculation_BSB.R`; `LAA_test_script.R:56` takes `LAA_calculation.R`; `test_refactor_script.R:35` takes `LAA_calculation_BSB.R`), and `fit_BSB_WHAM.R` — the one script that sources both — reapportions through `reallocate_market_categories()` (`:77`) and never calls `LAA_calculation()` at all.
 
-So the collision is **latent, not live**: nothing currently depends on which definition wins. It becomes live the moment anything downstream of that `lapply(source)` calls `LAA_calculation()`. Directly related to the open question of which LAA implementation is canonical.
+The collision is **latent, not live**: nothing currently depends on which definition wins. It becomes live the moment anything downstream of that `lapply(source)` calls `LAA_calculation()`. Directly related to the open question of which LAA implementation is canonical.
 
 Flagging only; not resolving.
 
@@ -1054,7 +1036,7 @@ Separately, several scripts pin a vintage as a literal rather than deriving it:
 These will silently read stale data, or fail, once those files age out. The manuscript's `:134` pin is the widest-reaching of them: because `Appendix_Hedonic.Rmd` is a child document, it inherits that pinned `data_vintage_string` rather than scanning for the current one.
 
 ### F-8: `fit_BSB_WHAM.R` clears session
-`rm(list=ls())` at `:29` additionally clears the session, so anything a developer had set up by hand beforehand is discarded.
+`rm(list=ls())` at `:29` clears the session, so anything a developer had set up by hand beforehand is discarded.
 
 ---
 
