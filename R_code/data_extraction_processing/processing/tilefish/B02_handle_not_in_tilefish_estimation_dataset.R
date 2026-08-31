@@ -73,6 +73,6 @@ qs<-qs %>%
 excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
   group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
-write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_estimation_dataset_{vintage_string}.Rds")))
+write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_tilefish_estimation_dataset_{vintage_string}.Rds")))
 
 
