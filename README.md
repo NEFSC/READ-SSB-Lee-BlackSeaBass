@@ -6,7 +6,7 @@ Because the size of an individual fish determines the price of fish, we can inve
 
 The repository also contains a **parallel tilefish pipeline** built on the same machinery, and the manuscript source in `writing/`.
 
-[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md) is the execution-order and data-flow reference: every wrapper, every toggle, the Stata global-macro trace, the R sourcing graph, and ten catalogued issues. This README is an orientation and quick start.
+[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md) is the execution-order and data-flow reference: every wrapper, every toggle, the Stata global-macro trace, the R sourcing graph, and eight catalogued issues. This README is an orientation and quick start.
 
 ---
 
@@ -154,6 +154,8 @@ source(here("R_code", "data_extraction_processing", "processing",
 
 Runs `A01 → A02 → A03 → A04 → B01 → B02` unconditionally. Produces `landings_cleaned_*`, the daily/dealer/moving-average stats, and finally `BSB_{original_combined,unclassified,estimation}_dataset*.Rds`.
 
+The wrapper creates `data_folder/main/commercial/` itself (`:28-29`) before sourcing anything. That directory is absent on a fresh checkout, so run the wrapper rather than the `A0*` scripts individually the first time. The tilefish wrapper does the same for `data_folder/main/tilefish/` (`:28-29`).
+
 The `A0*` stages write **`.Rds` only**. The sole `.dta` outputs are the three `BSB_*_dataset` files from `B01_data_prep_ml.R:507,517,527`, written for the Stata analysis chain in step 4.
 
 Tilefish is the same shape:
@@ -192,8 +194,8 @@ The LAA calculation scripts are hand-run — no wrapper calls them, and they say
 
 Two things to know before running this stage:
 
-- `fit_BSB_WHAM.R` sources *every* `.R` in `R_code/LAA_calculation/` whose filename lacks "script" (`:37-40`). Two of those files define a function called `LAA_calculation`, so one silently masks the other ([F-7](DATAFLOW_BSB.md#f-7-two-different-functions-are-both-named-laa_calculation)).
-- `test_refactor_script.R` currently sources itself at `:24` and cannot run as written ([F-6](DATAFLOW_BSB.md#f-6-test_refactor_scriptr-sources-itself)).
+- `fit_BSB_WHAM.R` sources *every* `.R` in `R_code/LAA_calculation/` whose filename lacks "script" (`:41-44`). That is also how the tidyverse reaches the script — it loads only `wham`, `ROracle`, `DBI`, `here` and `glue` itself. Two of the sourced files define a function called `LAA_calculation`, so one silently masks the other; nothing in the script calls it, so the collision is latent rather than live ([F-6](DATAFLOW_BSB.md#f-6-two-different-functions-are-both-named-laa_calculation)).
+- `test_refactor_script.R` exists to diff the old and new LAA implementations against each other (`identical()` at `:59`). It **pins** its prediction input at `:13`, so it will not pick up a newer run ([F-7](DATAFLOW_BSB.md#f-7-hard-coded-personal-paths-and-pinned-vintages)).
 
 ### 4. Stata analysis (independent of steps 2–3) — still live
 
@@ -213,7 +215,7 @@ Run the five do-files in one session. `bsb_size_classifications.do:709` writes `
 This is the single most important thing to internalise before editing anything.
 
 - **Stata** passes vintages explicitly by global macro: `$in_string` (input) and `$vintage_string` (output). They persist across `do` calls for the life of the session.
-- **R** passes them by **scanning the disk**. Twenty-four files (16 `.R`, 8 `.Rmd`) re-derive a vintage with the same idiom:
+- **R** passes them by **scanning the disk**. Twenty-three files (17 `.R`, 6 `.Rmd`) re-derive a vintage with the same idiom:
 
   ```r
   vintage_string <- list.files(here("data_folder", "main", "commercial"),
@@ -238,15 +240,13 @@ Full list with citations: **[`DATAFLOW_BSB.md` → Known Issues](DATAFLOW_BSB.md
 | **F-1** | The three `in_string` values share a format but point at different DataPull vintages: the Stata analysis chain reads a **March** dataset (`00_analysis_wrapper.do:1`) while the R commercial chain was built from a **May** pull. |
 | **F-2** | R's disk-scan vintage resolution (above) silently decouples downstream scripts from the wrapper. |
 | **F-5** | Stata setup is interactive and will hang a batch run. |
-| **F-6** | `test_refactor_script.R:24` sources itself — infinite recursion. `LAA_calculation_BSB_old.R` is now orphaned as a result. |
-| **F-7** | `LAA_calculation.R` and `LAA_calculation_BSB.R` both define `LAA_calculation()`. `fit_BSB_WHAM.R` sources both. |
-| **F-8** | `out_of_sample_predictions_StockAssess.Rmd` has been removed. Any `SA_*` prediction files or `PRED_BSB_unclassified_dataset*` files still on disk are now orphaned. |
-| **F-9** | Hard-coded personal paths (`C:/Users/emily.liljestrand/...`) and seven scripts with pinned vintage strings that will silently go stale. |
-| **F-10** | `fit_BSB_WHAM.R` uses bare relative paths instead of `here()`, so it only works from the repo root. |
+| **F-6** | `LAA_calculation.R` and `LAA_calculation_BSB.R` both define `LAA_calculation()`. `fit_BSB_WHAM.R` sources both, so one masks the other in locale-dependent `list.files()` order. |
+| **F-7** | Hard-coded personal paths (`C:/Users/emily.liljestrand/...`) and seven scripts with pinned vintage strings that will silently go stale. |
+| **F-8** | `fit_BSB_WHAM.R` opens with `rm(list=ls())`, discarding anything you had set up by hand. |
 
 **Open questions** — the full list is at the end of `DATAFLOW_BSB.md`:
 
-- Which of `LAA_calculation.R`, `LAA_calculation_BSB.R`, and `LAA_calculation_BSB_old.R` is canonical (F-6 and F-7 both depend on this).
+- Which of `LAA_calculation.R`, `LAA_calculation_BSB.R`, and `LAA_calculation_BSB_old.R` is canonical (F-6 depends on this; `LAA_calculation_BSB_old.R` survives only because `test_refactor_script.R` diffs the two implementations).
 - Whether `estimate_randomforest.R` and `test_sampling.R` are retired (`out_of_sample_predictions_StockAssess.Rmd` already has been, and was deleted).
 - Whether `writing/figure_extra.R` is live — it has no wrapper reference and no traced dependency.
 - Whether `00_analysis_wrapper.do` should be moved onto the May data pull and its tables rebuilt.
@@ -257,7 +257,7 @@ Full list with citations: **[`DATAFLOW_BSB.md` → Known Issues](DATAFLOW_BSB.md
 
 | Document | Contents |
 |---|---|
-| **[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md)** | Wrapper inventory, full toggle catalog, master execution sequence, Stata global-macro trace, R sourcing graph, `writing/` Rmd inventory, ten known issues and nine review flags. Standalone — assumes no context. |
+| **[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md)** | Wrapper inventory, full toggle catalog, master execution sequence, Stata global-macro trace, R sourcing graph, `writing/` Rmd inventory, eight known issues and five review flags. Standalone — assumes no context. |
 | [`documentation/project_logistics.md`](documentation/project_logistics.md) | Stata-side credential handling. |
 | [`License.txt`](License.txt) | License. |
 | `writing/investigate_fit.Rmd` | Narrative lab notebook on model-fit decisions — why the pooled model was kept and the North/South split abandoned. Useful modelling context. |

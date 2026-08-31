@@ -9,7 +9,7 @@ Companion document: [`README.md`](README.md) (orientation + onboarding).
 The repository contains **six wrapper scripts**: two R `source()` wrappers, two bash `Rscript` wrappers, one live Stata `do` wrapper, and one Stata `do` wrapper that has been **retired in place**. A seventh script, `writing/knit_ranger_results_in_loop.R`, drives one report in a loop and is documented alongside them. Across the repo there are **54 `.R` files, 12 `.do` files, 18 `.Rmd` files, 2 `.sh` files, and 2 `.ado` programs** — 88 scripts in all. Roughly **30 are reachable from a wrapper** (23 invoked directly, plus 7 more pulled in by `source()`). The remainder are hand-run.
 
 
-**Ten open issues are catalogued below** (F-1 … F-10), ranging from a vintage skew between the R and Stata halves of the pipeline to a script that sources itself.
+**Eight open issues are catalogued below** (F-1 … F-8), ranging from a vintage skew between the R and Stata halves of the pipeline to two different functions that share a name.
 
 Three structural facts dominate everything below and should be read before the detail sections:
 
@@ -27,28 +27,29 @@ Three structural facts dominate everything below and should be read before the d
 
 #### 1. `R_code/data_extraction_processing/processing/commercial/00_commercial_processing_wrapper.R`
 
-Sets vintage variables, loads shared helpers, then `source()`s six scripts in order.
+Anchors the project root with `here::i_am()` (`:23`), creates the commercial output folder, sets vintage variables, loads shared helpers, then `source()`s six scripts in order.
 
 Scripts it calls, in order:
 
 | # | Script | Line |
 |---|---|---|
-| — | `R_code/analysis/helpers/gear_market_helpers.R` *(helper, not a stage)* | `:33` |
-| 1 | `commercial/A01_make_landings_cleaned.R` | `:35` |
-| 2 | `commercial/A02_make_daily_stats.R` | `:36` |
-| 3 | `commercial/A03_make_dealer_stats.R` | `:37` |
-| 4 | `commercial/A04_make_moving_average_prices.R` | `:38` |
-| 5 | `commercial/B01_data_prep_ml.R` | `:42` |
-| 6 | `commercial/B02_handle_not_in_estimation_dataset.R` | `:45` |
+| — | `R_code/analysis/helpers/gear_market_helpers.R` *(helper, not a stage)* | `:36` |
+| 1 | `commercial/A01_make_landings_cleaned.R` | `:38` |
+| 2 | `commercial/A02_make_daily_stats.R` | `:39` |
+| 3 | `commercial/A03_make_dealer_stats.R` | `:40` |
+| 4 | `commercial/A04_make_moving_average_prices.R` | `:41` |
+| 5 | `commercial/B01_data_prep_ml.R` | `:45` |
+| 6 | `commercial/B02_handle_not_in_estimation_dataset.R` | `:48` |
 
 **Toggles / configuration found:**
 
 | Name | Line | Default | What it gates |
 |---|---|---|---|
-| `in_string` | `:29` | `"2026-05-01"` | Vintage suffix of the **input** files read from the external DataPull repo. Comment says "matches Stata `in_string`". |
-| `vintage_string` | `:30` | `Sys.Date()` | Vintage suffix of **output** files. **Governs only `A01`–`A04`** — `B01` overwrites it at `B01_data_prep_ml.R:66-69`. See [F-2](#f-2-r-vintage_string-is-overwritten-mid-wrapper). |
+| `in_string` | `:32` | `"2026-05-01"` | Vintage suffix of the **input** files read from the external DataPull repo. Comment says "matches Stata `in_string`". |
+| `vintage_string` | `:33` | `Sys.Date()` | Vintage suffix of **output** files. **Governs only `A01`–`A04`** — `B01` overwrites it at `B01_data_prep_ml.R:66-69`. See [F-2](#f-2-r-vintage_string-is-overwritten-mid-wrapper). |
 | `my_datapull` | `:25-26` | `dirname(here())/READ-SSB-Lee-BSB-DataPull` | Path to the **external** upstream repo. Sibling-directory assumption. |
-| `lbs_to_kg` | `:31` | `2.20462` | Unit conversion constant used downstream. |
+| `bsb_data_dir` | `:28-29` | `data_folder/main/commercial` | Output directory, **created by the wrapper** via `dir.create(..., showWarnings=FALSE)`. That directory is absent on a fresh checkout, so this call is what makes `A01`'s first `saveRDS` succeed. Note the variable itself is never read downstream — the commercial `A0*`/`B0*` scripts all build paths with `here(...)` directly. |
+| `lbs_to_kg` | `:34` | `2.20462` | Unit conversion constant used downstream. |
 
 There are **no on/off execution toggles** in this wrapper. Every stage runs unconditionally; the only way to skip one is to comment out its `source()` line.
 
@@ -78,13 +79,13 @@ Scripts it calls, in order:
 |---|---|---|---|
 | `in_string` | `:31` | `"2026-06-09"` | Input vintage from the DataPull repo. **Differs from the commercial wrapper's `2026-05-01`.** |
 | `vintage_string` | `:32` | `Sys.Date()` | Output vintage. Same overwrite caveat as commercial (`B01_data_prep_tilefish_ml.R:21-24`). |
-| `tile_data_dir` | `:28-29` | `data_folder/main/tilefish` | Output directory; **created by the wrapper** via `dir.create(..., showWarnings=FALSE)`. This is the only wrapper that creates its own output folder. |
+| `tile_data_dir` | `:28-29` | `data_folder/main/tilefish` | Output directory; **created by the wrapper** via `dir.create(..., showWarnings=FALSE)`. Unlike the commercial `bsb_data_dir`, this variable *is* read downstream — tilefish `A01`–`A03` build their output paths with `file.path(tile_data_dir, ...)`. |
 | `my_datapull` | `:25-26` | sibling `READ-SSB-Lee-BSB-DataPull` | External repo path. |
 | `lbs_to_kg` | `:33` | `2.20462` | Unit conversion. |
 
 No on/off toggles. All six stages run unconditionally.
 
-**Known defect (cosmetic):** the header comment at `:2-3` was copied from the commercial wrapper and still reads `00_commercial_processing_wrapper.R`. The `here::i_am()` call at `:23` is correct.
+The header comment at `:2-4` and the `here::i_am()` call at `:23` both correctly identify this file.
 
 ---
 
@@ -201,8 +202,8 @@ All on/off and configuration flags found, grouped by owner.
 
 | Wrapper | Toggle | Default | Effect |
 |---|---|---|---|
-| `00_commercial_processing_wrapper.R` | `in_string` `:29` | `"2026-05-01"` | Input vintage from DataPull repo |
-| | `vintage_string` `:30` | `Sys.Date()` | Output vintage (A0* only) |
+| `00_commercial_processing_wrapper.R` | `in_string` `:32` | `"2026-05-01"` | Input vintage from DataPull repo |
+| | `vintage_string` `:33` | `Sys.Date()` | Output vintage (A0* only) |
 | `00_tilefish_processing_wrapper.R` | `in_string` `:31` | `"2026-06-09"` | Input vintage from DataPull repo |
 | | `vintage_string` `:32` | `Sys.Date()` | Output vintage (A0* only) |
 | `batch_RF_run.sh` | comment/uncomment | **9 on, 2 off** | See wrapper table above |
@@ -319,6 +320,8 @@ NOTE: the Stata-side extraction folder
 
 ```
 [WRAPPER — 00_commercial_processing_wrapper.R]  ← THE live path
+    Creates data_folder/main/commercial/ first (:28-29). That directory is
+    absent on a fresh checkout and every write below depends on it.
 2.  A01_make_landings_cleaned.R
       READS  (EXTERNAL) my_datapull/.../landings_all_{in_string}.Rds
       READS  (EXTERNAL) my_datapull/.../cams_gears_{in_string}.Rds
@@ -375,10 +378,10 @@ NOTE: the Stata-side extraction folder
              (:343, :352, :361)  — .Rds only, no .dta twin
 13. B02_handle_not_in_tilefish_estimation_dataset.R
       RE-DERIVES vintage_string (:24-27)
-      WRITES data_folder/predictions/excluded_from_estimation_dataset_{...}.Rds (:76)
-      NOTE: same output stem as the commercial B02 (:117). Both write into
-      data_folder/predictions/ using the same prefix, distinguished only by
-      whatever vintage each happens to resolve.
+      READS  tilefish_original_combined_dataset{vintage_string}.Rds (:33)
+             questionable_tilefish_status_{vintage_string}.Rds      (:57)
+      WRITES data_folder/predictions/excluded_from_tilefish_estimation_dataset_{...}.Rds (:76)
+      NOTE: the output stem no longer collides with the commercial B02's (:117).
 ```
 
 ### Stage 4 — Random forest: tune → train → interpret
@@ -482,19 +485,30 @@ Each script's own header states "Hand-run. No wrapper calls this script."
             ← nothing in this repo writes this file. EXTERNAL BOUNDARY.
 
 31. fit_BSB_WHAM/fit_BSB_WHAM.R
+      Anchors the project root with here::i_am() (:38); all paths go through here().
       SOURCES every .R in R_code/LAA_calculation/ whose name lacks "script"
-              (:37-40, list.files + grepl filter + lapply(source))
+              (:41-44, list.files + grepl filter + lapply(source))
               ← this pulls in BOTH LAA_calculation.R and LAA_calculation_BSB.R,
-                which define the same function name. See F-7.
+                which define the same function name. See F-6.
+              ← it is also how dplyr/tidyr reach this script: the file itself
+                loads only wham, ROracle, DBI, here and glue (:32-36), and
+                picks up the tidyverse transitively from the sourced files
+                (e.g. CAA_calculation.R:32) before its first %>% at :93.
       Opens its own Oracle connection interactively via
-              rstudioapi::askForPassword() (:53-56)
-      READS  data_folder/assessment/BSB_2025MT_Input.rds (:42)
-             data_folder/predictions/out_of_sample_predictions_YRS_*.Rds (:59-61)
-             data_folder/assessment/BSB_2025MT_Fit.rds (:122)
-      CALLS  get_intermediate_stockeff() (:64), reallocate_market_categories() (:74),
-             CAA_calculation() (:83)
-      WRITES data_folder/assessment/BSB_Apportion_Fit.rds (:114)
-      NOTE: uses bare relative paths, not here(). See F-10.
+              rstudioapi::askForPassword() (:58-61)
+      READS  data_folder/assessment/BSB_2025MT_Input.rds (:47)
+             data_folder/predictions/out_of_sample_predictions_YRS_nocluster*.Rds
+                                                                     (:64-67, :82-83)
+             data_folder/assessment/BSB_2025MT_Fit.rds (:127)
+             data_folder/assessment/BSB_Apportion_Fit.rds (:128, read back after writing)
+      CALLS  get_intermediate_stockeff() (:70), reallocate_market_categories() (:77),
+             CAA_calculation() (:87), fit_wham() (:118), compare_wham_models() (:131)
+      WRITES data_folder/assessment/BSB_Apportion_Fit.rds (:119)
+             WHAM comparison output into R_code/analysis/fit_BSB_WHAM/ (:131,
+             fdir=) — i.e. into a CODE directory, not results/.
+      NOTE: does NOT call LAA_calculation(), despite sourcing both definitions
+             of it. The reapportionment goes through reallocate_market_categories()
+             instead, so the name collision is latent here rather than live.
 
 [UNCLEAR / STANDALONE — LAA cluster, relationship not resolved]
 - LAA_calculation.R              (defines LAA_calculation() at :41; exercised by
@@ -502,12 +516,16 @@ Each script's own header states "Hand-run. No wrapper calls this script."
 - LAA_calculation_BSB.R          (defines LAA_calculation() at :46 — SAME NAME,
                                   different signature. Sourced by LAA_script.R:61)
 - LAA_calculation_BSB_old.R      (defines LAA_calculation_old() at :55; superseded.
-                                  No longer sourced by anything — see F-6)
+                                  Sourced only by test_refactor_script.R:24, which
+                                  exists to diff it against the new implementation)
 - LAA_test_script.R              (test harness)
 - LAA_investigation_script.R     (sources get_intermediate_stockeff.R:69,
                                   reallocate_market_categories.R:75, get_ages.R:76)
-- test_refactor_script.R         (compares old vs new LAA implementations;
-                                  currently sources ITSELF at :24 — see F-6)
+- test_refactor_script.R         (compares old vs new LAA implementations:
+                                  sources LAA_calculation_BSB_old.R at :24 and
+                                  LAA_calculation_BSB.R at :35, then checks
+                                  identical() at :59. Pins a prediction vintage
+                                  at :13 — see F-7)
 - get_ages.R, get_intermediate_stockeff.R, reallocate_market_categories.R
                                  (function definitions, no side effects)
 ```
@@ -520,7 +538,7 @@ Each script's own header states "Hand-run. No wrapper calls this script."
       SOURCES modeltype_patterns.R (:145), predict_byhand.R (:146)
       Sets modeltype<-"nocluster" (:138), search_type<-"Advanced" (:141)
       Sets data_vintage_string<-"2026-05-28" (:134) — HARD-CODED, and inherited
-        by the child documents. See F-9.
+        by the child documents. See F-7.
       PULLS IN as child documents:
         - writing/build_summary_tables.Rmd   (:472)
         - writing/Appendix_Hedonic.Rmd       (:718)
@@ -532,7 +550,7 @@ Each script's own header states "Hand-run. No wrapper calls this script."
 
 | Script | Why |
 |---|---|
-| `R_code/analysis/compare_biostat_rf_output.R` | Opens with `connection = db1` (`:4`) where `db1` is never defined in-repo; also uses `mkt.res` (`:16`) which is never created in this file. Requires pre-existing session state. Reads a **hard-coded** prediction file with an embedded `2026-03-16` vintage (`:15`). Writes to a **personal Downloads folder** (`:31`) — see F-9. |
+| `R_code/analysis/compare_biostat_rf_output.R` | Opens with `connection = db1` (`:4`) where `db1` is never defined in-repo; also uses `mkt.res` (`:16`) which is never created in this file. Requires pre-existing session state. Reads a **hard-coded** prediction file with an embedded `2026-03-16` vintage (`:15`). Writes to a **personal Downloads folder** (`:31`) — see F-7. |
 | `R_code/analysis/market_category_aggregations.R` | Hard-codes `vintage_string<-"2025-07-28"` (`:36`). Reads `all_marketcategory_landings_*` from the **DataPull repo** (`:50`). Self-bootstrapping: writes `market_cat_aggregations_{vintage}.Rds` (`:82`), or modifies it if it already exists (`:61`). |
 | `R_code/analysis/market_category_price_plots.R` | Hard-codes `vintage_string<-"2025-07-28"` (`:36`). Reads `market_cat_aggregations_*` (`:113`) → **runs after `market_category_aggregations.R`**. Writes 3 PNG families to `images/descriptive/`. |
 | `R_code/analysis/market_category_bau_allocation.R` | Header (`:2`) says *"this is run AFTER the combined_dataset is created"* → after Stage 2 step 6. Hard-codes `data_vintage_string<-"2026-05-28"` (`:33`). Writes 2 PDFs to `images/background/`. Otherwise independent of the other two `market_category_*` scripts. |
@@ -707,14 +725,14 @@ R has no true globals; the equivalent mechanism here is **objects defined in one
 
 ```
 00_commercial_processing_wrapper.R
-├── helpers/gear_market_helpers.R                    :33
-├── commercial/A01_make_landings_cleaned.R           :35
-├── commercial/A02_make_daily_stats.R                :36
-├── commercial/A03_make_dealer_stats.R               :37
-├── commercial/A04_make_moving_average_prices.R      :38
-├── commercial/B01_data_prep_ml.R                    :42
+├── helpers/gear_market_helpers.R                    :36
+├── commercial/A01_make_landings_cleaned.R           :38
+├── commercial/A02_make_daily_stats.R                :39
+├── commercial/A03_make_dealer_stats.R               :40
+├── commercial/A04_make_moving_average_prices.R      :41
+├── commercial/B01_data_prep_ml.R                    :45
 │   └── fit_random_forest/BSB.Classification.Recipe.R   :559
-└── commercial/B02_handle_not_in_estimation_dataset.R   :45
+└── commercial/B02_handle_not_in_estimation_dataset.R   :48
 
 00_tilefish_processing_wrapper.R
 ├── helpers/gear_market_helpers.R                    :35
@@ -762,16 +780,17 @@ LAA_investigation_script.R
 LAA_test_script.R      →  LAA_calculation/LAA_calculation.R :56
 
 test_refactor_script.R
-├── LAA_calculation/test_refactor_script.R           :24   ** SOURCES ITSELF — see F-6 **
-├── LAA_calculation/get_intermediate_stockeff.R      :35
-└── LAA_calculation/LAA_calculation_BSB.R            :36
+├── LAA_calculation/LAA_calculation_BSB_old.R        :24
+├── LAA_calculation/get_intermediate_stockeff.R      :34
+└── LAA_calculation/LAA_calculation_BSB.R            :35
 
 fit_BSB_WHAM.R
-└── every .R in R_code/LAA_calculation/ whose filename lacks "script"  :37-40
+└── every .R in R_code/LAA_calculation/ whose filename lacks "script"  :41-44
     (list.files + grepl filter + lapply(source); resolves to CAA_calculation.R,
      LAA_calculation.R, LAA_calculation_BSB.R, LAA_calculation_BSB_old.R,
      get_ages.R, get_intermediate_stockeff.R, reallocate_market_categories.R)
-    ** two of these define the same function name — see F-7 **
+    ** two of these define the same function name — see F-6 **
+    ** this is also where the tidyverse enters the session — see Stage 7 **
 
 r_oracle_connection.R  →  project_logistics/R_paths_libraries.R :19
 
@@ -814,9 +833,9 @@ Mechanism: written into the caller's environment. The R analogue of Stata's
 
 ```
 Object: vintage_string
-Defined (R): 00_commercial_processing_wrapper.R:30  →  Sys.Date()
+Defined (R): 00_commercial_processing_wrapper.R:33  →  Sys.Date()
              00_tilefish_processing_wrapper.R:32    →  Sys.Date()
-REASSIGNED by DISK SCAN. In total 23 files (16 .R, 7 .Rmd) resolve some vintage
+REASSIGNED by DISK SCAN. In total 23 files (17 .R, 6 .Rmd) resolve some vintage
             this way, all with the same idiom:
              list.files(<dir>, pattern=glob2rx("<stem>*Rds")) |> gsub |> max()
 Sites that overwrite `vintage_string` specifically:
@@ -837,7 +856,7 @@ Sites that overwrite `vintage_string` specifically:
            tuning_diagnostics:174, calibration_and_validation:172}.Rmd
   writing/figure1.R:37-40                       (via a `dataset_name` variable)
 Related scan variables using the same idiom: data_vintage_string,
-  raw_oos_data_vintage_string, predictions_vintage (fit_BSB_WHAM.R:59-61),
+  raw_oos_data_vintage_string, predictions_vintage (fit_BSB_WHAM.R:64-67),
   and the prediction-file globs in LAA_script.R, LAA_test_script.R,
   LAA_investigation_script.R.
 HARD-CODED (does not scan):
@@ -887,7 +906,7 @@ Mechanism: Appendix_Hedonic.Rmd is a CHILD document, pulled in by
          scanned one. Run standalone it fails with "object not found".
 Assessment: This is the R analogue of Stata's cross-script global-scope leakage,
          and it carries the same risk: the child's behaviour depends on what the
-         parent happened to set. Here the parent sets a pinned value. See F-9.
+         parent happened to set. Here the parent sets a pinned value. See F-7.
 ```
 
 ```
@@ -944,7 +963,7 @@ Catalogued but **not** placed in a relative order. `writing/` holds 16 `.Rmd` fi
 | Where | Line | Value |
 |---|---|---|
 | `00_analysis_wrapper.do` | `:1` | `2026-03-16` |
-| `00_commercial_processing_wrapper.R` | `:29` | `"2026-05-01"` |
+| `00_commercial_processing_wrapper.R` | `:32` | `"2026-05-01"` |
 | `00_tilefish_processing_wrapper.R` | `:31` | `"2026-06-09"` |
 
 All three use the hyphenated `YYYY-MM-DD` form, so filenames are consistent. The values differ because each pipeline points at an independently-refreshed DataPull vintage. The practical consequence is that the Stata analysis chain reads a **March** combined dataset while the R commercial chain was built from a **May** pull.
@@ -955,7 +974,7 @@ Needs review.
 
 ### F-2: R `vintage_string` is overwritten mid-wrapper
 
-`00_commercial_processing_wrapper.R:30` sets `vintage_string <- Sys.Date()`. That value governs `A01`–`A04`. Then `B01_data_prep_ml.R:66-69` discards it and re-derives `vintage_string` by scanning `data_folder/main/commercial/` for `landings_cleaned_*.Rds` and taking `max()`.
+`00_commercial_processing_wrapper.R:33` sets `vintage_string <- Sys.Date()`. That value governs `A01`–`A04`. Then `B01_data_prep_ml.R:66-69` discards it and re-derives `vintage_string` by scanning `data_folder/main/commercial/` for `landings_cleaned_*.Rds` and taking `max()`.
 
 In a same-day run these agree. They diverge if:
 
@@ -988,28 +1007,30 @@ The comment at `tune_randomforest_nocluster.R:67` reads:
 Both `.ado` files behave this way. `folder_vintage_lookup_and_reset.ado` is a near-identical copy that scans subdirectories instead of files (prompt at `:48`, reassignment at `:56`), and is never called anywhere in this repo.
 
 
-### F-7: Two different functions are both named `LAA_calculation`
+### F-6: Two different functions are both named `LAA_calculation`
 
 | File | Line | Signature |
 |---|---|---|
 | `LAA_calculation.R` | `:41` | `LAA_calculation(species_itis, out_of_sample_predictions, fyr, lyr, connection)` |
 | `LAA_calculation_BSB.R` | `:46` | `LAA_calculation(species_itis, out_of_sample_predictions, fyr, lyr, connection, sumflag, plotson, plotstub)` |
 
-Both live in `R_code/LAA_calculation/`, and neither filename contains "script". `fit_BSB_WHAM.R:37-40` sources **every** `.R` in that directory whose name lacks "script":
+Both live in `R_code/LAA_calculation/`, and neither filename contains "script". `fit_BSB_WHAM.R:41-44` sources **every** `.R` in that directory whose name lacks "script":
 
 ```r
-r_files <- list.files(path = "R_code/LAA_calculation/", pattern = "\\.[rR]$", full.names = TRUE)
+r_files <- list.files(path = here("R_code","LAA_calculation"), pattern = "\\.[rR]$", full.names = TRUE)
 r_files <- r_files[!grepl("script", r_files, ignore.case = TRUE)]
 lapply(r_files, source)
 ```
 
 So both definitions are evaluated, in `list.files()` order, and the later one silently masks the earlier. Whichever wins depends on the locale-dependent sort that `list.files()` returns — not on anything stated in the code.
 
-The hand-run scripts avoid the ambiguity by sourcing one file explicitly (`LAA_script.R:61` takes `LAA_calculation_BSB.R`; `LAA_test_script.R:56` takes `LAA_calculation.R`), so this only bites through `fit_BSB_WHAM.R`. Directly related to the open question of which LAA implementation is canonical.
+Every script that actually *calls* the function avoids the ambiguity. The hand-run scripts source one file explicitly (`LAA_script.R:61` takes `LAA_calculation_BSB.R`; `LAA_test_script.R:56` takes `LAA_calculation.R`; `test_refactor_script.R:35` takes `LAA_calculation_BSB.R`), and `fit_BSB_WHAM.R` — the one script that sources both — reapportions through `reallocate_market_categories()` (`:77`) and never calls `LAA_calculation()` at all.
+
+So the collision is **latent, not live**: nothing currently depends on which definition wins. It becomes live the moment anything downstream of that `lapply(source)` calls `LAA_calculation()`. Directly related to the open question of which LAA implementation is canonical.
 
 Flagging only; not resolving.
 
-### F-9: Hard-coded personal paths and pinned vintages
+### F-7: Hard-coded personal paths and pinned vintages
 
 Paths that will not resolve for another developer:
 
@@ -1032,15 +1053,15 @@ Separately, several scripts pin a vintage as a literal rather than deriving it:
 
 These will silently read stale data, or fail, once those files age out. The manuscript's `:134` pin is the widest-reaching of them: because `Appendix_Hedonic.Rmd` is a child document, it inherits that pinned `data_vintage_string` rather than scanning for the current one.
 
-### F-10: `fit_BSB_WHAM.R` clears session
+### F-8: `fit_BSB_WHAM.R` clears session
 `rm(list=ls())` at `:29` additionally clears the session, so anything a developer had set up by hand beforehand is discarded.
 
 ---
 
-## Flags for Further
+## Flags for User Review
 
 1. **Vintage skew (F-1).** Whether the Stata analysis chain should be reading a March dataset while the R commercial chain was built from a May pull. Noted as "fine" but intended to be moved to the May data pull with tables rebuilt.
 2. **`estimate_randomforest.R` and `test_sampling.R`.** These predate the tune/train split and are believed retired.
-3. **The `LAA_calculation/` cluster (F-6, F-7).** Which of `LAA_calculation.R`, `LAA_calculation_BSB.R`, and `LAA_calculation_BSB_old.R` is canonical. Still in development. The name collision in F-7 and the dead `_old` file in F-6 both hang on this decision.
+3. **The `LAA_calculation/` cluster (F-6).** Which of `LAA_calculation.R`, `LAA_calculation_BSB.R`, and `LAA_calculation_BSB_old.R` is canonical. Still in development. The name collision in F-6 hangs on this decision; `LAA_calculation_BSB_old.R` survives only because `test_refactor_script.R` diffs the two implementations against each other.
 4. **`writing/figure_extra.R`.** No wrapper reference and no traced data dependency. believed retired
 5. **`runClass` has no fallback.** `'Local'` is tested for but never assigned, so a platform that is neither Linux nor Windows errors on an undefined object rather than falling back. Would only surface at runtime.
