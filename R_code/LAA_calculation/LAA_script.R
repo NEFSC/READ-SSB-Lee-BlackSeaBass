@@ -8,7 +8,7 @@
 #               to disk and ends with an in-memory identity check.
 # Inputs:       out_of_sample_predictions_YRS_nocluster<vintage>.Rds
 #               ambitious_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
-#               StockEff, via get_stockeff() (ITIS 167687, 2013-2024)
+#               StockEff, via get_intermediate_stockeff() (ITIS 167687, 2013-2024)
 # Outputs:      NONE. Everything stays in memory - `ages_combined` holds the six
 #               joined series, `check` holds the reconciliation.
 # Dependencies: get_intermediate_stockeff.R, get_ages.R,LAA_calculation_BSB.R
@@ -106,7 +106,7 @@ connection <- eval(nefscdb_con)
 # over the years both sources cover. It does mean LAA_OLD computed here does not 
 # have the same temporal range as LAA_OLD produced by the other scripts.
 
-bsb_stockeff<-get_intermediate_stockeff(species_itis = 167687,
+bsb_stockeff<-get_intermediate_stockeff(species_itis = '167687',
                            fyr = 2013, #Just 2013
                            lyr = 2025, #through 2024, 2025 not yet ready
                            connection = connection)

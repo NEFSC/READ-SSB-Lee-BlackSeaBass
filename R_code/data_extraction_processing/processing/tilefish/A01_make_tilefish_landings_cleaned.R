@@ -259,10 +259,10 @@ landings <- landings %>%
 questionable_status<-landings%>%
   filter(questionable_status == 1) 
 # -----------------------------------------------------------------------------
-# Save questionabke dataset # Need to change these.
+# Save questionable dataset # Need to change these.
 # -----------------------------------------------------------------------------
 saveRDS(
-  landings,
+  questionable_status,
   file = file.path(tile_data_dir,
                    glue("questionable_tilefish_status_{vintage_string}.Rds"))
 )

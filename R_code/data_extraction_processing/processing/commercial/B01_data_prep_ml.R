@@ -63,10 +63,6 @@ data_pull_dir<-file.path(mega_dir,"READ-SSB-Lee-BSB-DataPull")
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("landings_cleaned_*.Rds"))
-vintage_string<-gsub("landings_cleaned_","",vintage_string)
-vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
 
 lbs_per_mt<-2204.62
 

@@ -7,8 +7,8 @@ conflicts_prefer(dplyr::filter())
 #'    and return landings-at-age (LAA) by at the SPECIES_ITIS,STOCK_ABBREV, and YEAR level.  
 #' @param species_itis A single character string specifying the ITIS code. Must match
 #'   SPECIES_ITIS values in out_of_sample_predictions.
-#' @param comm.land.res Data frame. Aggregate landings by block. Could be returned by get_stockeff() or constructed in an analogous way.  
-#' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_stockeff().
+#' @param comm.land.res Data frame. Aggregate landings by block. Could be returned by get_intermediate_stockeff() or constructed in an analogous way.  
+#' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_intermediate_stockeff().
 #' @param landings.kg.name The name of the column that will contains landings, in kilograms in the input dataframe. 
 #' @param laa.new.name The name of the new column that will contains the Landings-at-Age returned by this function. 
 
@@ -22,7 +22,7 @@ conflicts_prefer(dplyr::filter())
 #' }
 #'
 #' @examples
-#' stockeff_data <- get_stockeff(
+#' stockeff_data <- get_intermediate_stockeff(
 #'   species_itis = "167687",
 #'   fyr          = 1989,
 #'   lyr          = 2024,

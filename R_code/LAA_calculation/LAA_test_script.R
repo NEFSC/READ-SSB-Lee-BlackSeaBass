@@ -15,7 +15,7 @@
 #               this repository defines it.
 # Pipeline:     Hand-run. No wrapper calls this script and it calls no other
 #               script. Parallel to LAA_calc_script.R, which exercises the
-#               REFACTORED path (get_stockeff + get_ages) over the same problem.
+#               REFACTORED path (get_intermediate_stockeff + get_ages) over the same problem.
 #
 # INTERACTIVE ONLY. There are two View() calls below, so this file cannot be
 # run under Rscript - it is meant to be stepped through in RStudio. Treat it as
@@ -80,13 +80,13 @@ out_of_sample_predictions2<-readRDS(predictions_full_location2)
 #   unclassified transaction is assigned to a real market category).
 #
 
-CAA<- LAA_calculation(species_itis = 167687,
+CAA<- LAA_calculation(species_itis = '167687',
                              out_of_sample_predictions = out_of_sample_predictions1,
                            fyr = 1989,
                            lyr = 2024,
                              connection = connection)
 
-CAA2<- LAA_calculation(species_itis = 167687,
+CAA2<- LAA_calculation(species_itis = '167687',
                       out_of_sample_predictions = out_of_sample_predictions2,
                       fyr = 1989,
                       lyr = 2024,

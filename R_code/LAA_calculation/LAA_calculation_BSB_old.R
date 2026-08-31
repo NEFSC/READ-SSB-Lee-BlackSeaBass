@@ -50,7 +50,7 @@ conflicts_prefer(dplyr::filter())
 
 # Testing procedure for refactor:
 #   #
-#source(here("R_code","LAA_calculation","get_stockeff.R"))
+#source(here("R_code","LAA_calculation","get_intermediate_stockeff.R"))
 
 LAA_calculation_old <- function(species_itis = NULL,
                             out_of_sample_predictions = NULL,
@@ -64,8 +64,8 @@ LAA_calculation_old <- function(species_itis = NULL,
 
     
     
-#### BEGIN get_stockeff()
-#    This is get_stockeff(species_itis=species_itis,
+#### BEGIN This section of code became get_intermediate_stockeff()
+#    This is get_intermediate_stockeff(species_itis=species_itis,
 #    fyr=fyr,
 #    lyr=lyr,
 #    connection=connection)

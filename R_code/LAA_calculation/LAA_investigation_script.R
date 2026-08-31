@@ -9,10 +9,10 @@
 # Inputs:       out_of_sample_predictions_YRS_nocluster<vintage>.Rds
 #               ambitious_out_of_sample_predictions_YRS_nocluster<vintage>.Rds
 #               BSB_original_combined_dataset<vintage>.Rds
-#               StockEff, via get_stockeff() (ITIS 167687, 2013-2024)
+#               StockEff, via get_intermediate_stockeff() (ITIS 167687, 2013-2024)
 # Outputs:      NONE. Everything stays in memory - `ages_combined` holds the six
 #               joined series, `check` holds the reconciliation.
-# Dependencies: get_stockeff.R, reallocate_market_categories.R, get_ages.R,
+# Dependencies: get_intermediate_stockeff.R, reallocate_market_categories.R, get_ages.R,
 #               sourced in that order at lines 19-21
 #               Also needs `nefscdb_con` to already exist in the session through .Rprofile
 # Pipeline:     Hand-run. No wrapper calls this script, and it calls no other
@@ -64,9 +64,9 @@ library("ROracle")
 conflicts_prefer(dplyr::filter())
 
 
-here::i_am("R_code/LAA_calculation/LAA_calc_script.R")
+here::i_am("R_code/LAA_calculation/LAA_investigation_script.R")
 
-source(here("R_code/LAA_calculation/get_stockeff.R"))
+source(here("R_code/LAA_calculation/get_intermediate_stockeff.R"))
 
 # reallocate_market_categories() is never called anywhere in this script.
 # The reapportionment work here is
@@ -126,7 +126,7 @@ connection <- eval(nefscdb_con)
 # over the years both sources cover. It does mean LAA_OLD computed here does not 
 # have the same temporal range as LAA_OLD produced by the other scripts.
 
-bsb_stockeff<-get_stockeff(species_itis = 167687,
+bsb_stockeff<-get_intermediate_stockeff(species_itis = '167687',
                            fyr = 2013, #Just 2013
                            lyr = 2024,
                            connection = connection)

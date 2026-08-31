@@ -168,10 +168,7 @@ Fishing firms and managers in a state want to limit access. This is good for con
 
 # Deep Background 
 
-<!--- Include the next 2 child documents.   --->
-```{r, child=here("writing", c("BSB_history.Rmd", "BSB_economic_background.Rmd")),  eval=FALSE}
-```
-
+see manuscript
 
 
 
