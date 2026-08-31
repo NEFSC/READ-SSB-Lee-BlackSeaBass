@@ -6,7 +6,7 @@ Because the size of an individual fish determines the price of fish, we can inve
 
 The repository also contains a **parallel tilefish pipeline** built on the same machinery, and the manuscript source in `writing/`.
 
-[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md) contains full detail and is the execution-order and data-flow reference: it includes information on every wrapper, toggle, the full Stata global-macro trace, R sourcing graph, and ten catalogued issues. This README is an orientation/quick start.
+[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md) is the execution-order and data-flow reference: every wrapper, every toggle, the Stata global-macro trace, the R sourcing graph, and ten catalogued issues. This README is an orientation and quick start.
 
 ---
 
@@ -26,9 +26,9 @@ READ-SSB-Lee-BlackSeaBass/
 │   │   └── processing/{commercial,tilefish}/   # A01–A04, B01–B02 + wrappers
 │   └── project_logistics/              # R_paths_libraries.R
 ├── stata_code/
-│   ├── analysis/                       # hedonic + multinomial logit models
+│   ├── analysis/                       # hedonic + multinomial logit models — LIVE
 │   ├── data_extraction_processing/
-│   │   ├── extraction/                 # FRED
+│   │   ├── extraction/                 # EMPTY — FRED extraction moved to the DataPull repo
 │   │   └── processing/
 │   │       └── commercial/             # RETIRED — superseded by the R chain
 │   ├── project_logistics/              # folder_setup_globals.do  ← start here in Stata
@@ -38,14 +38,12 @@ READ-SSB-Lee-BlackSeaBass/
 │   ├── main/                           # commercial outputs; main/tilefish/ for tilefish
 │   ├── predictions/                    # out-of-sample prediction files
 │   └── assessment/                     # WHAM inputs/fits
-├── writing/                            # manuscript + 17 Rmd reports + figure scripts
+├── writing/                            # 16 .Rmd (manuscript + reports) + figure scripts
 ├── results/                            # Stata tables (.md/.tex), ranger/ model artifacts
 ├── images/                             # background/, descriptive/, exploratory/
 ├── tables/  documentation/             # documentation/project_logistics.md
 └── DATAFLOW_BSB.md  README.md  License.txt
 ```
-
-Note: `data_folder/main/commercial/` is created implicitly by the pipeline rather than tracked.
 
 ### The multi-repo assumption
 
@@ -66,13 +64,13 @@ BSB_mega_folder/
 └── PortChoice/                  # separate project, not referenced by this code
 ```
 
-On the Stata side the equivalent is `$my_datapull`, built in `folder_setup_globals.do:13` from `$my_megadir`, which is in turn built from `${mynetwork}` — a global that must already exist in your `profile.do`.
+On the Stata side the equivalent is `$my_datapull`, built in `folder_setup_globals.do:13` from `$my_megadir`, which is in turn built from `${mynetwork}` — a global that must already exist in your `profile.do`. Note that `$my_datapull` is now read only by the retired Stata chain; the live path is the R one above.
 
 ---
 
 ## Prerequisites
 
-**R** — the pipeline uses `here()` for all in-repo paths, so it resolves from the repo root via the `.git` marker. There is no `.Rproj` in the repository.
+**R** — the pipeline uses `here()` for in-repo paths, so it resolves from the repo root via the `.git` marker. There is no `.Rproj` in the repository.
 
 Packages actually loaded across the codebase:
 
@@ -93,7 +91,7 @@ Two are not plain CRAN installs:
 
 **Oracle client**, for `ROracle` against StockEff.
 
-**Operating system.** Windows or Linux — the random-forest scripts branch on `Sys.info()['sysname']` and set thread counts per platform.
+**Operating system.** Windows or Linux — the random-forest scripts branch on `Sys.info()['sysname']` and set thread counts per platform. There is no fallback branch: a platform that is neither errors on an undefined `runClass`.
 
 - The two `.sh` wrappers need bash.
 - `helpers/background_logger.R` shells out to `top` and `ps`, so it is Linux-only. It is guarded behind the container branch.
@@ -101,7 +99,7 @@ Two are not plain CRAN installs:
 
 `folder_setup_globals.do` uses forward slashes throughout. The *consuming* Stata scripts still build paths with backslashes (e.g. `use "${data_main}\commercial\..."` in the analysis chain), so the tree is not fully portable — Windows tolerates the mix, Unix will not.
 
-The developers mostly run the code on a container at NEFSC. You might be able to run on windows on a laptop, however the RF model takes a long time to run.  
+The developers mostly run the code on a container at NEFSC. You might be able to run on windows on a laptop, however the RF model takes a long time to run.
 
 ---
 
@@ -117,10 +115,10 @@ What the code actually expects to already exist in your session:
 
 | Name | Needed by | Source |
 |---|---|---|
-| `nefscdb_con` | `LAA_script.R`, `LAA_investigation_script.R` | your `.Rprofile` (asserted in `LAA_script.R:18`) |
-| `FRED_API_KEY` | `FRED_extraction.R:5-8` | `.Renviron` / `.Rprofile` |
+| `nefscdb_con` | `LAA_script.R`, `LAA_investigation_script.R`, `test_refactor_script.R` | your `.Rprofile` (stated in `LAA_script.R:16`) |
+| `FRED_API_KEY` | `FRED_extraction.R:8` | `.Renviron` / `.Rprofile` |
 | Oracle id / password | `r_oracle_connection.R`, `dbi_extraction.R` | your own setup |
-| Oracle password (prompt) | `fit_BSB_WHAM.R:54-57` | `rstudioapi::askForPassword()`, interactive |
+| Oracle password (prompt) | `fit_BSB_WHAM.R:53-56` | `rstudioapi::askForPassword()`, interactive |
 
 `compare_biostat_rf_output.R` additionally assumes a connection object `db1` and a data frame `mkt.res` already exist in the session; it creates neither.
 
@@ -144,9 +142,9 @@ Heads-up: that last step is **interactive**. `vintage_lookup_and_reset` (`ado/vi
 
 **R** — no setup file is required; the wrappers set their own variables. `R_code/project_logistics/R_paths_libraries.R` exists and defines path objects (and locates a Stata executable), but neither wrapper sources it.
 
-### 1. Data Processing 
+### 1. Data Processing
 
-Commercial processing is **R-only**. The Stata `A01`–`A04` chain under `stata_code/.../processing/commercial/` is **retired** (`00_commercial_processing_wrapper.do:1`); do not run it. It remains in the tree as the reference implementation the R port was made from.
+Commercial processing is **R-only**. The Stata `A01`–`A04` chain under `stata_code/.../processing/commercial/` is **retired** (`00_commercial_processing_wrapper.do:1`, with the whole body inside a comment block); do not run it. It remains in the tree as the reference implementation the R port was made from.
 
 ```r
 # Set in_string (input vintage from the DataPull repo) at the top of the wrapper first.
@@ -172,23 +170,30 @@ source(here("R_code", "data_extraction_processing", "processing",
 ./R_code/analysis/fit_random_forest/batch_RF_run.sh
 ```
 
-This runs the **full chain**, nine steps: tune → train → variable importance → weighted calibration → `figure1.R` → three report renders (`predictions_heatmap`, `tuning_diagnostics`, `out_of_sample_predictions`) → ROC curves. Expect it to be very long-running; the tuning and training steps are the expensive ones.  The VIP part is essentially another training fit.  It's an "overnight job" the NEFSC container with expanded threads and RAM (24 and 160GB).    
+This runs the **full chain**, nine steps: tune → train → variable importance → weighted calibration → `figure1.R` → three report renders (`predictions_heatmap`, `tuning_diagnostics`, `out_of_sample_predictions`) → ROC curves. Expect it to be very long-running; the tuning and training steps are the expensive ones. The VIP part is essentially another training fit. It's an "overnight job" on the NEFSC container with expanded threads and RAM (24 and 160GB).
 
-The script's toggles are comment/uncomment, not variables. Two steps are deliberately off: `writing/figure2.R` (`:33-35`, "requires windows — run by hand") and the manuscript render (`:59`, under `TO DO`).
+The script's toggles are comment/uncomment, not variables. Two of the eleven steps are deliberately off: `writing/figure2.R` (`:47-49`, "requires windows — run by hand") and the manuscript render (`:82`, under "Next steps (deliberately not in pipeline)").
 
 Model configuration (`modeltype`, `search_type`, `testing_fraction`, `bayes_tune`) is set **per script**, not passed in by the batch file — so changing model type means editing several files. See the [Toggle Catalog](DATAFLOW_BSB.md#toggle-catalog).
+
+One toggle worth knowing before you re-run anything: `train_randomforest_nocluster.R:272` sets `fit_model = 1`, which fits the final model from scratch. Setting it to `0` short-cuts the expensive fit by reading the previous `final_ranger_fit` and prepped recipe back off disk, so you can iterate on the augment and calibration code below it.
 
 **Failure behaviour:** both `.sh` files set `set -e` and `set -o pipefail`, and the nine steps are `&&`-chained. A failed step halts the batch immediately, skips everything downstream, prints no success message, and exits non-zero. The script creates `results/ranger/` itself (`mkdir -p`), since `tee` cannot and the directory is absent on a fresh checkout.
 
 Note that the other log destinations are *not* auto-created — if you run the script from anywhere other than the project root, it will fail fast rather than scatter directories.
 
-Tilefish: `./R_code/analysis/fit_tilefish_random_forest/batch_tile_RF_run.sh`. Tilefish is much faster because we are not expanding the observations to pounds and the are only 40,000 observations. It's under 1 hour to run.
+Tilefish: `./R_code/analysis/fit_tilefish_random_forest/batch_tile_RF_run.sh`. Tilefish is much faster because we are not expanding the observations to pounds and there are only 40,000 observations. It's under 1 hour to run. Its data-prep step is commented out at `:11-13`; uncomment it to chain the tilefish processing wrapper onto the fit.
 
 ### 3. Downstream — LAA / CAA / WHAM
 
 `writing/out_of_sample_predictions.Rmd` (rendered as step 21 of the batch) is what **writes** `data_folder/predictions/out_of_sample_predictions_YRS_*.Rds` and its `ambitious_*` twin. Everything in `R_code/LAA_calculation/` consumes those, so it must run afterwards.
 
-The LAA calculation  scripts are hand-run — no wrapper calls them, and they say so in their own headers. `LAA_script.R` is the main driver; `fit_BSB_WHAM.R` fits the assessment.  These were the last files to be developed and when we are satisfied they will also be added to the batch_RF_run
+The LAA calculation scripts are hand-run — no wrapper calls them, and they say so in their own headers. `LAA_script.R` is the main driver; `fit_BSB_WHAM.R` fits the assessment. These were the last files to be developed and when we are satisfied they will also be added to `batch_RF_run.sh`.
+
+Two things to know before running this stage:
+
+- `fit_BSB_WHAM.R` sources *every* `.R` in `R_code/LAA_calculation/` whose filename lacks "script" (`:37-40`). Two of those files define a function called `LAA_calculation`, so one silently masks the other ([F-7](DATAFLOW_BSB.md#f-7-two-different-functions-are-both-named-laa_calculation)).
+- `test_refactor_script.R` currently sources itself at `:24` and cannot run as written ([F-6](DATAFLOW_BSB.md#f-6-test_refactor_scriptr-sources-itself)).
 
 ### 4. Stata analysis (independent of steps 2–3) — still live
 
@@ -201,12 +206,14 @@ do "$analysis_code/00_analysis_wrapper.do";
 
 This chain reads the `.dta` files that R's `B01_data_prep_ml.R` wrote, and `bsb_size_classifications.do` exports `results/hedonic_table*.md`, which `writing/Appendix_Hedonic.Rmd` pulls back in as a child document. The handoffs run in both directions — R is upstream of Stata for the data, Stata is upstream of R for the hedonic tables.
 
+Run the five do-files in one session. `bsb_size_classifications.do:709` writes `mlogit_estimation_dataset_${vintage_string}.dta` and `mlogit_prediction_summary.do:18` reads it back by the same global; split them across sessions and the vintage will not match.
+
 ### How vintages are passed — and why R and Stata differ
 
 This is the single most important thing to internalise before editing anything.
 
 - **Stata** passes vintages explicitly by global macro: `$in_string` (input) and `$vintage_string` (output). They persist across `do` calls for the life of the session.
-- **R** passes them by **scanning the disk**. Nineteen files (12 `.R`, 7 `.Rmd`) re-derive `vintage_string` with the same idiom:
+- **R** passes them by **scanning the disk**. Twenty-four files (16 `.R`, 8 `.Rmd`) re-derive a vintage with the same idiom:
 
   ```r
   vintage_string <- list.files(here("data_folder", "main", "commercial"),
@@ -218,6 +225,8 @@ This is the single most important thing to internalise before editing anything.
 
   Consequence: the `vintage_string <- Sys.Date()` set in the wrapper governs only `A01`–`A04`. `B01_data_prep_ml.R:66-69` discards it and picks whatever sorts highest on disk. `max()` here is a lexicographic string comparison, not a date comparison, and returns `-Inf` with a warning on an empty folder rather than failing loudly.
 
+  A handful of scripts opt out of the scan entirely and pin a vintage as a literal — including the manuscript itself (`Economic_informed_stock_assessments.Rmd:134`), whose pinned value is inherited by its child documents.
+
 ---
 
 ## Known issues and open questions
@@ -228,13 +237,19 @@ Full list with citations: **[`DATAFLOW_BSB.md` → Known Issues](DATAFLOW_BSB.md
 |---|---|
 | **F-1** | The three `in_string` values share a format but point at different DataPull vintages: the Stata analysis chain reads a **March** dataset (`00_analysis_wrapper.do:1`) while the R commercial chain was built from a **May** pull. |
 | **F-2** | R's disk-scan vintage resolution (above) silently decouples downstream scripts from the wrapper. |
-| **F-9** | Hard-coded personal paths (`C:/Users/emily.liljestrand/...`) and six scripts with pinned vintage strings that will silently go stale. |
 | **F-5** | Stata setup is interactive and will hang a batch run. |
+| **F-6** | `test_refactor_script.R:24` sources itself — infinite recursion. `LAA_calculation_BSB_old.R` is now orphaned as a result. |
+| **F-7** | `LAA_calculation.R` and `LAA_calculation_BSB.R` both define `LAA_calculation()`. `fit_BSB_WHAM.R` sources both. |
+| **F-8** | `out_of_sample_predictions_StockAssess.Rmd` has been removed. Any `SA_*` prediction files or `PRED_BSB_unclassified_dataset*` files still on disk are now orphaned. |
+| **F-9** | Hard-coded personal paths (`C:/Users/emily.liljestrand/...`) and seven scripts with pinned vintage strings that will silently go stale. |
+| **F-10** | `fit_BSB_WHAM.R` uses bare relative paths instead of `here()`, so it only works from the repo root. |
 
-**Open questions.** ; the full list is at the end of `DATAFLOW_BSB.md`.
+**Open questions** — the full list is at the end of `DATAFLOW_BSB.md`:
 
-- Whether `00_analysis_wrapper.do` and `writing/knit_ranger_results_in_loop.R` are true orchestrators or incidental drivers.
-- `LAA_calculation.R` vs `LAA_calculation_BSB.R`.  
+- Which of `LAA_calculation.R`, `LAA_calculation_BSB.R`, and `LAA_calculation_BSB_old.R` is canonical (F-6 and F-7 both depend on this).
+- Whether `estimate_randomforest.R` and `test_sampling.R` are retired (`out_of_sample_predictions_StockAssess.Rmd` already has been, and was deleted).
+- Whether `writing/figure_extra.R` is live — it has no wrapper reference and no traced dependency.
+- Whether `00_analysis_wrapper.do` should be moved onto the May data pull and its tables rebuilt.
 
 ---
 
@@ -242,11 +257,10 @@ Full list with citations: **[`DATAFLOW_BSB.md` → Known Issues](DATAFLOW_BSB.md
 
 | Document | Contents |
 |---|---|
-| **[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md)** | Wrapper inventory, full toggle catalog, master execution sequence, Stata global-macro trace, R sourcing graph, `writing/` Rmd inventory, all 20 flags. Standalone — assumes no context. |
+| **[`DATAFLOW_BSB.md`](DATAFLOW_BSB.md)** | Wrapper inventory, full toggle catalog, master execution sequence, Stata global-macro trace, R sourcing graph, `writing/` Rmd inventory, ten known issues and nine review flags. Standalone — assumes no context. |
 | [`documentation/project_logistics.md`](documentation/project_logistics.md) | Stata-side credential handling. |
 | [`License.txt`](License.txt) | License. |
 | `writing/investigate_fit.Rmd` | Narrative lab notebook on model-fit decisions — why the pooled model was kept and the North/South split abandoned. Useful modelling context. |
-
 
 ---
 
@@ -258,7 +272,7 @@ This repository is a scientific product and is not official communication of the
 
 ## Project metadata
 
-1. **Who worked on this project:** Min-Yang Lee and Emily Liljestrand.  `writing/CRediT.Rmd` credits a second author (EL), and parts of the WHAM and BIOSTAT-comparison code carry Emily Liljestrand's paths.
+1. **Who worked on this project:** Min-Yang Lee and Emily Liljestrand. `writing/CRediT.Rmd` credits a second author (EL), and parts of the WHAM and BIOSTAT-comparison code carry Emily Liljestrand's paths.
 1. **When this project was created:** Summer 2024
 1. **What the project does:** Black Sea Bass related projects
 1. **Why the project is useful:** Black Sea Bass is awesome
