@@ -1,8 +1,8 @@
 ###############################################################################
-# Purpose: 	Handle bsb that is not in the estimation dataset
+# Purpose: 	Handle tilefish that is not in the estimation dataset
 # Inputs:
-#   - BSB_original_combined_dataset$date.Rds (from data_prep_ml.R)
-#   - questionable_status_ (from "A01_make_landings_cleaned.R")
+#   - tilefish_original_combined_dataset$date.Rds (from B01_data_prep_tilefish_ml.R)
+#   - questionable_tilefish_status_ (from "A01_make_tilefish_landings_cleaned.R")
 
 
 # During the data prep stages, there is a bit of data that is removed from the training data (estimation
@@ -12,7 +12,7 @@
  
 # We put them in a dataset in the predictions folder.
 
-# Outputs: /data_folder/predictions/excluded_from_estimation_dataset  
+# Outputs: /data_folder/predictions/excluded_from_tilefish_estimation_dataset  
 
 ###############################################################################
 # Packages 
