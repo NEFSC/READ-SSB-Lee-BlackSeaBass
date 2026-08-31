@@ -257,10 +257,10 @@ landings <- landings %>%
 questionable_status<-landings%>%
   filter(questionable_status == 1) 
 # -----------------------------------------------------------------------------
-# Save questionalbe dataset
+# Save questionable dataset
 # -----------------------------------------------------------------------------
 saveRDS(
-  landings,
+  questionable_status,
   file = here("data_folder", "main", "commercial",
               glue("questionable_status_{vintage_string}.Rds"))
 )

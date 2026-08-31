@@ -60,10 +60,7 @@ here::i_am("R_code/data_extraction_processing/processing/commercial/B02_handle_n
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_original_combined_dataset*Rds"))
-vintage_string<-gsub("BSB_original_combined_dataset","",vintage_string)
-vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
+
 estimation_vintage<-as.character(Sys.Date())
 
 

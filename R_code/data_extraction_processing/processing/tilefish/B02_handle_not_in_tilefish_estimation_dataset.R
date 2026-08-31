@@ -1,8 +1,8 @@
 ###############################################################################
-# Purpose: 	Handle bsb that is not in the estimation dataset
+# Purpose: 	Handle tilefish that is not in the estimation dataset
 # Inputs:
-#   - BSB_original_combined_dataset$date.Rds (from data_prep_ml.R)
-#   - questionable_status_ (from "A01_make_landings_cleaned.R")
+#   - tilefish_original_combined_dataset$date.Rds (from B01_data_prep_tilefish_ml.R)
+#   - questionable_tilefish_status_ (from "A01_make_tilefish_landings_cleaned.R")
 
 
 # During the data prep stages, there is a bit of data that is removed from the training data (estimation
@@ -12,7 +12,7 @@
  
 # We put them in a dataset in the predictions folder.
 
-# Outputs: /data_folder/predictions/excluded_from_estimation_dataset  
+# Outputs: /data_folder/predictions/excluded_from_tilefish_estimation_dataset  
 
 ###############################################################################
 # Packages 
@@ -21,10 +21,6 @@
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_original_combined_dataset*Rds"))
-vintage_string<-gsub("tilefish_original_combined_dataset","",vintage_string)
-vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
 estimation_vintage<-as.character(Sys.Date())
 
 
@@ -73,6 +69,6 @@ qs<-qs %>%
 excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
   group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
-write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_estimation_dataset_{vintage_string}.Rds")))
+write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_tilefish_estimation_dataset_{vintage_string}.Rds")))
 
 

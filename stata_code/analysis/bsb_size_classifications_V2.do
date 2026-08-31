@@ -212,7 +212,7 @@ save `base_data', replace
 collapse (sum) lndlb, by(state stockarea year)
 browse
 reshape wide lndlb, i(year state) j(stockarea)
-foreach var of varlist lndlb2 lndlb3{
+foreach var of varlist lnd* {
 	replace `var'=0 if `var'==.
 }
 
@@ -229,7 +229,7 @@ foreach l of local statenames{
 	preserve
 	keep if state_string=="`l'"
 
-	graph bar (asis) lndlb2 lndlb3, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
+	graph bar (asis) lndlb1 lndlb2, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
 	graph export ${exploratory}\state_stockareas_`l'.png, as(png) width(2000) replace
 	restore
 }

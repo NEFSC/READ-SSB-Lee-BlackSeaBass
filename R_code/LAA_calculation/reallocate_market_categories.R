@@ -8,9 +8,9 @@ conflicts_prefer(dplyr::filter())
 #'
 #' @param species_itis A single character string specifying the ITIS code. Must match
 #'   SPECIES_ITIS values in out_of_sample_predictions.
-#' @param mkt.res Data frame. Market category lookup (NESPP4, MARKET_DESC) returned by get_stockeff().
-#' @param comm.land.res Data frame. Aggregate landings by block returned by get_stockeff().
-#' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_stockeff().
+#' @param mkt.res Data frame. Market category lookup (NESPP4, MARKET_DESC) returned by get_intermediate_stockeff().
+#' @param comm.land.res Data frame. Aggregate landings by block returned by get_intermediate_stockeff().
+#' @param comm.land.length.age.res Data frame. Landings by length and age returned by get_intermediate_stockeff().
 #' @param out_of_sample_predictions Data frame. RF-model reapportioned landings in metric tons
 #'   across market categories. Required columns:
 #' \itemize{
@@ -33,7 +33,7 @@ conflicts_prefer(dplyr::filter())
 #' }
 #'
 #' @examples
-#' stockeff_data <- get_stockeff(
+#' stockeff_data <- get_intermediate_stockeff(
 #'   species_itis = "167687",
 #'   fyr          = 1989,
 #'   lyr          = 2024,
