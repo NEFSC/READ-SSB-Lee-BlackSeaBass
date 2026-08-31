@@ -64,6 +64,7 @@ connection <- dbConnect(drv = dbDriver("Oracle"),
 predictions_vintage<-list.files(here("data_folder","predictions"), pattern=glob2rx("out_of_sample_predictions_YRS_nocluster*.Rds"))
 predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictions_vintage)
 predictions_vintage<-gsub(".Rds","",predictions_vintage)
+predictions_vintage<-max(predictions_vintage)
 
 # reallocate_market_categories, first querying stock efficiency data then getting the landings at age
 stockeff_data <- get_intermediate_stockeff(
@@ -124,7 +125,7 @@ saveRDS(fit,file=here("data_folder","assessment","BSB_Apportion_Fit.rds"))
 ############################################################################### 
 
 BSB_2025MT <- readRDS(here("data_folder","assessment","BSB_2025MT_Fit.rds"))
-BSB_Reapportion <- readRDS(here"data_folder","assessment","BSB_Apportion_Fit.rds"))
+BSB_Reapportion <- readRDS(here("data_folder","assessment","BSB_Apportion_Fit.rds"))
 
 mods <- list(BSB_2025MT=BSB_2025MT,BSB_Reapportion = BSB_Reapportion)
 compare_wham_models(mods,fdir = file.path(here("R_code","analysis","fit_BSB_WHAM")),calc.aic = FALSE, do.table=F)
