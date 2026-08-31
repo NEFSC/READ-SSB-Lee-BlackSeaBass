@@ -34,14 +34,17 @@ library(ROracle)
 library(DBI)
 library(here)
 library(glue)
+
+here::i_am("R_code/analysis/fit_BSB_WHAM/fit_BSB_WHAM.R")
+
 # Source all the functions in LAA_calculation file:
-r_files <- list.files(path = "R_code/LAA_calculation/", pattern = "\\.[rR]$", full.names = TRUE)
+r_files <- list.files(path = here("R_code","LAA_calculation"), pattern = "\\.[rR]$", full.names = TRUE)
 r_files <- r_files[!grepl("script", r_files, ignore.case = TRUE)]
 
 lapply(r_files, source)
 
 # Read in the true BSB data:
-BSB_2025MT_Input <- readRDS("data_folder/assessment/BSB_2025MT_Input.rds")
+BSB_2025MT_Input <- readRDS(here("data_folder","assessment","BSB_2025MT_Input.rds"))
 #BSB_2025MT_Input$data$catch_paa[1,,] # Proportions at age commercial catch in North
 #BSB_2025MT_Input$data$catch_paa[3,,] # Proportions at age commercial catch in South
 
@@ -101,7 +104,7 @@ CAA.prop <- CAA.wide %>% select(REGION,YEAR,c(as.character(1:8))) %>%
 ###############################################################################
 # Fit the baseline model from the baseline input file if there isn't a model fit file already:
 # fit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = T, do.retro = T, do.brps = T)
-# saveRDS(fit,file="data_folder/assessment/BSB_2025MT_Fit.rds")
+# saveRDS(fit,file=here("data_folder", "assessment","BSB_2025MT_Fit.rds"))
 
 # Replace the catch proportions data:
 BSB_2025MT_Input$data$catch_paa[1,,] <- CAA.prop %>% filter(REGION=='NORTH') %>% select(3:last_col()) %>% as.matrix()
@@ -112,7 +115,7 @@ BSB_2025MT_Input$data$catch_paa[3,,] <- CAA.prop %>% filter(REGION=='SOUTH') %>%
 # tfit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = F, do.retro = T, do.brps = FALSE)
 
 fit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = T, do.retro = T, do.brps = T)
-saveRDS(fit,file="data_folder/assessment/BSB_Apportion_Fit.rds")
+saveRDS(fit,file=here("data_folder","assessment","BSB_Apportion_Fit.rds"))
 
 ###############################################################################  
 ###############################################################################  
@@ -120,8 +123,8 @@ saveRDS(fit,file="data_folder/assessment/BSB_Apportion_Fit.rds")
 ###############################################################################  
 ############################################################################### 
 
-BSB_2025MT <- readRDS("data_folder/assessment/BSB_2025MT_Fit.rds")
-BSB_Reapportion <- readRDS("data_folder/assessment/BSB_Apportion_Fit.rds")
+BSB_2025MT <- readRDS(here("data_folder","assessment","BSB_2025MT_Fit.rds"))
+BSB_Reapportion <- readRDS(here"data_folder","assessment","BSB_Apportion_Fit.rds"))
 
 mods <- list(BSB_2025MT=BSB_2025MT,BSB_Reapportion = BSB_Reapportion)
-compare_wham_models(mods,fdir = file.path("R_code/analysis/fit_BSB_WHAM"),calc.aic = FALSE, do.table=F)
+compare_wham_models(mods,fdir = file.path(here("R_code","analysis","fit_BSB_WHAM")),calc.aic = FALSE, do.table=F)
