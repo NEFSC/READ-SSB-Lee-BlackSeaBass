@@ -37,6 +37,7 @@ library(glue)
 # Source all the functions in LAA_calculation file:
 r_files <- list.files(path = "R_code/LAA_calculation/", pattern = "\\.[rR]$", full.names = TRUE)
 r_files <- r_files[!grepl("script", r_files, ignore.case = TRUE)]
+
 lapply(r_files, source)
 
 # Read in the true BSB data:
@@ -62,7 +63,7 @@ predictions_vintage<-gsub("out_of_sample_predictions_YRS_nocluster","",predictio
 predictions_vintage<-gsub(".Rds","",predictions_vintage)
 
 # reallocate_market_categories, first querying stock efficiency data then getting the landings at age
-stockeff_data <- get_stockeff(
+stockeff_data <- get_intermediate_stockeff(
   species_itis = "167687",
   fyr          = 1989,
   lyr          = 2024,
@@ -79,7 +80,7 @@ LAA <- reallocate_market_categories(
 )
 
 # Pull the discard data and combine with landings. Catch = Landings + Discards
-CAA <- CAA_calculation(species_itis = 167687,
+CAA <- CAA_calculation(species_itis = '167687',
                         LAA=LAA,
                         fyr = 1989,
                         lyr = 2024)
