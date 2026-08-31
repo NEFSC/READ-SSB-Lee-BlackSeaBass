@@ -19,12 +19,11 @@ drv<-dbDriver("Oracle")
 connection<-eval(nefscdb_con)
 
 
-# Testing procedure for refactor:
-#   #
-source(here("R_code","LAA_calculation","test_refactor_script.R"))
-# 
-# 
-# 
+# Testing procedure the refactor 
+
+source(here("R_code","LAA_calculation","LAA_calculation_BSB_old.R"))
+ 
+ 
  CAA_OLD<- LAA_calculation_old(species_itis = '167687',
                        out_of_sample_predictions = out_of_sample_predictions,
                        fyr = 2013,
