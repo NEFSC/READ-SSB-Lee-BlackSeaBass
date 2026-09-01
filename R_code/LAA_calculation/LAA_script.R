@@ -362,8 +362,12 @@ CAA_solo_amb<-CAA_solo_amb %>%
 CAA_comp<-CAA_solo_bau%>%
   rbind(CAA_solo_amb)
 
+CAA_comp<-CAA_comp %>%
+  mutate(CAA_TYPE=ifelse(CAA_TYPE=="Apportioned","Price-Informed", CAA_TYPE)) %>%
+  filter(YEAR<=2024)
+
 ########### I want to look at the Apportion from 
-CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2),
+CAA_PLOT <- ggplot(data=CAA_comp %>% filter(AGE<=8, AGE>=2) ,
                    aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
@@ -470,7 +474,9 @@ CAA_sum_amb<-CAA_sum_amb %>%
   mutate(CAA_prop=CAA/CAA_orig_sum,
          WAA_prop=WAA/WAA_orig_sum) %>%
   ungroup() %>%
-  select(-c(CAA_orig_sum, WAA_orig_sum)) 
+  select(-c(CAA_orig_sum, WAA_orig_sum)) %>%
+  mutate(CAA_TYPE=ifelse(CAA_TYPE=="Apportioned","Price-Informed", CAA_TYPE))%>%
+  filter(YEAR<=2024)
 
 
 
