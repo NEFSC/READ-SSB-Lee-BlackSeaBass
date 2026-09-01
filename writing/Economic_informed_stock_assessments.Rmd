@@ -839,7 +839,7 @@ kable(
   booktabs  = TRUE,
   digits    = 0,
   caption  = "Uncalibrated Predictions on the Validation Sample (mt)",
-  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  col.names = c("Market Category", "Actual mt", "Predicted mt", "Error Rate"),
   escape    = TRUE,         # allows LaTeX in cell content
   label     = "uncal-weights-predictions"
 ) %>%
