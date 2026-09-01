@@ -145,7 +145,7 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTable}"
+collect title "Unweighted and Weighted Hedonic Price Regression (2018-2025) \label{HedonicTable}"
 collect preview
 
 /* I eyeballed the 'base' results and the results when we don't collapse on stockarea. As expected the 'weighted' regression has the same coefficients. The unweighted regressions are slightly different. 
@@ -212,7 +212,7 @@ save `base_data', replace
 collapse (sum) lndlb, by(state stockarea year)
 browse
 reshape wide lndlb, i(year state) j(stockarea)
-foreach var of varlist lndlb2 lndlb3{
+foreach var of varlist lnd* {
 	replace `var'=0 if `var'==.
 }
 
@@ -229,7 +229,7 @@ foreach l of local statenames{
 	preserve
 	keep if state_string=="`l'"
 
-	graph bar (asis) lndlb2 lndlb3, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
+	graph bar (asis) lndlb1 lndlb2, stack over(year, label(angle(45))) legend(order(1 "South" 2 "North")) ytitle("000s of lbs") name(Lstate`l', replace) title("Landings by Stock Area in `l'")
 	graph export ${exploratory}\state_stockareas_`l'.png, as(png) width(2000) replace
 	restore
 }

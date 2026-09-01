@@ -5,7 +5,8 @@ R markdown chunk to print tables of summary statistics in the appendix
 
 ## Data Summaries{-}
 
-For brevity some descriptive statistics were not presented in the main text.  
+For brevity some descriptive statistics were not presented in the main text. Table \@ref(tab:print-tbl-cat-timeUW-Appendix) describes summary statistics of the year, month, and state of landing factor variables by market category (unweighted). Table \@ref(tab:print-tbl-cat-geoUW-Appendix) contains analogous summaries for the method of production factors.
+
 
 
 ```{r print-tbl-cont-weighted-Appendix, echo=FALSE, warning=FALSE, message=FALSE, results='asis',eval=FALSE}
@@ -15,7 +16,7 @@ knitr::kable(
   format   = "latex",
   booktabs = TRUE,
   escape   = FALSE,
-  caption  = "Summary statistics AAA (weighted mean and weighted standard deviation) of continuous variables by market description.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
+  caption  = "Summary statistics (weighted mean and weighted standard deviation) of continuous variables by market category.  Transactions are frequency weighted by landed pounds to construct weighted means and weighted standard deviations. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
   align    = c("l", rep("c", ncol(Weighted_cont_table2_notot) - 1)),
   linesep  = ""
 ) %>%
@@ -39,7 +40,7 @@ knitr::kable(
   format   = "latex",
   booktabs = TRUE,
   escape   = FALSE,
-  caption  = "Summary statistics (unweighted mean and  standard deviation) of continuous variables by market description. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
+  caption  = "Summary statistics (unweighted mean and  standard deviation) of continuous variables by market category. Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly.",
   align    = c("l", rep("c", ncol(Weighted_cont_table_notot) - 1)),
   linesep  = ""
 ) %>%
@@ -64,7 +65,7 @@ knitr::kable(
   format   = "latex",
   booktabs = TRUE,
   escape   = FALSE,
-  caption  = "Summary statistics AAA (Unweighted mean and weighted standard deviation) of continuous variables by market description.  Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
+  caption  = "Summary statistics (Unweighted mean and weighted standard deviation) of continuous variables by market category.  Dealer propensity to purchase Jumbo is calculated as the dealer's purchases of Jumbo in the previous year divided by the dealers total Black sea bass purchases in the previous year. Propensities for other categories computed similarly. Daily totals for each observation are exclusive of that trips landings. ",
   align    = c("l", rep("c", ncol(UnWeighted_cont_table2_notot) - 1)),
   linesep  = ""
 ) %>%
@@ -88,7 +89,7 @@ knitr::kable(
   booktabs = TRUE,
   longtable=FALSE,
   escape   = FALSE,
-  caption  = "Percentage distribution of year, month, and state of landing variables by market description (unweighted).  For each variable, the column values sum to 100 (but may not, due to rounding).",
+  caption  = "Percentage distribution of year, month, and state of landing variables by market category (unweighted).  For each variable, the column values sum to 100 (but may not, due to rounding).",
   align    = c("l", "l", rep("c", ncol(UWcat_vars_time_geo_table_notot) - 2)),
   linesep  = ""
 ) %>%
@@ -114,7 +115,7 @@ knitr::kable(
   booktabs = TRUE,
   longtable=FALSE,
   escape   = FALSE,
-  caption  = "Percentage distribution of production variables by market description (unweighte).   For each variable, the column values sum to 100 (but may not, due to rounding).",
+  caption  = "Percentage distribution of production variables by market category (unweighted).   For each variable, the column values sum to 100 (but may not, due to rounding).",
   align    = c("l", "l", rep("c", ncol(UWcat_method_table_notot) - 2)),
   linesep  = ""
 ) %>%

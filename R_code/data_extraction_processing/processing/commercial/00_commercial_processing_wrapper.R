@@ -25,7 +25,10 @@ here::i_am("R_code/data_extraction_processing/processing/commercial/00_commercia
 my_datapull<-dirname(here())
 my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
 
-    
+bsb_data_dir<-here("data_folder", "main", "commercial")     
+dir.create(bsb_data_dir, showWarnings=FALSE)
+
+
 in_string      <- "2026-05-01"   # matches Stata in_string / data-pull vintage
 vintage_string <- Sys.Date()   # matches Stata vintage_string / output vintage
 lbs_to_kg<-2.20462

@@ -18,10 +18,7 @@
 my_images<-here("images")
 descriptive_images<-here("images","descriptive")
 exploratory_images<-here("images","exploratory")
-vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_landings_cleaned_*.Rds"))
-vintage_string<-gsub("tilefish_landings_cleaned_","",vintage_string)
-vintage_string<-gsub(".Rds","",vintage_string)
-vintage_string<-max(vintage_string)
+
 
 lbs_per_mt<-2204.62
 

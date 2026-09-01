@@ -1,0 +1,161 @@
+
+## Additional Model fit and diagnostics{-}
+
+We tuned the model twice on two distinct subsamples of our data \@ref(fig:TwoTuningSurfaces).  Two results emerged. First, over the "Advanced" grid that we selected, the surface was relatively flat. Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$.  Second, our repeat tuning shows very similar results to the first one. 
+<!---look up best 
+"\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\TB_tuning_metrics_by_fold2026-06-15.Rds"
+"\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\tuning_metrics_by_fold06-15.Rds"
+-->
+
+```{r TwoTuningSurfaces,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="Brier Score plotted against $min_n$ and $mtry$"}
+# Updated July 13
+knitr::include_graphics(here("results","ranger","tune",c(glue("brier_tuneA{pred_vintage}.png"), glue("brier_tuneA{pred_vintage}.png"))))
+```
+
+
+###  ROC curve from Tuning {-}
+
+We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. Figure  \@ref(fig:rocTuneNotSelected) illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
+
+```{r rocTuneNotSelected,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves from tuning, optimal but not selected hyperparameters"}
+# Updated July 13
+knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nonselected_nocluster{pred_vintage}.pdf")))
+```
+
+
+### Pre-calibration confusion matrix and aggregate predictions{-}
+
+
+These are the predictions that come out of the non-calibrated models, Table  \ref{tab:uncal-trans-predictions} summarises transaction level predictions while Table  \ref{tab:uncal-weights-predictions} summarizes weights in metric tons.
+
+```{r no_cal_validations, eval=TRUE, results='hide', echo=FALSE}
+
+aggregate_nocal_transactions<-nocal_predictions%>%
+    summarise(across(c(starts_with(".pred_")), sum)) %>%
+  pivot_longer(cols=starts_with(".pred_"), names_to="market_desc", names_prefix=".pred_",values_to="ObsPredicted")
+
+
+aggregate_nocal_weight_predictions<-nocal_predictions %>%
+    summarise(across(c(starts_with("pred_")), sum)) %>%
+  pivot_longer(cols=starts_with("pred_"), names_to="market_desc", names_prefix="pred_",values_to="predicted")
+
+
+true<-nocal_predictions%>%
+    group_by(market_desc) %>%
+    summarise(lndlb=sum(lndlb),
+              transactions=sum(transactions))
+
+nocalibrate_results<-aggregate_nocal_weight_predictions%>%
+  left_join(true, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  left_join(aggregate_nocal_transactions, by=join_by(market_desc==market_desc))
+
+nocalibrate_results<-nocalibrate_results%>%
+  mutate(predicted=predicted/lbs_per_mt,
+         lndlb=lndlb/lbs_per_mt) %>%
+  rename(true_mt=lndlb,
+         predicted_mt=predicted,
+         predicted_transactions=ObsPredicted)%>%
+  mutate(`mt error (%)`=percent((predicted_mt-true_mt)/true_mt, accuracy=0.01),
+         `Transaction error (%)` = percent((predicted_transactions-transactions)/transactions, accuracy=0.01) )
+  
+
+transactions_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,transactions, predicted_transactions, `Transaction error (%)`)%>%
+    mutate(
+    predicted_transactions = comma(predicted_transactions, accuracy = 1),
+    transactions = comma(transactions, accuracy = 1)                        
+  )
+
+weights_nocalibrate_predictions<-nocalibrate_results %>%
+  select(market_desc,true_mt, predicted_mt, `mt error (%)`)%>%
+    mutate(
+    true_mt = comma(true_mt, accuracy =1),
+    predicted_mt = comma(predicted_mt, accuracy = 1)                        
+  )
+
+```
+
+```{r nocalibrate_table, echo=FALSE}
+
+kable(
+  transactions_nocalibrate_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Uncalibrated Predictions on the Validation Sample (transactions)",
+  col.names = c("Market Category", "Actual Transactions", "Predicted Transactions", "Error Rate"),
+  escape    = TRUE ,         # allows LaTeX in cell content
+  label     = "uncal-trans-predictions"
+) %>%
+  kable_styling(
+ #   latex_options = c("hold_position"),
+    font_size     = 10 ) %>%
+ column_spec(2:4, latex_column_spec = "r") %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+
+
+
+```
+
+
+```{r weighted_no_calibrate_predictions, echo=FALSE}
+
+kable(
+  weights_nocalibrate_predictions,
+  format    = "latex",
+  booktabs  = TRUE,
+  digits    = 0,
+  caption  = "Uncalibrated Predictions on the Validation Sample (mt)",
+  col.names = c("Market Category", "Actual mt", "Predicted mt", "Error Rate"),
+  escape    = TRUE,         # allows LaTeX in cell content
+  label     = "uncal-weights-predictions"
+) %>%
+  kable_styling(
+ #   latex_options = c("hold_position"),
+    font_size     = 10) %>%
+ column_spec(2:4, latex_column_spec = "r") %>%
+    gsub("\\begin{table}", "\\begin{table}[p]", ., fixed = TRUE) #inject [p] for a page of floats
+
+
+```
+### Hard prediction confusion matrix of transactions {-}
+
+<!--- 
+These figures are created with
+here(("writing","predictions_heatmaps.Rmd")
+--->
+Figure \@ref(fig:HardPredictionHeatmap)  illustrates the confusion matrix for the calibrated model transactions, done on hard (higest probability) predictions. 
+
+```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.align='center',fig.cap="A confusion matrix for the calibrated model. Transactions assigned to a market category based on class with the highest predicted probability."}
+#verified july 2 (no code change needed)
+
+knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{pred_vintage}.pdf")))
+```
+
+\clearpage
+
+### Soft prediction confusion matrix{-}
+
+Figure \@ref(fig:SoftPredictionHeatmap) illustrates the confusion matrix for the calibrated model transactions, done on probabilistic predictions. 
+```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.align='center',fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated to generate aggregate transactions."}
+#verified july 2 (no code change needed)
+
+knitr::include_graphics(here("results","ranger","final",glue("softconfmat_nocluster{pred_vintage}.pdf")))
+```
+
+\clearpage
+
+## Landings at Age Predictions {-}
+
+Figure \@ref(fig:CAA-comparison-all) illustrates the proportions of landings at age aggregated across all market categories to the year, stock region, and age level.
+
+```{r CAA-comparison-all,echo=FALSE,out.height="80%", fig.align='center',fig.cap="Proportions of landings-at-age of all commercial black sea bass using the price-informed and original classification."}
+#verified aug 28 (pretty sure this is latest version)
+
+knitr::include_graphics(here("results","CAA_comparison_all.pdf"))
+```
+

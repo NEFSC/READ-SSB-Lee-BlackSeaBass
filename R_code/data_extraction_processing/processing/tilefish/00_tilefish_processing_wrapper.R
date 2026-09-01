@@ -1,6 +1,6 @@
 ###############################################################################
-# 00_commercial_processing_wrapper.R
-# Purpose: R equivalent of 00_commercial_processing_wrapper.do
+# 00_tilefish_processing_wrapper.R
+# Purpose: wrapper to process tilefish data in a similar way to the BSB data processing
 #          Sets vintage strings and sources A01-A04 in order.
 #
 # Set in_string and vintage_string by hand before running.
