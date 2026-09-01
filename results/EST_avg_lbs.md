@@ -38,3 +38,6 @@ Landings per Transaction by year and Market Category, Estimation Sample
 | 2024        |       |       |        |       |              |
 |   Mean      | 82.3  | 105.2 | 92.2   | 30.0  | 183.0        |
 |   Std. dev. | 323.1 | 445.5 | 341.2  | 56.2  | 360.7        |
+| 2025        |       |       |        |       |              |
+|   Mean      | 87.6  | 109.5 | 106.7  | 43.6  | 116.0        |
+|   Std. dev. | 372.9 | 483.5 | 446.3  | 87.9  | 220.4        |

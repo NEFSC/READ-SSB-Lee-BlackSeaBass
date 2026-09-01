@@ -133,7 +133,7 @@ collect dims
 collect style cell, nformat(%5.1f)
 collect title "Landed pounds per Transaction by year and Market Category \label{FSavglbs}"
 
-collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025]#result[mean sd]) (market_desc)
 collect export $my_results/FS_avg_lbs.tex, replace tableonly
 collect title "Landed pounds per Transaction by year and Market Category"
 
@@ -143,7 +143,7 @@ collect export $my_results/FS_avg_lbs.md, replace
 collect style cell, nformat(%8.0gc)
 collect title "Number of Observations by year and Market Category \label{FStransactions}"
 
-collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025]) (market_desc) (result[N])
 collect export $my_results/FS_transactions.tex, replace tableonly
 
 collect title "Number of Observations by year and Market Category"
@@ -165,7 +165,7 @@ collect dims
 collect style cell, nformat(%5.1f)
 collect title "Landings per Transaction by year and Market Category, Estimation Sample \label{ESTavglbs}"
 
-collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]#result[mean sd]) (market_desc)
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025]#result[mean sd]) (market_desc)
 collect export $my_results/EST_avg_lbs.tex, replace tableonly
 
 collect title "Landings per Transaction by year and Market Category, Estimation Sample"
@@ -175,7 +175,7 @@ collect export $my_results/EST_avg_lbs.md, replace
 collect style cell, nformat(%8.0gc)
 collect title "Number of Observations by year and Market Category, Estimation Sample \label{ESTtransactions}"
 
-collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024]) (market_desc) (result[N])
+collect layout (year[2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025]) (market_desc) (result[N])
 collect export $my_results/EST_transactions.tex, replace tableonly
 
 collect title "Number of Observations by year and Market Category, Estimation Sample"
@@ -222,18 +222,18 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025)"
 collect preview
 
 /* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
 collect export $my_results/hedonic_table.md, replace
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024) \label{HedonicTable}"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025) \label{HedonicTable}"
 collect export $my_results/hedonic_table.tex, replace tableonly
 
 
 /* split the regression into two tables */
 collect layout (market_desc#result mygear#result grade_desc#result colname[totalmt totalmt#totalmt]#result result[r2 N]) (model)
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024) \label{HedonicTableA}"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025) \label{HedonicTableA}"
 collect label levels colname                    ///
     totalmt         "Landings"                  ///
     totalmt#totalmt "Landings\(^{2}\)",         ///
@@ -241,7 +241,7 @@ collect label levels colname                    ///
 
 collect export $my_results/hedonic_tableA.tex, replace tableonly
 
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025)"
 collect export $my_results/hedonic_tableA.md, replace
 
 
@@ -250,10 +250,10 @@ collect export $my_results/hedonic_tableA.md, replace
 /* Just print the market category results */
 collect layout (market_desc#result grade_desc#result colname[totalmt totalmt#totalmt]#result  result[r2 N]) (model)
 
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024).  The dependent variable is real price per kilogram, landings are in metric tons, and the model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, and month. \label{HedonicMarketCats}"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025).  The dependent variable is real price per kilogram, landings are in metric tons, and the model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, and month. \label{HedonicMarketCats}"
 collect export $my_results/hedonic_table_market_cats.tex, replace tableonly
 
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025)"
 collect export $my_results/hedonic_table_market_cats.md, replace
 
 
@@ -261,10 +261,10 @@ collect export $my_results/hedonic_table_market_cats.md, replace
 collect layout (state#result year#result month#result) (model)
 collect style showbase off
 collect style showomit off
-collect title "Weighted and Unweighted Hedonic Real Price Regression (2013-2024) \label{HedonicTableB}"
+collect title "Weighted and Unweighted Hedonic Real Price Regression (2013-2025) \label{HedonicTableB}"
 collect export $my_results/hedonic_tableB.tex, replace tableonly
 
-collect title "Weighted and Unweighted Hedonic Real Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Hedonic Real Price Regression (2013-2025)"
 collect export $my_results/hedonic_tableB.md, replace 
 
 
@@ -276,7 +276,7 @@ graph export $my_results/HedonicMonth.png, replace as(png) width(2000)
 
 margins, dydx(year) 
 
-marginsplot, xla(1 "2014" 2 "2015" 3 "2016" 4 "2017" 5 "2018" 6 "2019" 7 "2020" 8 "2021" 9 "2022" 10 "2023" 11 "2024")  ytitle("Marginal effect of Year on Real Price per kg") xtitle("Effects Relative to 2013")
+marginsplot, xla(1 "2014" 2 "2015" 3 "2016" 4 "2017" 5 "2018" 6 "2019" 7 "2020" 8 "2021" 9 "2022" 10 "2023" 11 "2024" 12 "2025")  ytitle("Marginal effect of Year on Real Price per kg") xtitle("Effects Relative to 2013")
 graph export $my_results/HedonicYear.png, replace as(png) width(2000)
 
 margins, dydx(state) 
@@ -326,34 +326,34 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2013-2024) \label{HedonicTableNom}"
+collect title "Unweighted and Weighted Hedonic Nominal Price Regression (2013-2025) \label{HedonicTableNom}"
 collect preview
 
 /* the md version is nice because rmarkdown automatically handles the table being split across rows.*/
 collect export $my_results/hedonic_tableNom.tex, replace tableonly
 
-collect title "Weighted and Unweighted Hedonic Nominal Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Hedonic Nominal Price Regression (2013-2025)"
 collect export $my_results/hedonic_tableNom.md, replace
 
 
 /* split the regression into two tables */
 collect layout (market_desc#result mygear#result grade_desc#result colname[total total#total]#result result[r2 N]) (model)
-collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2024) \label{HedonicTableNomA}"
+collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2025) \label{HedonicTableNomA}"
 collect export $my_results/hedonic_tableNomA.tex, replace tableonly
 
 
 
-collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2025)"
 collect export $my_results/hedonic_tableNomA.md, replace 
 
 
 collect layout (state#result year#result month#result) (model)
 collect style showbase off
 collect style showomit off
-collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2024) \label{HedonicTableNomB}"
+collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2025) \label{HedonicTableNomB}"
 collect export $my_results/hedonic_tableNomB.tex, replace tableonly
 
-collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2024)"
+collect title "Weighted and Unweighted Nominal Hedonic Price Regression (2013-2025)"
 collect export $my_results/hedonic_tableNomB.md, replace 
 
 

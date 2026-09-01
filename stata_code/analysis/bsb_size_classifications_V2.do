@@ -145,7 +145,7 @@ collect layout (colname#result result[r2 N]) (model)
 collect style header result[r2 N], level(label)
 collect label levels result r2 "R-squared", modify
 collect stars _r_p 0.01 "***" 0.05 "** " 0.1 "* ", attach(_r_b) shownote
-collect title "Unweighted and Weighted Hedonic Price Regression (2018-2024) \label{HedonicTable}"
+collect title "Unweighted and Weighted Hedonic Price Regression (2018-2025) \label{HedonicTable}"
 collect preview
 
 /* I eyeballed the 'base' results and the results when we don't collapse on stockarea. As expected the 'weighted' regression has the same coefficients. The unweighted regressions are slightly different. 
