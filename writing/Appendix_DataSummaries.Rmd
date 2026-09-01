@@ -114,7 +114,7 @@ knitr::kable(
   booktabs = TRUE,
   longtable=FALSE,
   escape   = FALSE,
-  caption  = "Percentage distribution of production variables by market description (unweighte).   For each variable, the column values sum to 100 (but may not, due to rounding).",
+  caption  = "Percentage distribution of production variables by market description (unweighted).   For each variable, the column values sum to 100 (but may not, due to rounding).",
   align    = c("l", "l", rep("c", ncol(UWcat_method_table_notot) - 2)),
   linesep  = ""
 ) %>%
