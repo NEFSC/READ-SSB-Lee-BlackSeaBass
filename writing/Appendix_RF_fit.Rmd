@@ -156,7 +156,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 
 Proportions of landings at age aggregated across all market categories to the year, stock region, and age level.
 
-```{r CAA-comparison-all,echo=FALSE,out.height="80%", fig.show='hold', fig.align='center',fig.cap="Proportions of landings-at-age of all commercial black sea bass landings using the price-informed and original classification."}
+```{r CAA-comparison-all,echo=FALSE,out.height="80%", fig.show='hold', fig.align='center',fig.cap="Proportions of landings-at-age of all commercial black sea bass using the price-informed and original classification."}
 #verified aug 28 (pretty sure this is latest version)
 
 knitr::include_graphics(here("results","CAA_comparison_all.pdf"))

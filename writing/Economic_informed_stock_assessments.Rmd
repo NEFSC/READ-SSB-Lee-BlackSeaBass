@@ -47,7 +47,7 @@ Data processing was ported to R and handled with
 R_code/data_extraction_processing/processing/commercial\00_commercial_processing_wrapper.R
 
 I've tried to put the entire pipelein into "R_code/analysis/batch_RF_run.sh"
-
+f
 The RF model was tuned with tune_random_forest_nocluster.R
 The RF model was trained with tune_random_forest_nocluster.R
 Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
@@ -717,7 +717,8 @@ knitr::include_graphics(here("results", "ranger", "final",
 ```
 
 \newpage
-```{r CAA-comparison-UNC-only,echo=FALSE,out.height="80%", fig.show='hold', fig.align='center',fig.cap="Proportions of landings-at-age of Unclassified commercial black sea bass landings using the price-informed and original classification."}
+
+```{r CAA-comparison-UNC-only,echo=FALSE,out.height="80%", fig.show='hold', fig.align='center',fig.cap="Proportions of landings-at-age of Unclassified commercial black sea bass using the price-informed and original classification."}
 #verified aug 28 (pretty sure this is latest version)
 
 knitr::include_graphics(here("results","CAA_comparison_UNC_only.pdf"))
