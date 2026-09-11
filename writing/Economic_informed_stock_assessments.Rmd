@@ -204,7 +204,7 @@ rm(fold_results)
 
 
 ```
-\newpage
+\clearpage
 # Introduction
 
 From 2014-2024, no fish in the Unclassified market category of Black Sea Bass (*Centropristis striata*) landed from the south subunit were  measured by portside biosamplers in the Northeast United States.  From 2020-2024, no Unclassified fish in the north region were measured either.  This left a gap in the data necessary to construct the age-structure of commercial landings, itself a crucial input to the quantitative stock assessments in the Northeast United States. The stock assessment enterprise in the Northeast U.S. has a series of business  rules for handling gaps that arise when certain market categories are not sampled or under-sampled. In this article, we describe a novel approach that harnesses the information contained in the price of fish to fill this data gap.  The economic intuition is straightforward: when consumer demand for fish depends on individual body size, the equilibrium market price provides an informational signal about individual fish size.
@@ -442,17 +442,17 @@ This effort uses socioeconomic information in a novel way in the stock assessmen
 A prospective change to a sampling structure could be investigated by training a classifier without a particular market category. For black sea bass, we exclude the Unclassified and then predict out of sample. To investigate the effects of forgoing sampling of the Large class, we could train a classifier on the Small, Medium, and Jumbo classes, predict the class membership of the Large classes, combine the resultant predicted weights with the known lengths and ages of the other three classes and compare to the known age and length structure of the Large class.  We leave this to future research.
 
 
-\newpage
+\clearpage
 
 
 <!---
-\newpage
+\clearpage
 --->
 # References
 <div id="refs"></div>
 
 
-\newpage
+\clearpage
 
 # Tables{-}
 
@@ -584,7 +584,7 @@ transaction_predictions<-Testmkt_preds %>%
 ```
 
 
-\newpage
+\clearpage
 
 ```{r weighted-predictions, echo=FALSE}
 
@@ -646,70 +646,65 @@ kable(
 ```
 
 
-\newpage
+\clearpage
 
 # Figures{-}
+
 (ref:LengthHistograms-cap) Length (left) and Real (2023Q1 USD) Price (right) Frequencies by market categories, 2013-2024. Mean length of the Unclassified Black Sea Bass is 34.6cm, which at the midpoint of the the Medium and Large market categories, however the variance of Unclassifed (40.5) is more than twice as large as the category (Jumbo) with the next highest variance (24.5).  Similarly, mean prices per pound of the Unclassified is \$2.40, just above the price of Medium and the variance (8.32) is more than 3 times large than the category (Jumbo) with the next highest variance (2.44).
 
-```{r LengthHistograms, echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap='(ref:LengthHistograms-cap)'}
+```{r LengthHistograms, echo=FALSE,out.width="48%", fig.show='hold', fig.align='center', fig.pos='H', fig.cap='(ref:LengthHistograms-cap)'}
 
 #verified july 2 (no code change needed)
 
 knitr::include_graphics(c(here("images","background","LenFq.Mktcomb.pdf"),here("images","exploratory","wprice_histograms_vertical_NR.pdf")))
 ```
 
-```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024.  The top panels show that few fish from the Unclassified category were measured for a large portion of the time series."}
+```{r LenHist2,echo=FALSE,out.width="32%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap="Length Frequencies by market categories, 2009-2024.  The top panels show that few fish from the Unclassified category were measured for a large portion of the time series."}
 #verified july 2 (no code change needed)
 
 knitr::include_graphics(here("images","background",c("LenFq.Mktcomb.Region.Color.2009-2013.png","LenFq.Mktcomb.Region.Color.2014-2018.png", "LenFq.Mktcomb.Region.Color.2019-2024.png") ))
 ```
 
-\newpage
-
-```{r rocTune,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Fold-level ROC curves from tuning on a 5% subsample of data.  Selected set of hyperparameters ($mtry=15, min_n=896$).  The 10 individual lines are generated from out-of-sample on each of the hold-out samples."}
+```{r rocTune,echo=FALSE,fig.show='hold', fig.align='center',  fig.pos='H', fig.cap="Fold-level ROC curves from tuning on a 5% subsample of data.  Selected set of hyperparameters ($mtry=15, min_n=896$).  The 10 individual lines are generated from out-of-sample on each of the hold-out samples."}
 # need to rebuild
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_selected_nocluster{pred_vintage}.pdf")))
 ```
 
-\newpage
-
-```{r roc-Valid,echo=FALSE,fig.show='p', fig.align='center',fig.cap="ROC curves for the Testing Sample after application of the trained Random Forest. Probability calibration does not change the shape of the ROC curve."}
+```{r roc-Valid, echo=FALSE,fig.show='hold', fig.align='center',  fig.pos='H', fig.cap="ROC curves for the Testing Sample after application of the trained Random Forest. Probability calibration does not change the shape of the ROC curve."}
 # Updated july 13
 knitr::include_graphics(here("results","ranger","tune", glue("roc_testing_dataset_nocluster{pred_vintage}.pdf")))
 ```
 
-\newpage
+\clearpage
 
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.pos='H', fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomical Logistic regression (right panel)."}
+
 #updated July 2
 knitr::include_graphics(here("results","ranger","final", c(glue("calplot_uncal_testnocluster{pred_vintage}.pdf"),glue("calplot_multi_testnocluster{pred_vintage}.pdf") ) ) )
 ```
 
 
-\newpage
-
-```{r vip,echo=FALSE,fig.show='p', fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
+```{r vip,echo=FALSE, fig.show='hold',  fig.pos='H',  fig.align='center',fig.cap="Variable importance measured as mean decrease in accuracy from permutation of each predictor. Top 20 of predictors shown"}
 #verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred_vintage}.pdf")))
 ```
 
 
-\newpage 
 <!---This is slightly different than the standard heatmap method in which observations are assigned to the class with the highest probability.  --->
 
-```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='p', fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold',  fig.pos='H',   fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probabilty of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
 #verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
 
-\newpage 
+\clearpage 
 
 ```{r out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester." }
 #verified july 2 (no code change needed)
 knitr::include_graphics(here("results", "ranger", "final",
        glue("YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
-\newpage
+\clearpage
 
 ```{r ambitious-out-of-sample-preds, echo=FALSE, fig.show='p', fig.align='center',fig.cap="Predicted landings of the Unclassified market category, 2013-2024, disaggregated by stock subarea and semester.  All unclassified transactions are forced to have a prediction." }
 #verified july 2 (no code change needed)
@@ -717,7 +712,7 @@ knitr::include_graphics(here("results", "ranger", "final",
        glue("ambitious_YRS_predictions_nocluster{pred_vintage}.pdf")))
 ```
 
-\newpage
+\clearpage
 
 ```{r CAA-comparison-UNC-only,echo=FALSE,out.height="80%", fig.show='hold', fig.align='center',fig.cap="Proportions of landings-at-age of Unclassified commercial black sea bass using the price-informed and original classification."}
 #verified aug 28 (pretty sure this is latest version)
@@ -727,27 +722,28 @@ knitr::include_graphics(here("results","CAA_comparison_UNC_only.pdf"))
 
 
 
-\newpage
+\clearpage
+\appendix
 
 # Appendix{-}
 
 ```{r child=here("writing","Appendix_Hedonic.Rmd"), eval=TRUE}
 ```
 
-\newpage
+\clearpage
 
 
 ```{r child=here("writing","Appendix_DataSummaries.Rmd"), eval=TRUE}
 ```
 
-\newpage
+\clearpage
 
 
 ```{r child=here("writing","Appendix_RF_fit.Rmd"), eval=TRUE}
 ```
 
 
-\newpage
+\clearpage
 
 <!--- Include the CRediT and acknowledgement statements   --->
 ```{r, child=here("writing", c("CRediT.Rmd")),  eval=TRUE}
