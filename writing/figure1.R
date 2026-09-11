@@ -46,7 +46,8 @@ combined_dataset<-combined_dataset %>%
 
 combined_dataset<-combined_dataset %>%
   mutate(lndkg=lndlb/lbs_per_kg)%>%
-  mutate(pricekgR_CPI=valueR_CPI/lndkg)
+  mutate(pricekgR_CPI=valueR_CPI/lndkg) %>%
+  filter(pricekgR_CPI >= 0)
 
 # To upper case, rename as SMALL_COMB, and relevel to re-order
 combined_dataset<-combined_dataset %>%
@@ -58,7 +59,7 @@ combined_dataset<-combined_dataset %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL", "MEDIUM", "LARGE", "JUMBO")))
 
 price.mktcomb <- ggplot(
-  combined_dataset %>% filter(pricekgR_CPI >= 0 & pricekgR_CPI <= 10*lbs_per_kg),
+  combined_dataset %>% filter( pricekgR_CPI <= 12*lbs_per_kg),
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
