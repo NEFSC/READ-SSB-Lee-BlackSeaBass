@@ -90,7 +90,7 @@ excluded_from_estimation_dataset<-excluded_from_estimation_dataset %>%
 
 
 # Load questionable status dataset
-
+# these are true data errors.
 qs <- readr::read_rds(file=here("data_folder","main","commercial",glue("questionable_status_{vintage_string}.Rds")))
 
 qs<-qs %>%
@@ -114,3 +114,108 @@ excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
 write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_estimation_dataset_{vintage_string}.Rds")))
 
 
+# summarise the estimation dataset
+classed_dataset<-combined_dataset %>%
+  filter(market_desc!="Unclassified")
+
+table(classed_dataset$mark_in)
+
+#total pounds
+totals<-classed_dataset %>%
+  group_by(mark_in) %>%
+  summarise(total_liv_mt=sum(livlb, na.rm=TRUE)/(1000*lbs_to_kg),
+            valueR_CPI_M=sum(valueR_CPI, na.rm=TRUE)/1000000)
+
+#total by market_desc
+by_market_desc<-classed_dataset %>%
+  group_by(market_desc, mark_in) %>%
+  summarise(total_liv_mt=sum(livlb, na.rm=TRUE)/(1000*lbs_to_kg),
+            valueR_CPI_M=sum(valueR_CPI, na.rm=TRUE)/1000000) %>%
+  ungroup() %>%
+  group_by(market_desc)%>%
+  mutate(liv_mt=sum(total_liv_mt),
+         val=sum(valueR_CPI_M)) %>%
+  mutate(total_frac=total_liv_mt/liv_mt,
+         val_frac=valueR_CPI_M/val) %>%
+  select(-liv_mt, -val) %>%
+  filter(mark_in==FALSE)
+
+
+#total by year
+
+by_year<-classed_dataset %>%
+  group_by(year, mark_in) %>%
+  summarise(total_liv_mt=sum(livlb, na.rm=TRUE)/(1000*lbs_to_kg),
+            valueR_CPI_M=sum(valueR_CPI, na.rm=TRUE)/1000000) %>%
+ungroup() %>%
+  group_by(year)%>%
+  mutate(liv_mt=sum(total_liv_mt),
+         val=sum(valueR_CPI_M)) %>%
+  mutate(total_frac=total_liv_mt/liv_mt,
+         val_frac=valueR_CPI_M/val) %>%
+  ungroup() %>%
+  select(-liv_mt, -val) %>%
+  filter(mark_in==FALSE)
+
+
+
+
+
+
+# summarise the Unclassified dataset
+unclassed_dataset<-combined_dataset %>%
+  filter(market_desc=="Unclassified")
+
+table(unclassed_dataset$mark_in)
+
+#total pounds
+totals_unc<-unclassed_dataset %>%
+  group_by(mark_in) %>%
+  summarise(total_liv_mt=sum(livlb, na.rm=TRUE)/(1000*lbs_to_kg),
+            valueR_CPI_M=sum(valueR_CPI, na.rm=TRUE)/1000000)
+
+
+
+#total by year
+
+by_year<-unclassed_dataset %>%
+  group_by(year, mark_in) %>%
+  summarise(total_liv_mt=sum(livlb, na.rm=TRUE)/(1000*lbs_to_kg),
+            valueR_CPI_M=sum(valueR_CPI, na.rm=TRUE)/1000000) %>%
+  ungroup() %>%
+  group_by(year)%>%
+  mutate(liv_mt=sum(total_liv_mt),
+         val=sum(valueR_CPI_M)) %>%
+  mutate(total_frac=total_liv_mt/liv_mt,
+         val_frac=valueR_CPI_M/val) %>%
+  ungroup() %>%
+  select(-liv_mt, -val) %>%
+  filter(mark_in==FALSE)
+
+# are there any "only UNC dealers
+# there are, but they're only a "problem" for prediction if they respond to market forces.
+
+only_unc<-combined_dataset %>%
+  count(dlrid, market_desc) %>%
+  ungroup() %>%
+  group_by(dlrid) %>%
+  mutate(total=sum(n)) %>%
+  filter(market_desc=="Unclassified", total==n)
+
+
+only_unc_dlr<-only_unc %>%
+  select(dlrid) %>%
+  mutate(tagged_dlr=1)
+
+only_u<-combined_dataset %>%
+  mutate(tagged_dlr=0) %>%
+  filter(market_desc=="Unclassified") %>%
+  left_join(only_unc_dlr, by=join_by(dlrid))  %>%
+  mutate(tagged_dlr = coalesce(tagged_dlr.y,tagged_dlr.x)) %>%
+  select(-tagged_dlr.x,-tagged_dlr.y)
+
+#7274 obs only sold by dealers that ever sell unclassifieds compared to 25,333
+# that sell a mix of unclassifieds and classifieds.
+  
+  
+table(only_u$tagged_dlr)
