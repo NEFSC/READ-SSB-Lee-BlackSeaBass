@@ -1,6 +1,6 @@
 
 # Acknowledgements{-}
-The authors are grateful to Geret DePiper, Chris Legault, Brian Linton, and Charles Perretti for comments and suggestions. The findings and conclusions of this article are those of the authors and do not necessarily reflect the views or opinions of NOAA Fisheries.  
+The authors are grateful to Geret DePiper, Chris Legault, Brian Linton, Charles Perretti, and Tarsila Seara for comments and suggestions. The findings and conclusions of this article are those of the authors and do not necessarily reflect the views or opinions of NOAA Fisheries.  
 
 
 # CRediT{-}

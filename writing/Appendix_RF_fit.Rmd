@@ -9,7 +9,12 @@ We tuned the model twice on two distinct subsamples of our data (Figure \@ref(fi
 
 ```{r TwoTuningSurfaces,echo=FALSE,out.width="48%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap="Brier Score plotted against $min_n$ and $mtry$"}
 # Updated July 13
-knitr::include_graphics(here("results","ranger","tune",c(glue("brier_tuneA{pred_vintage}.png"), glue("brier_tuneA{pred_vintage}.png"))))
+knitr::include_graphics(here("results","ranger","tune",
+                             c(glue("brier_tuneA{pred_vintage}.png"), 
+                               glue("brier_tuneA{pred_vintage}.png")
+                               )
+                             )
+                        )
 ```
 
 
@@ -17,9 +22,14 @@ knitr::include_graphics(here("results","ranger","tune",c(glue("brier_tuneA{pred_
 
 We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. Figure  \@ref(fig:rocTuneNotSelected) illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
 
-```{r rocTuneNotSelected,echo=FALSE,fig.show='p', fig.align='center', fig.pos='H', fig.cap="ROC curves from tuning, optimal but not selected hyperparameters (top panel). We reproduce the ROC curves from the selected model below for the reader's convenience."}
+```{r rocTuneNotSelected, echo=FALSE, fig.show='hold', out.width='100%', fig.align='center', fig.pos='H', fig.cap="ROC curves from tuning, optimal but not selected hyperparameters (top panel). We reproduce the ROC curves from the selected model below for the reader's convenience."}
 # Updated July 13
-knitr::include_graphics(here("results","ranger","tune",c(glue("roc_tune_nonselected_nocluster{pred_vintage}.png"), glue("roc_tune_selected_nocluster{pred_vintage}.png"))))
+knitr::include_graphics(here("results","ranger","tune",
+                             c(glue("roc_tune_nonselected_nocluster{pred_vintage}.png"),
+                               glue("roc_tune_selected_nocluster{pred_vintage}.png")
+                               )
+                             )
+                        )
 
 ```
 
