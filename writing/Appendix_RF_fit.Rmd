@@ -1,7 +1,7 @@
 
 ## Additional Model fit and diagnostics{-}
 
-We tuned the model twice on two distinct subsamples of our data \@ref(fig:TwoTuningSurfaces).  Two results emerged. First, over the Advanced grid that we selected, the surface was relatively flat. Recall that we first performed an Intiial coarse search over a larger paramter space, then more fine-grained one over a subset, so tthis should not be interpreted as evidence that all tuning has minimal effect.  Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$ (on the range of 1-20) there was even less varation.  Second, our repeat tuning shows very similar results to the first one. 
+We tuned the model twice on two distinct subsamples of our data (Figure \@ref(fig:TwoTuningSurfaces)).  Two results emerged. First, over the Advanced grid that we selected, the surface was relatively flat. Consider that we performed an Initial coarse search over a hyperparameter space, then more fine-grained one over a subset of that space, so this should not be interpreted as evidence that all tuning has minimal effect.  Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$ (on the range of 1-20) there was even less variation.  Second, our repeat tuning shows very similar results to the first one. 
 <!---look up best 
 "\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\TB_tuning_metrics_by_fold2026-06-15.Rds"
 "\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\tuning_metrics_by_fold06-15.Rds"
@@ -17,16 +17,16 @@ knitr::include_graphics(here("results","ranger","tune",c(glue("brier_tuneA{pred_
 
 We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. Figure  \@ref(fig:rocTuneNotSelected) illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
 
-```{r rocTuneNotSelected,echo=FALSE,fig.show='p', fig.align='center', fig.pos='H', fig.cap="ROC curves from tuning, optimal but not selected hyperparameters"}
+```{r rocTuneNotSelected,echo=FALSE,fig.show='p', fig.align='center', fig.pos='H', fig.cap="ROC curves from tuning, optimal but not selected hyperparameters (top panel). We reproduce the ROC curves from the selected model below for the reader's convenience."}
 # Updated July 13
-knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_nonselected_nocluster{pred_vintage}.pdf")))
+knitr::include_graphics(here("results","ranger","tune",c(glue("roc_tune_nonselected_nocluster{pred_vintage}.png"), glue("roc_tune_selected_nocluster{pred_vintage}.png"))))
+
 ```
 
 
 ### Pre-calibration confusion matrix and aggregate predictions{-}
 
-
-These are the predictions that come out of the non-calibrated models, Table  \ref{tab:uncal-trans-predictions} summarises transaction level predictions while Table  \ref{tab:uncal-weights-predictions} summarizes weights in metric tons.
+The probability calibrations though an auxiliary regression have a small effect on subsequent predictions.   Tables  \ref{tab:uncal-trans-predictions} \ref{tab:uncal-weights-predictions}  summarize the predictions by transacations and by metric tons prior to the probability calbration.
 
 ```{r no_cal_validations, eval=TRUE, results='hide', echo=FALSE}
 
@@ -131,7 +131,7 @@ kable(
 These figures are created with
 here(("writing","predictions_heatmaps.Rmd")
 --->
-Figure \@ref(fig:HardPredictionHeatmap)  illustrates the confusion matrix for the calibrated model transactions, done on hard (higest probability) predictions. 
+Figure \@ref(fig:HardPredictionHeatmap)  illustrates the confusion matrix for the calibrated model transactions, constructed using the hard (highest probability) predictions. 
 
 ```{r HardPredictionHeatmap,echo=FALSE,out.width="48%", fig.align='center',fig.pos='H', fig.cap="A confusion matrix for the calibrated model. Transactions assigned to a market category based on class with the highest predicted probability."}
 #verified july 2 (no code change needed)
@@ -143,7 +143,8 @@ knitr::include_graphics(here("results","ranger","final",glue("confmat_nocluster{
 
 ### Soft prediction confusion matrix{-}
 
-Figure \@ref(fig:SoftPredictionHeatmap) illustrates the confusion matrix for the calibrated model transactions, done on probabilistic predictions. 
+Figure \@ref(fig:SoftPredictionHeatmap) illustrates the confusion matrix for the calibrated model transactions, constructed using probabilistic predictions. 
+
 ```{r SoftPredictionHeatmap,echo=FALSE,out.width="48%", fig.align='center',fig.pos='H', fig.cap="Confusion matrix for the calibrated model. Predicted probabilities aggregated to generate aggregate transactions."}
 #verified july 2 (no code change needed)
 
