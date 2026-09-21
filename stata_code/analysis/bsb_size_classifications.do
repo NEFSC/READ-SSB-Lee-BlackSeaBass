@@ -250,7 +250,7 @@ collect export $my_results/hedonic_tableA.md, replace
 /* Just print the market category results */
 collect layout (market_desc#result grade_desc#result colname[totalmt totalmt#totalmt]#result  result[r2 N]) (model)
 
-collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025).  The dependent variable is real price per kilogram, landings are in metric tons, and the model is fit by ordinary least squares. In addition to the presented coefficients, the model contains controls for gear, landed state, year, and month. \label{HedonicMarketCats}"
+collect title "Select coeffiecients from a weighted and weighted Hedonic Price Regression (2013-2025).The dependent variable is real price per kilogram, landings are in metric tons, and the model is fit by ordinary least squares. Each market category coefficient can be interpreted as the conditional mean price of that market category. In addition to the presented coefficients, the model contains controls for  gear, landed state, year, and month. \label{HedonicMarketCats}"
 collect export $my_results/hedonic_table_market_cats.tex, replace tableonly
 
 collect title "Weighted and Unweighted Hedonic Price Regression (2013-2025)"
