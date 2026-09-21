@@ -1,5 +1,5 @@
 
-## Additional Model fit and diagnostics{-}
+## Additional Model fit and diagnostics {#AppendixRFFit}
 
 We tuned the model twice on two distinct subsamples of our data (Figure \@ref(fig:TwoTuningSurfaces)).  Two results emerged. First, over the Advanced grid that we selected, the surface was relatively flat. Consider that we performed an Initial coarse search over a hyperparameter space, then more fine-grained one over a subset of that space, so this should not be interpreted as evidence that all tuning has minimal effect.  Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$ (on the range of 1-20) there was even less variation.  Second, our repeat tuning shows very similar results to the first one. 
 <!---look up best 

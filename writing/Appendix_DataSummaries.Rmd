@@ -3,7 +3,7 @@ R markdown chunk to print tables of summary statistics in the appendix
 ---> 
 
 
-## Data Summaries{-}
+## Data Summaries {#AppendixDataSummaries}
 
 For brevity some descriptive statistics were not presented in the main text. Table \@ref(tab:print-tbl-cat-timeUW-Appendix) describes summary statistics of the year, month, and state of landing factor variables by market category (unweighted). Table \@ref(tab:print-tbl-cat-geoUW-Appendix) contains analogous summaries for the method of production factors.
 

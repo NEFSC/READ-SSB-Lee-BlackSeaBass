@@ -1,12 +1,12 @@
 
-## Do prices vary by size?{-} 
+## Do prices vary by size? {#AppendixHedonic}
 <!--- 
 The hedonic model is estimated by 
 global in_string 2026-03-03
 do "$analysis_code/bsb_size_classifications.do"
 It creates a table and 3 figures that appear in this appendix
 --->
-We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004; @Kristofersson2007, and @Hammarlund2015 examine demand for attributes in hierarchical linear model and find that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than the average. Other attributes can impact prices: See @Gobillon2017 for an examination of buyer- and seller- effects. 
+We first estimate a linear hedonic model in which the per-pound price of a lot of fish is a function of the attributes of that lot, including  market category, gear, and time of year. @McConnell2000 and @Carroll2001 are early examples of hedonic models applied to tuna prices: attributes like freshness, fat content, and individual size are associated with positive price premia.  @Kristofersson2004 [@Kristofersson2007], and @Hammarlund2015 examine demand for attributes in hierarchical linear model and find that, for example, large fish receive higher prices but when the quantity supplied of large fish is higher than average, the price premia is smaller than the average. Other attributes can impact prices: See @Gobillon2017 for an examination of buyer- and seller- effects. 
 
 We use data from 2013-2025 aggregated to the "trip, market-category, gear, area, datesail, dateland, dealer" level and deflate to real prices using the CPI-U for the first quarter of 2023.  We perform some aggregation of gears: Line and Hand, Trawl, Gillnet, Pot and Trap and "All other" gears.  We use identical market category aggregations as in the Random Forest.  Table \@ref(tab:bsb-hedonic-summary) summarizes the data used to estimate the hedonic model. 
 
