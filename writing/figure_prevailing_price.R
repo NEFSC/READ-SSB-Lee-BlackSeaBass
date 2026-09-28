@@ -142,7 +142,9 @@ scale_linetype_manual(
     axis.text            = element_text(size = 7, colour = "grey20"),
     # Display major and minor tick marks on x-axis
     axis.ticks.x         = element_line(colour = "grey20"),
-    plot.margin          = margin(4, 6, 4, 4, "pt")
+    plot.margin          = margin(4, 6, 4, 4, "pt"),
+    legend.position = "bottom"
+    
   )
 
 
