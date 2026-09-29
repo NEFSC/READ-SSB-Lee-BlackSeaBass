@@ -110,8 +110,7 @@ class_colours <- c(
 price.mktcomb2 <- ggplot(
   grand_ma_prices %>% filter(dlr_date>=ymd("2024-01-01") , dlr_date<=ymd("2026-01-01"))
   %>% filter(state %in% c("NJ", "RI", "MA")),
-  aes(x = dlr_date, y = price,  group=state, linetype=state)
-) +
+aes(x = dlr_date, y = price, group = state, color = state, linetype = state)) +
   geom_line(
     colour    = "grey20",
       linewidth = 0.4
@@ -158,6 +157,104 @@ ggsave(
   device = cairo_pdf
 )
 
+
+
+
+
+price.mktcomb3 <- ggplot(
+  grand_ma_prices  %>% filter(!state %in% c("NJ", "RI", "MA"))
+ ,
+  aes(x = dlr_date, y = price, group = state, color = state, linetype = state) 
+  )  +
+  geom_line(linewidth = 0.5) +
+  scale_y_continuous(
+    name   = "Price per kg (Real 2013Q1 USD)"
+  ) + 
+  scale_x_date(
+    name   = "Year",
+    date_breaks = "5 year",
+    date_minor_breaks = "1 year",
+    date_labels = "%Y"
+  )  + 
+    scale_linetype_manual(
+    values = c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash", "1F", "F1", "44")
+  ) +
+  facet_grid(rows = vars(market_desc), cols = NULL) +
+  theme(
+    strip.background     = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text           = element_text(size = 8, face = "bold"),
+    panel.grid.major.x   = element_blank(),
+    panel.grid.minor.x   = element_blank(),
+    panel.grid.major.y   = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y   = element_blank(),
+    axis.title           = element_text(size = 8),
+    axis.text            = element_text(size = 7, colour = "grey20"),
+    # Display major and minor tick marks on x-axis
+    axis.ticks.x         = element_line(colour = "grey20"),
+    plot.margin          = margin(4, 6, 4, 4, "pt"),
+    legend.position = "bottom"
+    
+  )
+
+
+ggsave(
+  here("images", "exploratory",
+       glue("prevailing_prices_full1.pdf")),
+  plot   = price.mktcomb3,
+  width  = 84,
+  height = 150,    # 3 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = cairo_pdf
+)
+
+
+
+
+price.mktcomb3 <- ggplot(
+  grand_ma_prices  %>% filter(state %in% c("NJ", "RI", "MA"))
+  ,
+  aes(x = dlr_date, y = price, group = state, color = state, linetype = state) 
+)  +
+  geom_line(linewidth = 0.5) +
+  scale_y_continuous(
+    name   = "Price per kg (Real 2013Q1 USD)"
+  ) + 
+  scale_x_date(
+    name   = "Year",
+    date_breaks = "5 year",
+    date_minor_breaks = "1 year",
+    date_labels = "%Y"
+  )  + 
+  scale_linetype_manual(
+    values = c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash", "1F", "F1", "44")
+  ) +
+  facet_grid(rows = vars(market_desc), cols = NULL) +
+  theme(
+    strip.background     = element_rect(fill = "grey92", colour = "grey40"),
+    strip.text           = element_text(size = 8, face = "bold"),
+    panel.grid.major.x   = element_blank(),
+    panel.grid.minor.x   = element_blank(),
+    panel.grid.major.y   = element_line(colour = "grey88", linewidth = 0.3),
+    panel.grid.minor.y   = element_blank(),
+    axis.title           = element_text(size = 8),
+    axis.text            = element_text(size = 7, colour = "grey20"),
+    # Display major and minor tick marks on x-axis
+    axis.ticks.x         = element_line(colour = "grey20"),
+    plot.margin          = margin(4, 6, 4, 4, "pt"),
+    legend.position = "bottom"
+    
+  )
+
+
+ggsave(
+  here("images", "exploratory",
+       glue("prevailing_prices_full2.pdf")),
+  plot   = price.mktcomb3,
+  width  = 84,
+  height = 150,    # 3 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = cairo_pdf
+)
 
 
 
