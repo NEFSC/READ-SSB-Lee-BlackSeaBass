@@ -1,7 +1,7 @@
 
-## Additional Model fit and diagnostics {#AppendixRFFit}
+## Additional Model Fit and Diagnostics {#AppendixRFFit}
 
-We tuned the model twice on two distinct subsamples of our data (Figure \@ref(fig:TwoTuningSurfaces)).  Two results emerged. First, over the Advanced grid that we selected, the surface was relatively flat. Consider that we performed an Initial coarse search over a hyperparameter space, then more fine-grained one over a subset of that space, so this should not be interpreted as evidence that all tuning has minimal effect.  Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$ (on the range of 1-20) there was even less variation.  Second, our repeat tuning shows very similar results to the first one. 
+We performed a coarse grid search of hyperparameters to quickly eliminate a larger set of possible values. Then we performed fine grained hyperparameter search twice using two distinct subsamples of our data (Figure \@ref(fig:TwoTuningSurfaces)).  Two results emerged. First, the response surface was relatively flat  (the Brier score changed minimally) over the Advanced grid that we selected. Because we performed an Initial coarse search over a hyperparameter space, then more fine-grained one over a subset of that space, this should not be interpreted as evidence that tuning has minimal effects.  Mean Brier scores ranged from a high of 0.199 (32, 1571) to a low of 0.178 (14,10), implying that the best pair of hyperparameters was 12\% better than the worst. A lower $mtry$ was preferred and once we get to a reasonably low level of $mtry$ (on the range of 1-20) there was even less variation.  Second, our repeat tuning shows very similar results to the first one. 
 <!---look up best 
 "\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\TB_tuning_metrics_by_fold2026-06-15.Rds"
 "\\nefscdata\PricesInStockAssessment\READ-SSB-Lee-BlackSeaBass\results\ranger\tuning_metrics_by_fold06-15.Rds"
@@ -36,7 +36,7 @@ knitr::include_graphics(here("results","ranger","tune",
 
 ### Pre-calibration confusion matrix and aggregate predictions{-}
 
-The probability calibrations though an auxiliary regression have a small effect on subsequent predictions.   Tables  \ref{tab:uncal-trans-predictions} \ref{tab:uncal-weights-predictions}  summarize the predictions by transacations and by metric tons prior to the probability calbration.
+The probability calibrations though an auxiliary regression have a small effect on subsequent predictions.   Tables  \ref{tab:uncal-trans-predictions} \ref{tab:uncal-weights-predictions}  summarize the predictions by transactions and by metric tons prior to the probability calbration.
 
 ```{r no_cal_validations, eval=TRUE, results='hide', echo=FALSE}
 

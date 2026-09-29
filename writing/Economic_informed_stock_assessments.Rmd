@@ -669,7 +669,7 @@ knitr::include_graphics(here("images","background",
 ```
 
 
-```{r PrevailingPrices,echo=FALSE,out.height="80%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap="Prevailing prices for Jumbo, Large, and Medium Black Sea Bass in Massachusetts, New Jersey, and Rhode Island illustrate similar trends across states and market categories"}
+```{r PrevailingPrices,echo=FALSE,out.height="80%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap="Prevailing prices for Jumbo, Large, and Medium Black Sea Bass in Massachusetts, New Jersey, and Rhode Island from 2024-2025 illustrate similar trends across states and market categories. "}
 #verified Sept 21
 
 knitr::include_graphics(here("images","exploratory","prevailing_prices_cat.pdf"))
@@ -681,14 +681,14 @@ knitr::include_graphics(here("images","exploratory","prevailing_prices_cat.pdf")
 knitr::include_graphics(here("results","ranger","tune", glue("roc_tune_selected_nocluster{pred_vintage}.pdf")))
 ```
 
-```{r roc-Valid, echo=FALSE,fig.show='hold', fig.align='center',  fig.pos='H', fig.cap="ROC curves for the Testing Sample after application of the trained Random Forest. Probability calibration does not change the shape of the ROC curve."}
+```{r roc-Valid, echo=FALSE,fig.show='hold', fig.align='center',  fig.pos='H', fig.cap="ROC curves computed on the 15% holdout subsample using the Random Forest trained on the 80% training dataset. Probability calibration does not change the shape of the ROC curve."}
 # Updated july 13
 knitr::include_graphics(here("results","ranger","tune", glue("roc_testing_dataset_nocluster{pred_vintage}.pdf")))
 ```
 
 \clearpage
 
-```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.pos='H', fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomial Logistic regression (right panel)."}
+```{r calibrationplots,echo=FALSE,fig.show='hold',out.width="48%", fig.align='center',fig.pos='H', fig.cap="Plots of true event rates versus predicted event rates for raw predictions (left panel) and predictions calibrated with an Multionomial Logistic regression (right panel) computed on the 15% holdout sample."}
 
 #updated July 2
 knitr::include_graphics(here("results","ranger","final",
@@ -707,7 +707,7 @@ knitr::include_graphics(here("results","ranger","final", glue("vipnocluster{pred
 
 <!---This is slightly different than the standard heatmap method in which observations are assigned to the class with the highest probability.  --->
 
-```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold',  fig.pos='H',   fig.align='center',fig.cap="A weighted confusion matrix constructed on the Test dataset.  The trained model is used to predict probability of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
+```{r SoftWeightedPredictionHeatmap,echo=FALSE,out.width="48%", fig.show='hold',  fig.pos='H',   fig.align='center',fig.cap="A weighted confusion matrix constructed on the 15% validation subsample  The trained model is used to predict probability of class membership and those probabilities are calibrated. Predicted weights per observation are summed and the row fractions are reported along with metric tons below in parentheses."}
 #verified july 2 (no code change needed)
 knitr::include_graphics(here("results","ranger","final",glue("soft_weighted_confmat_nocluster{pred_vintage}.pdf")))
 ```
