@@ -20,7 +20,7 @@ knitr::include_graphics(here("results","ranger","tune",
 
 ###  ROC curve from Tuning {-}
 
-We purposefully selected the second best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. Figure  \@ref(fig:rocTuneNotSelected) illustrates the fold-level ROC curves from the *optimal* pair of hyper parameters ($mtry=14, min_n=10$).  
+We purposefully selected the second-best set of hyperparameters  ($mtry=15, min_n=896$) to guard against overfitting. Figure  \@ref(fig:rocTuneNotSelected) suggests minimal differences between the optimal pair of hyper parameters ($mtry=14, min_n=10$) and the selected ones.  
 
 ```{r rocTuneNotSelected, echo=FALSE, fig.show='hold', out.width='100%', fig.align='center', fig.pos='H', fig.cap="ROC curves from tuning, optimal but not selected hyperparameters (top panel). We reproduce the ROC curves from the selected model below for the reader's convenience."}
 # Updated July 13
@@ -36,7 +36,7 @@ knitr::include_graphics(here("results","ranger","tune",
 
 ### Pre-calibration confusion matrix and aggregate predictions{-}
 
-The probability calibrations though an auxiliary regression have a small effect on subsequent predictions.   Tables  \ref{tab:uncal-trans-predictions} \ref{tab:uncal-weights-predictions}  summarize the predictions by transactions and by metric tons prior to the probability calbration.
+The probability calibrations though an auxiliary regression have a small effect on subsequent predictions.   Tables  \ref{tab:uncal-trans-predictions} and \ref{tab:uncal-weights-predictions}  summarize the predictions by transactions and by metric tons prior to the probability calibration.
 
 ```{r no_cal_validations, eval=TRUE, results='hide', echo=FALSE}
 
@@ -165,7 +165,7 @@ knitr::include_graphics(here("results","ranger","final",glue("softconfmat_noclus
 
 ## Landings at Age Predictions {-}
 
-Figure \@ref(fig:CAA-comparison-all) illustrates the proportions of landings at age aggregated across all market categories to the year, stock region, and age level.
+Figure \@ref(fig:CAA-comparison-all) illustrates the proportions of commercial landings at age aggregated across all market categories to the year, subunit, and age level.  Differences between the Price-informed and Original age structure are relatively minimal. The magnitude of the differences is largest in the South subunit.
 
 ```{r CAA-comparison-all,echo=FALSE,out.height="80%", fig.align='center',fig.pos='H', fig.cap="Proportions of landings-at-age of all commercial Black Sea Bass using the price-informed and original classification."}
 #verified aug 28 (pretty sure this is latest version)
