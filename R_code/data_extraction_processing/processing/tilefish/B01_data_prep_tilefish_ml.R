@@ -275,6 +275,8 @@ combined_dataset<-combined_dataset %>%
 
 
 # Flag dlrid's that have suspiciously little variance in prices.
+# Screen price variation within dealer-year-category groups, using only records
+# with usable prices.
 dlr_variability <- combined_dataset %>%
   filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
@@ -304,7 +306,7 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Flag observaions with bad prices, bad pricing data, or from weird states.
+# Flag observations with bad prices or from weird states.
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -348,7 +350,8 @@ unclassified_dataset<-combined_dataset %>%
 
 write_rds(unclassified_dataset, file=here("data_folder","main","tilefish",glue("tilefish_unclassified_dataset{out_data_string}.Rds")))
 
-# put everything else in a dataset
+# Fit on classified categories only, retaining dealer groups that passed the
+# price-variability, price-range, and state checks above.
 # discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
   filter(!market_desc %in% c("Large/Medium","Large Medium", "Unclassified")) %>%

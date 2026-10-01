@@ -473,7 +473,7 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Flag observaions with bad prices, bad pricing data, or from weird states.
+# Exclude records with bad prices or wierd states 
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -493,7 +493,7 @@ combined_dataset<-combined_dataset %>%
   rename(STOCK_ABBREV=stock_abbrev)
 
 
-# Create an indicator if it is the first year that we see a dealer (and )
+# Create an indicator if it is the first year that we see a dealer (no dealer history available)
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(c(LagSharePoundsJumbo, LagSharePoundsLarge,
@@ -504,7 +504,8 @@ haven::write_dta(combined_dataset, path=here("data_folder","main","commercial",g
 
   
 # put the unclassifieds into a dataset
-# KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
+# Retain every Unclassified record for downstream accounting; only mark_in
+# records are eligible for a model prediction.
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
@@ -512,7 +513,7 @@ unclassified_dataset<-combined_dataset %>%
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.Rds")))
 haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.dta")))
 
-# put everything else in a dataset
+# Keep classified records that passed the eligibility rules for model fitting.
 # discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") %>%

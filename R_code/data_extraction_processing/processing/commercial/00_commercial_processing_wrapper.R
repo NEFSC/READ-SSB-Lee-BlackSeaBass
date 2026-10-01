@@ -22,19 +22,24 @@ conflicts_prefer(dplyr::arrange)
 
 here::i_am("R_code/data_extraction_processing/processing/commercial/00_commercial_processing_wrapper.R")
 
+# The upstream DataPull repository is expected to sit beside this project.
 my_datapull<-dirname(here())
 my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
 
+# Keep commercial outputs together; downstream scripts write to this directory.
 bsb_data_dir<-here("data_folder", "main", "commercial")     
 dir.create(bsb_data_dir, showWarnings=FALSE)
 
 
+# Use the selected input vintage while dating generated outputs at run time.
 in_string      <- "2026-05-01"   # matches Stata in_string / data-pull vintage
 vintage_string <- Sys.Date()   # matches Stata vintage_string / output vintage
 lbs_to_kg<-2.20462
 
+# Shared recoding rules are used by multiple stages of the commercial workflow.
 source(here("R_code", "analysis","helpers",  "gear_market_helpers.R"))
 
+# Build cleaned landings, daily and dealer summaries, then moving-average prices.
 source(here("R_code", "data_extraction_processing","processing","commercial",  "A01_make_landings_cleaned.R"))
 source(here("R_code", "data_extraction_processing","processing","commercial",  "A02_make_daily_stats.R"))
 source(here("R_code", "data_extraction_processing","processing", "commercial", "A03_make_dealer_stats.R"))
@@ -42,6 +47,7 @@ source(here("R_code", "data_extraction_processing","processing", "commercial", "
 
 #final data prep.
 # there's no great reason to have these start with B, execpt that the A files were previously made by stata.
+# Prepare the model-ready data, then aggregate records excluded from estimation.
 source(here("R_code", "data_extraction_processing","processing",  "commercial", "B01_data_prep_ml.R"))
 # aggreggate landings that were excluded
 

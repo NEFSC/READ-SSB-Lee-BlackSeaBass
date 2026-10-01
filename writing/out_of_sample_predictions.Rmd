@@ -286,9 +286,9 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 oos_data_calibration_applied<-oos_data_calibration_applied %>%
   select(c(year, STOCK_ABBREV, market_desc, original_market_category, SPECIES_ITIS, SEMESTER, weighting, livlb, any_of(prob_names), .pred_class))
 
-# predicted pounds per transaction in the validation dataset.
-# multiply the prediction by the live pounds to get predicted live pounds in each class. 
-# This loop is a ugly.  There's only 5 categories, so it's probably better to just write it out
+# Convert each available class probability to predicted live pounds per
+# transaction. Unclassified has no model probability column; the handler below
+# skips that absent column, but also suppresses any other error in the assignment.
 for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   tryCatch({
     oos_data_calibration_applied[[paste0("pred_", l)]] <- oos_data_calibration_applied[[paste0(".pred_", l)]] * oos_data_calibration_applied$livlb
