@@ -443,7 +443,9 @@ combined_dataset<-combined_dataset %>%
   mutate(myl_id=as.integer(myl_id))
 
 
-# Flag dlrid's that have suspiciously little variance in prices.
+# Eligibility is assessed per dealer, year, and market category using priced
+# estimation records; low within-group price variation excludes the group.
+# The 0.1 standard-deviation cutoff is an empirical modeling rule.
 dlr_variability <- combined_dataset %>%
   filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
@@ -473,7 +475,8 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Flag observaions with bad prices, bad pricing data, or from weird states.
+# Exclude records with unusable prices or states outside the model's target
+# population. These rules apply after the dealer-variability screen.
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -493,7 +496,7 @@ combined_dataset<-combined_dataset %>%
   rename(STOCK_ABBREV=stock_abbrev)
 
 
-# Create an indicator if it is the first year that we see a dealer (and )
+# No lagged classified-pound shares means no prior dealer history is available.
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(c(LagSharePoundsJumbo, LagSharePoundsLarge,
@@ -504,7 +507,8 @@ haven::write_dta(combined_dataset, path=here("data_folder","main","commercial",g
 
   
 # put the unclassifieds into a dataset
-# KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
+# Retain every Unclassified record for downstream accounting; only mark_in
+# records are eligible for a model prediction.
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc=="Unclassified") 
@@ -512,7 +516,7 @@ unclassified_dataset<-combined_dataset %>%
 write_rds(unclassified_dataset, file=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.Rds")))
 haven::write_dta(unclassified_dataset, path=here("data_folder","main","commercial",glue("BSB_unclassified_dataset{out_data_string}.dta")))
 
-# put everything else in a dataset
+# Keep classified records that passed the eligibility rules for model fitting.
 # discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") %>%

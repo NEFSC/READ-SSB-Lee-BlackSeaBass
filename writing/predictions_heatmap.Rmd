@@ -582,6 +582,9 @@ ggsave(
 
 
 ```{r save_the_predictions}
+# Probability sums estimate transaction counts by predicted class; multiplying
+# each probability by lndlb instead estimates landed pounds. True_* are observed
+# totals used to compare those soft predictions within each group.
 regional_predictions<-test_data_calib_applied %>%
   ungroup()%>%
   group_by(market_desc, year, stockarea,semester) %>%

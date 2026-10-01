@@ -88,8 +88,9 @@ table(landings$questionable_status)
 # These should be only VTR discards, orphan species, novel market/grade codes.
 # -----------------------------------------------------------------------------
 
-#Patch some mis-matched kittens.  There are no Round Kittens in the keyfile, causing 
-#mis-matches
+# The market-code lookup omits Round Kitten records, leaving their category and
+# species fields unmatched. Restore the known tilefish mapping so these records
+# can participate in the subsequent lookup and cleaning steps.
 
 landings<-landings %>%
   mutate(market_desc=ifelse(

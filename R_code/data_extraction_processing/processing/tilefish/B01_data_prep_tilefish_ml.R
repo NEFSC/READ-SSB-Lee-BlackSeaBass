@@ -275,6 +275,8 @@ combined_dataset<-combined_dataset %>%
 
 
 # Flag dlrid's that have suspiciously little variance in prices.
+# Screen price variation within dealer-year-category groups, using only records
+# with usable prices. The 0.1 standard-deviation cutoff is an empirical rule.
 dlr_variability <- combined_dataset %>%
   filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
@@ -304,7 +306,8 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Flag observaions with bad prices, bad pricing data, or from weird states.
+# Apply the tilefish price and state eligibility rules after the variability
+# screen; excluded records remain in the combined data for separate handling.
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -323,7 +326,8 @@ combined_dataset<-combined_dataset %>%
 
 
 
-# Create an indicator if it is the first year that we see a dealer
+# No lagged market-share values indicates that the dealer has no prior-year
+# history in the available data.
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(starts_with("LagSharePounds"), is.na))
@@ -341,14 +345,16 @@ write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tile
 
   
 # put the unclassifieds into a dataset
-# KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
+# Preserve unresolved categories for downstream handling; only eligible rows
+# are candidates for out-of-sample prediction.
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc %in% c("Large/Medium","Large Medium", "Unclassified"))
 
 write_rds(unclassified_dataset, file=here("data_folder","main","tilefish",glue("tilefish_unclassified_dataset{out_data_string}.Rds")))
 
-# put everything else in a dataset
+# Fit on classified categories only, retaining dealer groups that passed the
+# price-variability, price-range, and state checks above.
 # discard the observations with mark_in=0 ( dealers with minimal variance, low prices
 estimation_dataset<-combined_dataset %>%
   filter(!market_desc %in% c("Large/Medium","Large Medium", "Unclassified")) %>%

@@ -131,6 +131,8 @@ ggsave(
 )
 
 
+# Build the business-as-usual shares from classified live pounds within each
+# year-semester-stock stratum; these shares are not model predictions.
 percentages <-short %>% 
   dplyr::filter(market_desc !="Unclassified")%>%
   group_by(year, semester, STOCK_ABBREV) %>%
@@ -140,6 +142,8 @@ percentages <-short %>%
   select(year, semester, market_desc, STOCK_ABBREV,pct)%>%
   rename(market_desc_new=market_desc)
 
+# Allocate each stratum's Unclassified live pounds across classified categories
+# in proportion to those observed shares for comparison with model estimates.
 unclass_baseline<-short %>%
   dplyr::filter(market_desc =="Unclassified")%>%
   left_join(percentages, by=join_by(year, semester, STOCK_ABBREV) , relationship="one-to-many") %>%
