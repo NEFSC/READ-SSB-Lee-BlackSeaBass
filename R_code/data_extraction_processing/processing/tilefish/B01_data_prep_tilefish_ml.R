@@ -276,7 +276,7 @@ combined_dataset<-combined_dataset %>%
 
 # Flag dlrid's that have suspiciously little variance in prices.
 # Screen price variation within dealer-year-category groups, using only records
-# with usable prices. The 0.1 standard-deviation cutoff is an empirical rule.
+# with usable prices.
 dlr_variability <- combined_dataset %>%
   filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
@@ -306,8 +306,7 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Apply the tilefish price and state eligibility rules after the variability
-# screen; excluded records remain in the combined data for separate handling.
+# Flag observations with bad prices or from weird states.
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -326,8 +325,7 @@ combined_dataset<-combined_dataset %>%
 
 
 
-# No lagged market-share values indicates that the dealer has no prior-year
-# history in the available data.
+# Create an indicator if it is the first year that we see a dealer
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(starts_with("LagSharePounds"), is.na))
@@ -345,8 +343,7 @@ write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tile
 
   
 # put the unclassifieds into a dataset
-# Preserve unresolved categories for downstream handling; only eligible rows
-# are candidates for out-of-sample prediction.
+# KEEP all of the observations of unclassifieds, but we are only comfortable predicting for mark_in==1  
 # We still will need to do something with these transactions, even if it's to keep them as unclassified
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc %in% c("Large/Medium","Large Medium", "Unclassified"))

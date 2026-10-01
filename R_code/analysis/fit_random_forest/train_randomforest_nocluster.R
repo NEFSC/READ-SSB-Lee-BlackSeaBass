@@ -246,7 +246,7 @@ class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
 # Replicate each transaction by landed pounds so the fit is weighted by catch
-# volume. This can greatly increase the training data's row count and memory use.
+# volume. This greatly increases the row count and memory use.
 train_expanded<-train_data %>% 
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)

@@ -443,9 +443,7 @@ combined_dataset<-combined_dataset %>%
   mutate(myl_id=as.integer(myl_id))
 
 
-# Eligibility is assessed per dealer, year, and market category using priced
-# estimation records; low within-group price variation excludes the group.
-# The 0.1 standard-deviation cutoff is an empirical modeling rule.
+# Flag dlrid's that have suspiciously little variance in prices.
 dlr_variability <- combined_dataset %>%
   filter(flag_in==TRUE)%>%
   mutate(price=value/lndlb) %>%
@@ -475,8 +473,7 @@ combined_dataset<-combined_dataset %>%
   ungroup()
 
 
-# Exclude records with unusable prices or states outside the model's target
-# population. These rules apply after the dealer-variability screen.
+# Exclude records with bad prices or wierd states 
 # this dataframe has "everything" EXCEPT records that were flagged as "questionable status" in the "A01_landings_cleaned.R"
 # To predict
 combined_dataset<-combined_dataset %>%
@@ -496,7 +493,7 @@ combined_dataset<-combined_dataset %>%
   rename(STOCK_ABBREV=stock_abbrev)
 
 
-# No lagged classified-pound shares means no prior dealer history is available.
+# Create an indicator if it is the first year that we see a dealer (no dealer history available)
 
 combined_dataset <- combined_dataset %>%
   mutate(first_dlr_year = if_all(c(LagSharePoundsJumbo, LagSharePoundsLarge,
