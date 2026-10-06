@@ -1,7 +1,7 @@
 # In which I detail how I mucked around with the data
 
 
-The intial specification ( August 15) estimated a pooled model for 2015-2024.
+The initial specification ( August 15) estimated a pooled model for 2015-2024.
 
     * Validation ROC looked nice.  
     * final fit statistics were similar to the means of the tuning fit statistics
