@@ -188,7 +188,7 @@ do "$analysis_code/00_analysis_wrapper.do"
 
 \clearpage
 
-```{r HedonicMarginals,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="The marginal effects of month, year, and state in the hedonic model capture the prevailing price premium or discount for these categorical factors relative to the omitted baseline."}
+```{r HedonicMarginals,echo=FALSE,out.width="48%", fig.show='hold', fig.align='center',fig.cap="The marginal effects of month, year, and state in the hedonic model capture the prevailing price premium or discount for these categorical factors relative to the omittied baseline."}
 knitr::include_graphics(here("results",
                               c("HedonicMonth.png",
                               "HedonicYear.png",

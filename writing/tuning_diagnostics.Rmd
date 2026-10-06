@@ -28,7 +28,7 @@ params:
 
 1. Read in the tune result and eyeball them.
 2. I didn't use the 'best' set of tuning params, but the 2nd best. 
-3. make some figures that characterize the hyperparameter tuning process.
+3. make some figures that characterize the hyperparamter tuning process.
 
 
 

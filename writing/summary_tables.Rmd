@@ -490,7 +490,7 @@ knitr::kable(
 ```
 
 
-That is amazing.I'm adding some text here, something 
+That is amazing.I'm adding some text ehre, somthing 
 \newpage
 
 ```{r build-tbl-cat-geo, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}

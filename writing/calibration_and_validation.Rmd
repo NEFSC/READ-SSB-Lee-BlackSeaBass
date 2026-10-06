@@ -445,7 +445,7 @@ p_cal
 
 
 
-Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
+Experiment with different methods of calibration. Beta fits a 3 parameter beta model (2 shape, 1 location), performing 4 distinct 1 vs all models and then re-normalalizing the results.  Iso fits an isotonic regression (4 separate 1 vs all again).  cal_estimate_multinom fits logistic splines and seemed to work better than the version that just fit a multinomial logistic.
 
 ```{r calibration_models}
 
@@ -1346,7 +1346,7 @@ test_predictions<-test_predictions %>%
 
 ```
 
-## Probabilistic Predictions of the class of each transaction
+## Probabalistic Predictions of the class of each transaction
 
 Here are the predictions (transactions and mt) for the hold-out sample, using the probability calibrations.
 
