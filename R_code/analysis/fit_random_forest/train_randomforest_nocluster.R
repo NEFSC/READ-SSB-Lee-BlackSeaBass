@@ -166,6 +166,7 @@ tm<-fold_results  %>%
   summarise(mt=mean(.estimate), .groups="drop_last")%>%
   arrange(mt)
 
+# The final fit intentionally uses the second-lowest mean Brier configuration.
 selected_params<-tm[2,] %>%
   select(-mt)
 rm(fold_results)
@@ -244,7 +245,8 @@ translate(final_spec)
 class_and_probs_metrics <- metric_set(brier_class,mn_log_loss, roc_auc)
 
 
-#expand by landed pounds 
+# Replicate each transaction by landed pounds so the fit is weighted by catch
+# volume. This greatly increases the row count and memory use.
 train_expanded<-train_data %>% 
   mutate(lndlb2=lndlb) %>%
   uncount(lndlb2)

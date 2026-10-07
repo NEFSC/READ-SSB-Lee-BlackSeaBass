@@ -1346,7 +1346,7 @@ test_predictions<-test_predictions %>%
 
 ```
 
-## Probabalistic Predictions of the class of each transaction
+## Probabilistic Predictions of the class of each transaction
 
 Here are the predictions (transactions and mt) for the hold-out sample, using the probability calibrations.
 

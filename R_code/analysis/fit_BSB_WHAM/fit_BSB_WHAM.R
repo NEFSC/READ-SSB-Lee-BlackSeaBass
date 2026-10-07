@@ -89,7 +89,8 @@ CAA <- CAA_calculation(species_itis = '167687',
                         fyr = 1989,
                         lyr = 2024)
 
-# Turn the current output into proportions at age:
+# Reshape catch-at-age to one row per region-year, fill absent ages with zero,
+# then normalize ages 1-8 within each row to form WHAM age proportions.
 CAA.wide <- CAA %>%
   pivot_wider(names_from=AGE, values_from=CAA, values_fill=0)
 
@@ -107,7 +108,8 @@ CAA.prop <- CAA.wide %>% select(REGION,YEAR,c(as.character(1:8))) %>%
 # fit <- fit_wham(BSB_2025MT_Input, do.sdrep = T, do.osa = T, do.retro = T, do.brps = T)
 # saveRDS(fit,file=here("data_folder", "assessment","BSB_2025MT_Fit.rds"))
 
-# Replace the catch proportions data:
+# WHAM observation slots 1 and 3 represent North and South commercial catch.
+# Preserve the WHAM age/year ordering when assigning these region-specific rows.
 BSB_2025MT_Input$data$catch_paa[1,,] <- CAA.prop %>% filter(REGION=='NORTH') %>% select(3:last_col()) %>% as.matrix()
 BSB_2025MT_Input$data$catch_paa[3,,] <- CAA.prop %>% filter(REGION=='SOUTH') %>% select(3:last_col()) %>% as.matrix()
 

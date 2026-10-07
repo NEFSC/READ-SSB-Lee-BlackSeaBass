@@ -48,6 +48,14 @@ Rscript --no-save --no-restore --verbose \
  #   ./writing/figure2.R \
  #  2>&1 | stdbuf -oL -eL tee ./writing/figure2.log
 
+
+######################
+# Make figures
+ Rscript --no-save --no-restore --verbose \
+   ./writing/figure_prevailing_price.R \
+  2>&1 | stdbuf -oL -eL tee ./writing/figure_prevailing_price.log &&
+
+
 # Predictions heatmap
 Rscript -e "rmarkdown::render('writing/predictions_heatmap.Rmd', output_format='html_document')" &&
 

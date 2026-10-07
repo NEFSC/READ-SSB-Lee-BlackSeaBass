@@ -189,7 +189,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 
 # Get Ready
 
-read in the final model, extract the recipe and the predictors. Read in the probabilty calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) wer excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
+read in the final model, extract the recipe and the predictors. Read in the probability calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) were excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
 
 ```{r load_final_model}
 prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
@@ -286,9 +286,9 @@ prob_names<-grep("^\\.pred_class", prob_names, value=TRUE, invert=TRUE)
 oos_data_calibration_applied<-oos_data_calibration_applied %>%
   select(c(year, STOCK_ABBREV, market_desc, original_market_category, SPECIES_ITIS, SEMESTER, weighting, livlb, any_of(prob_names), .pred_class))
 
-# predicted pounds per transaction in the validation dataset.
-# multiply the prediction by the live pounds to get predicted live pounds in each class. 
-# This loop is a ugly.  There's only 5 categories, so it's probably better to just write it out
+# Convert each available class probability to predicted live pounds per
+# transaction. Unclassified has no model probability column; the handler below
+# skips that absent column, but also suppresses any other error in the assignment.
 for (l in c("Jumbo", "Large", "Medium", "Small", "Unclassified")) {
   tryCatch({
     oos_data_calibration_applied[[paste0("pred_", l)]] <- oos_data_calibration_applied[[paste0(".pred_", l)]] * oos_data_calibration_applied$livlb

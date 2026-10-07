@@ -136,6 +136,22 @@ landings <- apply_gear_categories(landings) %>%
 # Stata label market_category: 1=Jumbo 2=Large 3=Medium 4=Small
 #                               5=Extra Small 6=Unclassified
 # -----------------------------------------------------------------------------
+table(landings$market_desc)
+# EXTRA LARGE 114
+# EXTRA SMALL 2962
+# JUMBO 319859
+# LARGE 350595
+# MEDIUM OR SELECT 275870
+# MIXED OR UNSIZED 359
+# PEE WEE (RATS) 8
+# SMALL 108505
+# UNCLASSIFIED 72045
+
+# weight_temp<-landings%>%
+#    group_by(market_desc) %>%
+#    summarise(lndTot=sum(lndlb, na.rm = TRUE)/(lbs_to_kg*1000),
+#              count=n()) 
+
 market_levels <- c("Jumbo", "Large", "Medium", "Small", "Extra Small", "Unclassified")
 
 landings <- apply_bsb_market_rebinning(landings) %>%

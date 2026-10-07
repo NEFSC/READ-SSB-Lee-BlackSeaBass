@@ -46,7 +46,8 @@ combined_dataset<-combined_dataset %>%
 
 combined_dataset<-combined_dataset %>%
   mutate(lndkg=lndlb/lbs_per_kg)%>%
-  mutate(pricekgR_CPI=valueR_CPI/lndkg)
+  mutate(pricekgR_CPI=valueR_CPI/lndkg) %>%
+  filter(pricekgR_CPI >= 0)
 
 # To upper case, rename as SMALL_COMB, and relevel to re-order
 combined_dataset<-combined_dataset %>%
@@ -58,7 +59,7 @@ combined_dataset<-combined_dataset %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("UNCLASSIFIED", "SMALL", "MEDIUM", "LARGE", "JUMBO")))
 
 price.mktcomb <- ggplot(
-  combined_dataset %>% filter(pricekgR_CPI >= 0 & pricekgR_CPI <= 10*lbs_per_kg),
+  combined_dataset %>% filter( pricekgR_CPI <= 12*lbs_per_kg),
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
@@ -106,15 +107,15 @@ ggsave(
 
 # keep only the columns I need and uncount
 combined_dataset_UW<-combined_dataset %>%
-  select(market_desc, lndlb, priceR_CPI)%>%
+  select(market_desc, lndlb, pricekgR_CPI)%>%
   uncount(lndlb)
 
 combined_dataset_UW<-combined_dataset_UW %>%
   group_by(market_desc) %>%
-  mutate(meanP=mean(priceR_CPI),
+  mutate(meanP=mean(pricekgR_CPI),
          count_obs=n(),
-         variance=var(priceR_CPI) ) %>%
-  mutate(deviations=priceR_CPI-meanP)
+         variance=var(pricekgR_CPI) ) %>%
+  mutate(deviations=pricekgR_CPI-meanP)
 
 
 combined_dataset_moments<-combined_dataset_UW %>%
@@ -123,9 +124,12 @@ combined_dataset_moments<-combined_dataset_UW %>%
   mutate(skew=(1/count_obs)*sum(deviations^3)/((1/count_obs)*sum(deviations^2))^1.5) %>%
   mutate(kurtosis=(1/count_obs)*sum(deviations^4)/((1/count_obs)*sum(deviations^2))^2) %>%
   slice_head(n=1) %>%
-  select(-c(deviations, priceR_CPI))
+  select(-c(deviations, pricekgR_CPI))
 
+cat("mean prices and variances for figure 1 caption:")
 combined_dataset_moments
+
+
 
 #write_rds(p, file=here("images","exploratory","wprice_histograms_vertical_NR.Rds"))
 ####################################################################################################
@@ -489,5 +493,7 @@ plot.data.moments<-plot.data.moments %>%
   mutate(kurtosis=(1/count_obs)*sum(deviations^4)/((1/count_obs)*sum(deviations^2))^2) %>%
   slice_head(n=1) %>%
   select(-c(deviations, LENGTH))
+
+cat("mean lengths and variances for figure 1 caption:")
 
 plot.data.moments

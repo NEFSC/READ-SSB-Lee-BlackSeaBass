@@ -1,3 +1,11 @@
+###############################################################################
+# Compare biological allocation with random-forest predictions.
+# Expects an open StockEff connection in `db1` and the market-category
+# allocation table in `mkt.res` to have been created in the current session.
+# Both sources are reshaped to matching stock/year/semester/category fields;
+# Unclassified records are excluded before computing RF-minus-biostat shares.
+# The resulting comparison plot is displayed and the joined data are exported.
+###############################################################################
 species_itis = '167687'
 fyr = 1989
 lyr = 2025

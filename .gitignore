@@ -16,9 +16,12 @@ library.bib
 *.aux
 *.out
 *.dta
+*.blg
+*.bbl
 *.png
 *.tex
 */Thumbs.db
 */*/Thumbs.db
 */*/*/Thumbs.db
 *.stswp
+!/writing/suppress-publisher.lua

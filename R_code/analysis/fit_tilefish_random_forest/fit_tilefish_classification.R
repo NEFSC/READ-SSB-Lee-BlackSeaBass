@@ -198,7 +198,7 @@ if  (search_type=="Prototype"){
 #   select(all_of(keep_cols))
 
 set.seed(2824)
-# 80% of the data in the training, 5% in the calibration sample, 15% in the validation sample
+# Split into 80% training, 5% calibration, and 15% final test data. 
 # consider splitting on strata=market_desc, although I don't think this is strictly necessary. 
 data_split <- initial_validation_split(
   data=estimation_dataset,
@@ -266,6 +266,7 @@ write_rds(metrics_by_fold, file=here("results","tilefish", glue("Tilefish_foldin
 
 # Save the tuning results to an interactive html widget that we can use to explore
 # tuning.  Low loss is good, so we want to be at the low point.  
+# Final hyperparameter selection is based on Brier Score
 tune_metrics<-tune_res  %>%
   collect_metrics() %>%
   filter(.metric == "mn_log_loss") %>%
