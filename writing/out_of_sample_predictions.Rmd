@@ -189,7 +189,7 @@ estimation_dataset<-readr::read_rds(file=here("data_folder","main","commercial",
 
 # Get Ready
 
-read in the final model, extract the recipe and the predictors. Read in the probabilty calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) wer excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
+read in the final model, extract the recipe and the predictors. Read in the probability calibration model. Read in the out-of-sample dataset and partition it based on the ``mark_in`` column. ``mark_in`` was used to mark the "classified" data as in- or out- of the estimation sample. Observations with odd prices (outlier high/low), outlier states (FL, CN, PA, SC) were excluded. Observations from dealers that reported minimal variability in prices paid were also excluded.
 
 ```{r load_final_model}
 prepped_recipe<-read_rds(file=here("results","ranger",prepped_recipe_file_name))
