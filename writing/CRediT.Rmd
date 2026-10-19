@@ -5,7 +5,7 @@ The authors are grateful to Geret DePiper, Amanda Hart, Chris Legault, Brian Lin
 
 # CRediT{-}
 
-ML: Conceptualization, Formal Analysis, Investigation, Methodology, Validation, Visualization, Writing - Original Draft, Writing -Review and Editing
+ML: Conceptualization, Formal Analysis, Investigation, Methodology, Visualization, Writing - Original Draft, Writing -Review and Editing
 
 EML: Investigation, Methodology, Visualization, Writing - Original Draft, Writing - Review and Editing
 
