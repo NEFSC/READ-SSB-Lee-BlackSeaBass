@@ -344,7 +344,7 @@ vi_data <- vi_data %>%
 
 
 p_vip <- ggplot(vi_data %>% slice_max(Importance, n=20), aes(x = Importance, y = Variable)) +
-  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_col(width = 0.7) +
   geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
   scale_x_continuous(
     name   = "Mean Decrease in (Corrected) Impurity ",
@@ -376,7 +376,7 @@ ggsave(
 
 
 p_vip <- ggplot(vi_data,  aes(x = Importance, y = Variable)) +
-  geom_col(fill = "#1B6CA8", width = 0.7) +
+  geom_col(width = 0.7) +
   geom_vline(xintercept = 0, colour = "grey20", linewidth = 0.3) +
   scale_x_continuous(
     name   = "Mean Decrease in (Corrected) Impurity ",
