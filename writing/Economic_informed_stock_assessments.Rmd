@@ -24,6 +24,10 @@ header-includes:
   - \usepackage{float}
   - \usepackage{pdflscape}
   - \usepackage{makecell}
+  - \usepackage{setspace}
+  - \doublespacing
+  - \usepackage{lineno}
+  - \linenumbers  
   - \newcommand{\blandscape}{\begin{landscape}}
   - \newcommand{\elandscape}{\end{landscape}}
 output:
