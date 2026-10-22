@@ -450,6 +450,8 @@ A change to a sampling structure could be investigated by training a classifier 
 
 \clearpage
 
+# Funding{-}
+The authors have no funding to declare. All work was completed while the authors were employees of the U.S. Government as part of their official job duties.
 
 <!---
 \clearpage
