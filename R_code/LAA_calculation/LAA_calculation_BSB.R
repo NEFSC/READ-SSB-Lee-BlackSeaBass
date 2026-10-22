@@ -32,6 +32,11 @@
 #'                             lyr = 2024,
 #'                             connection = connection)
 
+
+# Note, there is a little bad form here. The file is name LAA_calculation_BSB.R, which does
+# not match the function name (LAA_calculation.)
+
+
 # Library and Source Code/Functions
 library(ROracle)
 library(tidyverse)

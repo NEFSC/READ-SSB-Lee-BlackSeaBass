@@ -29,6 +29,11 @@
 #'                             lyr = 2024,
 #'                             connection = connection)
 
+
+# Note, there is a little bad form in this repository, since we have another piece of code (LAA_calculation_BSB.R)
+# that also defines a function with this name (LAA_calculation.)
+
+
 # Library and Source Code/Functions
 library(ROracle)
 library(tidyverse)

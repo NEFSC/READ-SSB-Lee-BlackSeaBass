@@ -114,7 +114,7 @@ bsb_stockeff<-get_intermediate_stockeff(species_itis = '167687',
 # Everything below this line works on the three data frames already
 # returned into bsb_stockeff, so no further database access is needed.
 
-
+saveRDS(bsb_stockeff, file=here("data_folder", "predictions", glue("bsb_stockeff_{predictions_vintage}.Rds")))
 
 
 # Construct a dataset of Unclassifieds,that is zero-filled for all other market categories.
