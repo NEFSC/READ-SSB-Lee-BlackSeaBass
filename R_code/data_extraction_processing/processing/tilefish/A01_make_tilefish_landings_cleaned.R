@@ -65,18 +65,19 @@ landings <- landings %>%
 # Flag observations that have no market_desc. (merge_species_codes==1). This is
 # VTR_ORPHAN_SPECIES, VTR_NOT_SOLD, VTR_NO_CATCH
 # -----------------------------------------------------------------------------
+
+
 landings <- landings %>%
   mutate(
     questionable_status = case_when(
-      status == "PZERO" & state == "VA" &
-        dlr_cflic %in% c("2147", "1148") & year >= 2021            ~ 1L,
-      status == "PZERO" & state == "DE" & dayofm == 1 & price == 0    ~ 1L,
-      status == "PZERO" & state == "DE" & dayofm == 1 & port == 80999 ~ 1L,
-      merge_species_codes==1                                       ~ 1L, 
-      is.na(value)                                                 ~ 1L, 
-      TRUE                                                         ~ 0L
+      status  %in% c("VTR_NOT_SOLD")   ~ 1L,
+      merge_species_codes==1                                          ~ 1L,
+      is.na(value)                                                    ~ 1L,
+      TRUE                                                            ~ 0L
     )
-  ) %>%
+  )
+
+landings<-landings %>%
   select(-dayofm)
 
 
@@ -119,6 +120,15 @@ landings<-landings %>%
 
 
 
+landings <- landings %>%
+  mutate(
+    questionable_status = case_when(
+      status  %in% c("VTR_NOT_SOLD")   ~ 1L,
+      is.na(grade_desc)                ~ 1L,
+      is.na(value)                     ~ 1L,
+      TRUE                             ~ 0L
+    )
+  )
 
 
 
@@ -168,6 +178,29 @@ landings <- apply_gear_categories(landings) %>%
                     levels = sort(unique(na.omit(mygear_string))))
   )
 
+
+# aggregate before rebinning
+
+aggregated<-landings %>%
+  group_by(market_desc, year) %>%
+  filter(year>=2001, questionable_status==0) %>%
+  summarise(total_lbs=sum(livlb, na.rm=TRUE),
+            total_value=sum(value, na.rm=TRUE),
+            total_count=n()) %>%
+  ungroup() %>%
+  mutate(avg_nominal_price=total_value/total_lbs) %>%
+  arrange(year, market_desc)
+
+# -----------------------------------------------------------------------------
+# Save cleaned dataset
+# -----------------------------------------------------------------------------
+saveRDS(
+  aggregated,
+  file = file.path(tile_data_dir,
+                   glue("tilefish_aggregated_prebin_{vintage_string}.Rds"))
+)
+
+
 # -----------------------------------------------------------------------------
 # Market category rebinning
 # apply_bsb_market_rebinning() recodes market_code / market_desc and returns
@@ -176,7 +209,6 @@ landings <- apply_gear_categories(landings) %>%
 # Stata label market_category: 1=Jumbo 2=Large 3=Medium 4=Small
 #                               5=Extra Small 6=Unclassified
 # -----------------------------------------------------------------------------
-
 
 # Fix this part too
 
@@ -203,8 +235,7 @@ landings <- apply_bsb_grade_cleaning(landings)
 #   36=NY 37=NC 42=PA 44=RI 45=SC 50=VT 51=VA 99=CN
 # -----------------------------------------------------------------------------
 
-
-# Min-Yang and Iran need to work on this.
+#specify order in same order as fips codes.
 state_fips_levels <- c(
   "CT", "DE", "FL", "ME", "MD", "MA", "NH", "NJ",
   "NY", "NC", "PA", "RI", "SC", "VT", "VA", "CN"
