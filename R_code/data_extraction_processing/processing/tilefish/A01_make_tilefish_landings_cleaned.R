@@ -56,33 +56,7 @@ landings <- landings %>%
     
   )
 
-# -----------------------------------------------------------------------------
-# Flag suspect records 
-# VA / DE records
-# VA: PZERO + specific dealer license numbers + year >= 2021
-# DE: PZERO + day-of-month == 1 + (price == 0 OR port == 80999)
 
-# Flag observations that have no market_desc. (merge_species_codes==1). This is
-# VTR_ORPHAN_SPECIES, VTR_NOT_SOLD, VTR_NO_CATCH
-# -----------------------------------------------------------------------------
-
-
-landings <- landings %>%
-  mutate(
-    questionable_status = case_when(
-      status  %in% c("VTR_NOT_SOLD")   ~ 1L,
-      merge_species_codes==1                                          ~ 1L,
-      is.na(value)                                                    ~ 1L,
-      TRUE                                                            ~ 0L
-    )
-  )
-
-landings<-landings %>%
-  select(-dayofm)
-
-
-
-table(landings$questionable_status)
 # -----------------------------------------------------------------------------
 # Drop unmatched species codes
 # merge_species_codes == 1: master-only rows — no matching size/grade descriptor.
@@ -119,18 +93,28 @@ landings<-landings %>%
   )
 
 
+# -----------------------------------------------------------------------------
+# Flag observations that have no market_desc. (merge_species_codes==1). This is
+# VTR_ORPHAN_SPECIES, VTR_NOT_SOLD, VTR_NO_CATCH
+# -----------------------------------------------------------------------------
+
 
 landings <- landings %>%
   mutate(
     questionable_status = case_when(
       status  %in% c("VTR_NOT_SOLD")   ~ 1L,
-      is.na(grade_desc)                ~ 1L,
-      is.na(value)                     ~ 1L,
-      TRUE                             ~ 0L
+      merge_species_codes==1                                          ~ 1L,
+      is.na(value)                                                    ~ 1L,
+      TRUE                                                            ~ 0L
     )
   )
 
+landings<-landings %>%
+  select(-dayofm)
 
+
+
+table(landings$questionable_status)
 
 
 
