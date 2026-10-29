@@ -21,8 +21,8 @@
 # Read landings_all
 # -----------------------------------------------------------------------------
 landings <- read_rds(
-  file.path(my_datapull, "data_folder", "main", "commercial",
-            glue("tile_landings_all_{in_string}.Rds"))
+  file.path(cfg$data_root, "data_folder", "main", "tilefish",
+            glue("tile_landings_all_{cfg$dataset_type}{in_string}.Rds"))
 )
 # drop rows where lndlb==0
 landings<-landings%>%
@@ -125,7 +125,7 @@ valid_vals<-c("VTR_DISCARD", "VTR_NO_CATCH", "VTR_NOT_SOLD", "VTR_ORPHAN_SPECIES
 stopifnot(!anyNA(no_codes$status), all(no_codes$status %in% valid_vals))
 
 # Saving dataset
-saveRDS(no_codes,  file = file.path(tile_data_dir, "no_codes.Rds"))
+saveRDS(no_codes,  file = file.path(tile_data_dir, glue("no_codes_{cfg$dataset_type}.Rds")))
 
 
 # -----------------------------------------------------------------------------
@@ -133,7 +133,7 @@ saveRDS(no_codes,  file = file.path(tile_data_dir, "no_codes.Rds"))
 # Stata asserts all rows matched (_merge == 3 always). Replicate with stopifnot.
 # -----------------------------------------------------------------------------
 cams_gears <- read_rds(
-  file.path(my_datapull, "data_folder", "main", "commercial",
+  file.path(cfg$data_root, "data_folder", "main", "commercial",
             glue("cams_gears_{in_string}.Rds"))
 )
 
@@ -167,13 +167,15 @@ landings <- apply_gear_categories(landings) %>%
 
 aggregated<-landings %>%
   group_by(market_desc, year) %>%
-  filter(year>=2001, questionable_status==0) %>%
+  filter(year>=2001 & questionable_status==0) %>%
   summarise(total_lbs=sum(livlb, na.rm=TRUE),
-            total_value=sum(value, na.rm=TRUE),
             total_count=n()) %>%
   ungroup() %>%
-  mutate(avg_nominal_price=total_value/total_lbs) %>%
-  arrange(year, market_desc)
+  arrange(year, market_desc) %>%
+  mutate(total_lbs=case_when(
+         total_count<=2 ~ NA, 
+         TRUE ~ total_lbs)
+  )
 
 # -----------------------------------------------------------------------------
 # Save cleaned dataset
@@ -181,7 +183,7 @@ aggregated<-landings %>%
 saveRDS(
   aggregated,
   file = file.path(tile_data_dir,
-                   glue("tilefish_aggregated_prebin_{vintage_string}.Rds"))
+                   glue("tilefish_aggregated_prebin_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 
@@ -238,7 +240,7 @@ landings <- landings %>%
 # Replicate: left_join, assert on NA deflator rows, drop them.
 # -----------------------------------------------------------------------------
 deflators <- readRDS(
-  file.path(my_datapull, "data_folder", "external",
+  file.path(cfg$data_root, "data_folder", "external",
             glue("deflatorsQ_{in_string}.Rds"))
 )
 
@@ -279,7 +281,7 @@ questionable_status<-landings%>%
 saveRDS(
   questionable_status,
   file = file.path(tile_data_dir,
-                   glue("questionable_tilefish_status_{vintage_string}.Rds"))
+                   glue("questionable_tilefish_status_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 
@@ -295,6 +297,6 @@ stopifnot(!anyNA(landings$value) )
 saveRDS(
   landings,
   file = file.path(tile_data_dir,
-                   glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+                   glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 

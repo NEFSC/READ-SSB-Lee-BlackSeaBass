@@ -1,0 +1,43 @@
+default:
+  runtype: "default"
+  threads: 2
+  dataset_type: ""
+# Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
+  data_root: !expr file.path(dirname(here::here()), "READ-SSB-Lee-BSB-DataPull")
+  
+local:
+  runtype: "local"
+  my.parallel.threads: 1
+  my.ranger.multi.threads: 5
+  my.ranger.sequential.threads: 7
+  dataset_type: ""
+  # Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
+  data_root: !expr file.path(dirname(here::here()), "READ-SSB-Lee-BSB-DataPull")
+  
+NefscContainer:
+  runtype: "NefscContainer"
+  my.parallel.threads: 2
+  my.ranger.multi.threads: 11
+  my.ranger.sequential.threads: 23
+  dataset_type: ""
+  # Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
+  data_root: !expr file.path(dirname(here::here()), "READ-SSB-Lee-BSB-DataPull")
+
+NefscGCP:
+  runtype: "NefscGCP"
+  my.parallel.threads: 2
+  my.ranger.multi.threads: 11
+  my.ranger.sequential.threads: 23
+  dataset_type: ""
+  # Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
+  data_root: !expr file.path(dirname(here::here()), "READ-SSB-Lee-BSB-DataPull")
+
+Hilo: 
+  runtype: "Hilo"
+  # Adjust these to fit your machine. Currently, only my.ranger.sequential.threads is used.
+  my.parallel.threads: 2
+  my.ranger.multi.threads: 11
+  my.ranger.sequential.threads: 23
+  dataset_type: "anon_"
+  # Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
+  data_root: !expr here::here()

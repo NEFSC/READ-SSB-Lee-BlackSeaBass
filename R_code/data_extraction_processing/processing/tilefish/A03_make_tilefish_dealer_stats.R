@@ -13,7 +13,7 @@
 
 landings <- readRDS(
   file = file.path(tile_data_dir,
-              glue("tilefish_landings_cleaned_{vintage_string}.Rds")))
+              glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds")))
 
 
 # Drop rows where lndlb is na.
@@ -80,5 +80,5 @@ lag_wide <- lag_wide %>%
 saveRDS(
   lag_wide,
   file = file.path(tile_data_dir,
-              glue("dlrid_tile_lag_stats_{vintage_string}.Rds"))
+              glue("dlrid_tile_lag_stats_{cfg$dataset_type}{vintage_string}.Rds"))
 )

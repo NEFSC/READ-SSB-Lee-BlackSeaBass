@@ -26,7 +26,7 @@ estimation_vintage<-as.character(Sys.Date())
 
 
 # Load combined_dataset
-combined_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_original_combined_dataset{vintage_string}.Rds")))
+combined_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_original_combined_dataset_{cfg$dataset_type}{vintage_string}.Rds")))
 # Keep rows that did not going into the estimation dataset
 excluded_from_estimation_dataset<-combined_dataset %>%
   filter(market_desc!="Unclassified") %>%
@@ -50,7 +50,7 @@ excluded_from_estimation_dataset<-excluded_from_estimation_dataset %>%
 
 # Load questionable status dataset
 
-qs <- readr::read_rds(file=here("data_folder","main","tilefish",glue("questionable_tilefish_status_{vintage_string}.Rds")))
+qs <- readr::read_rds(file=here("data_folder","main","tilefish",glue("questionable_tilefish_status_{cfg$dataset_type}{vintage_string}.Rds")))
 
 qs<-qs %>%
    mutate(YEAR = as.numeric(as.character(year)),
@@ -69,6 +69,6 @@ qs<-qs %>%
 excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
   group_by(YEAR, BLOCK_ID, MARKET_DESC, status) %>%
   summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
-write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_tilefish_estimation_dataset_{vintage_string}.Rds")))
+write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds")))
 
 

@@ -20,7 +20,7 @@
 
 landings <- readRDS(
   file = here("data_folder","main","tilefish",
-              glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+              glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 landings <- landings %>%
@@ -162,5 +162,5 @@ stopifnot(
 saveRDS(
   grand_ma_prices,
   file = here("data_folder", "main", "tilefish",
-              glue("tile_grand_moving_average_prices_{vintage_string}.Rds"))
+              glue("tile_grand_moving_average_prices_{cfg$dataset_type}{vintage_string}.Rds"))
 )

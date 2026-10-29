@@ -31,33 +31,33 @@ out_data_string<-Sys.Date()
 ###############################################################################
 #Read in the cleaned data, and the mini-aggregates that contain
 
-cleaned_landings<-readRDS(here("data_folder","main","tilefish", glue("tilefish_landings_cleaned_{vintage_string}.Rds"))) 
+cleaned_landings<-readRDS(here("data_folder","main","tilefish", glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))) 
 
 
 #cams_gears<-haven::read_dta(here("data_folder","main","commercial", glue("cams_gears_{vintage_string}.dta")))
 
-camsid_specific_stats<-readRDS(here("data_folder","main","tilefish", glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds")))
+camsid_specific_stats<-readRDS(here("data_folder","main","tilefish", glue("camsid_tilefish_specific_cleaned_{cfg$dataset_type}{vintage_string}.Rds")))
 camsid_specific_stats<-camsid_specific_stats%>%
   mutate(.in_camsid = 1L)
 
-daily_ma<-readRDS(here("data_folder","main","tilefish", glue("daily_tilefish_ma_{vintage_string}.Rds")))
+daily_ma<-readRDS(here("data_folder","main","tilefish", glue("daily_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds")))
 daily_ma<-daily_ma%>%
   mutate(.in_dailyma = 1L)
 
-state_ma<-readRDS(here("data_folder","main","tilefish", glue("state_tilefish_ma_{vintage_string}.Rds")))
+state_ma<-readRDS(here("data_folder","main","tilefish", glue("state_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds")))
 state_ma<-state_ma%>%
   mutate(.in_state_ma = 1L)
 
-gear_ma<-readRDS(here("data_folder","main","tilefish", glue("gear_tilefish_ma_{vintage_string}.Rds")))
+gear_ma<-readRDS(here("data_folder","main","tilefish", glue("gear_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds")))
 gear_ma<-gear_ma%>%
   mutate(.in_gear_ma = 1L)
 
 
-dlrid_lag<-readRDS(here("data_folder","main","tilefish", glue("dlrid_tile_lag_stats_{vintage_string}.Rds")))
+dlrid_lag<-readRDS(here("data_folder","main","tilefish", glue("dlrid_tile_lag_stats_{cfg$dataset_type}{vintage_string}.Rds")))
 dlrid_lag<-dlrid_lag%>%
   mutate(.in_dlrid_lag = 1L)
 
-grand_moving_average_prices<-readRDS(here("data_folder","main","tilefish", glue("tile_grand_moving_average_prices_{vintage_string}.Rds")))
+grand_moving_average_prices<-readRDS(here("data_folder","main","tilefish", glue("tile_grand_moving_average_prices_{cfg$dataset_type}{vintage_string}.Rds")))
 grand_moving_average_prices<-grand_moving_average_prices%>%
   mutate(.in_gma = 1L)
 
@@ -339,7 +339,7 @@ combined_dataset <- combined_dataset %>%
                                    "Large Medium", "Unclassified"))
 
 
-write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tilefish_original_combined_dataset{out_data_string}.Rds")))
+write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tilefish_original_combined_dataset_{cfg$dataset_type}{out_data_string}.Rds")))
 
   
 # put the unclassifieds into a dataset
@@ -348,7 +348,7 @@ write_rds(combined_dataset, file=here("data_folder","main","tilefish",glue("tile
 unclassified_dataset<-combined_dataset %>%
   filter(market_desc %in% c("Large/Medium","Large Medium", "Unclassified"))
 
-write_rds(unclassified_dataset, file=here("data_folder","main","tilefish",glue("tilefish_unclassified_dataset{out_data_string}.Rds")))
+write_rds(unclassified_dataset, file=here("data_folder","main","tilefish",glue("tilefish_unclassified_dataset_{cfg$dataset_type}{out_data_string}.Rds")))
 
 # Fit on classified categories only, retaining dealer groups that passed the
 # price-variability, price-range, and state checks above.
@@ -358,7 +358,7 @@ estimation_dataset<-combined_dataset %>%
   filter(mark_in==1) %>%
   select(-c("mark_in", "flag_in"))
 
-write_rds(estimation_dataset, file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{out_data_string}.Rds")))
+write_rds(estimation_dataset, file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{out_data_string}.Rds")))
 
 
 
