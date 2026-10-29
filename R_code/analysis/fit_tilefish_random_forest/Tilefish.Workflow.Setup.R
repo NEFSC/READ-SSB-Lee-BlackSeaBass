@@ -17,7 +17,7 @@ tune_spec <- rand_forest(
 ) %>%
   set_mode("classification") %>%
   set_engine("ranger",
-             num.threads=!!my.ranger.sequential.threads, 
+             num.threads=!!cfg$my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
              importance="none", # default, but I don't need importance for tuning.

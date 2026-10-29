@@ -23,7 +23,7 @@
 # Read
 # -----------------------------------------------------------------------------
 landings <- readRDS(file = file.path(tile_data_dir,
-  glue("tilefish_landings_cleaned_{vintage_string}.Rds"))
+  glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
   )
 
                  
@@ -179,7 +179,7 @@ camsid_specific <- landings %>%
 saveRDS(
   camsid_specific,
   file = file.path(tile_data_dir,
-                   glue("camsid_tilefish_specific_cleaned_{vintage_string}.Rds"))
+                   glue("camsid_tilefish_specific_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -227,7 +227,7 @@ daily_ma <- landings %>%
 saveRDS(
   daily_ma,
   file = file.path(tile_data_dir,
-                   glue("daily_tilefish_ma_{vintage_string}.Rds"))
+                   glue("daily_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 # =============================================================================
@@ -262,7 +262,7 @@ state_ma <- landings %>%
 saveRDS(
   state_ma,
   file = file.path(tile_data_dir,
-                   glue("state_tilefish_ma_{vintage_string}.Rds"))
+                   glue("state_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 # =============================================================================
 # Output 5: gear_ma
@@ -294,6 +294,6 @@ gear_ma <- landings %>%
 saveRDS(
   gear_ma,
   file = file.path(tile_data_dir,
-                   glue("gear_tilefish_ma_{vintage_string}.Rds"))
+                   glue("gear_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 

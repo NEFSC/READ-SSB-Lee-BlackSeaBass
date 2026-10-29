@@ -1,2 +1,4 @@
 !ambitious_out_of_sample*.Rds
 !out_of_sample*.Rds
+!tilefish_out_of_sample*.csv
+!tilefish_out_of_sample*.Rds

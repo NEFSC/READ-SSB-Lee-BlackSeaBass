@@ -61,6 +61,8 @@ conflicts_prefer(viridis::viridis_pal())
 conflicts_prefer(vip::vi)
 here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classification.R")
 
+cfg <- config::get(file = here("config.yml"))
+
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 #Set up model type
@@ -74,32 +76,8 @@ search_type<-"Initial"
 testing_fraction<-1.0  
 start_time<-Sys.time()
 
-# Determine what platform the code is running on and set the number of threads for ranger
-platform <- Sys.info()['sysname']
-# check the name of the effective_user
-if(platform == 'Linux'){
-  if (grep("PREEMPT_DYNAMIC",Sys.info()['version'])==1){
-    runClass<-'DynamicContainer'
-  } else{ 
-    runClass <- 'Container'
-  }
-}
-
-
-if(platform == 'Windows'){
-  runClass<-'Windows'
-}
-
-if (runClass %in% c('Local', 'Windows')){
-  my.parallel.threads<-1
-  my.ranger.multi.threads<-5
-} else if (runClass %in% c('Container','DynamicContainer')){ 
-  
-  # on the container, you're allocated 24 threads	and 90 (or 96gb of memory)
-  # Because the dataset is big, you are much better off doing 2 and 11 (or 1 and 22)
-  my.parallel.threads<-2
-  my.ranger.multi.threads<-11
-  my.ranger.sequential.threads<-23
+# Logging if you're at NEFSC. consider adding  'Hilo' to the if statement.
+if (cfg$runtype %in% c('NefscContainer','NefscGCP')){ 
   
   # Kill background logger if it is on
   system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
@@ -127,19 +105,22 @@ descriptive_images<-here("images","tilefish", "descriptive")
 exploratory_images<-here("images","tilefish", "exploratory")
 
 
-vintage_string<-list.files(here("data_folder","main","tilefish"), pattern=glob2rx("tilefish_estimation_dataset*Rds"))
-vintage_string<-gsub("tilefish_estimation_dataset","",vintage_string)
+vintage_string<-list.files(here("data_folder","main","tilefish"), 
+                           pattern=glob2rx(glue(("tilefish_estimation_dataset_{cfg$dataset_type}*.Rds")))
+                            )
+
+vintage_string<-gsub(glue("tilefish_estimation_dataset_{cfg$dataset_type}"),"",vintage_string)
 vintage_string<-gsub(".Rds","",vintage_string)
 vintage_string<-max(vintage_string)
 
 #Tuning vintage is purposely set as "today"
 tuning_vintage<-as.character(Sys.Date())
 
-data_save_name<-glue("tilefish_data_split{tuning_vintage}.Rds")
-tune_file_name<-glue("tilefish_tuning{tuning_vintage}.Rds")
-best_param_file_name<-glue("tilefish_best_parameters{tuning_vintage}.Rds")
+data_save_name<-glue("tilefish_data_split_{cfg$dataset_type}{tuning_vintage}.Rds")
+tune_file_name<-glue("tilefish_tuning_{cfg$dataset_type}{tuning_vintage}.Rds")
+best_param_file_name<-glue("tilefish_best_parameters_{cfg$dataset_type}{tuning_vintage}.Rds")
 
-final_fit_file_name <- glue("tilefish_final_fit_{tuning_vintage}.Rds")
+final_fit_file_name <- glue("tilefish_final_fit_{cfg$dataset_type}{tuning_vintage}.Rds")
 
 
 
@@ -158,7 +139,7 @@ class_colours <- c(
 
 
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset{vintage_string}.Rds"))
+estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds"))
 ) %>% 
   mutate(market_desc = gsub("[/-]", " ", market_desc))
 
@@ -260,7 +241,7 @@ write_rds(tune_res, file=here("results","tilefish", tune_file_name))
 
 # metrics by fold
 metrics_by_fold <- collect_metrics(tune_res, summarize = FALSE)  # fold-level
-write_rds(metrics_by_fold, file=here("results","tilefish", glue("Tilefish_folding_metrics_by_fold{tuning_vintage}.Rds")))
+write_rds(metrics_by_fold, file=here("results","tilefish", glue("Tilefish_folding_metrics_by_fold_{cfg$dataset_type}{tuning_vintage}.Rds")))
 
 
 
@@ -283,7 +264,7 @@ p<- plot_ly(tune_metrics,
             colorscale="Hot",
             reversescale=TRUE
 )
-saveWidget(p, here("results","tilefish",glue("tilefish_tune_mn_log_loss_{tuning_vintage}.html")), selfcontained = TRUE)
+saveWidget(p, here("results","tilefish",glue("tilefish_tune_mn_log_loss_{cfg$dataset_type}{tuning_vintage}.html")), selfcontained = TRUE)
 rm(p)
 
 
@@ -304,7 +285,7 @@ final_spec <- rand_forest(
   finalize_model(best_paramsA) %>% 
   set_mode("classification") %>%
   set_engine("ranger",
-             num.threads=!!my.ranger.sequential.threads, 
+             num.threads=!!cfg$my.ranger.sequential.threads, 
              na.action="na.learn", 
              respect.unordered.factors="order",
              importance="impurity", #
@@ -342,7 +323,7 @@ variable_importance_plot<-vip(fitted_model, num_features=20L)
 
 variable_importance_plot
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("VIP_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("VIP_{cfg$dataset_type}{modeltype}.png")), 
   plot = variable_importance_plot)
 
 
@@ -364,11 +345,13 @@ first_train_predictions <- augment(trained_wf, new_data = train_data)
     
 #rm(metrics_by_fold)
 
-
-#Kill the logger, I'm done with the heavy lifting.
-system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
-message("CPU logger stopped")
-
+if (cfg$runtype %in% c('NefscContainer','NefscGCP')){ 
+  
+  #Kill the logger, I'm done with the heavy lifting.
+  system("pkill -f 'while true.*top'", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  message("CPU logger stopped")
+  
+}
 
 
 
@@ -392,25 +375,27 @@ message("Creating model fit figures")
 
 # PR Curve
 final_pr <- first_train_predictions %>%
-  pr_curve(market_desc, any_of(prob_names)) %>%
+  pr_curve(market_desc, all_of(prob_names)) %>%
   autoplot()
-
+message("Class of prob_names: ", class(prob_names))
+print(prob_names)
 final_pr
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("train_PR_curve_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_PR_curve_{cfg$dataset_type}{modeltype}.png")), 
   plot = final_pr)
 
-
+message("Class of prob_names: ", class(prob_names))
+print(prob_names)
 # ROC Curve
 train_roc <- first_train_predictions %>%
-  roc_curve(market_desc, any_of(prob_names)) %>%
+  roc_curve(market_desc, all_of(prob_names)) %>%
   autoplot()
 
 train_roc
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("train_ROC_curve_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("train_ROC_curve_{cfg$dataset_type}{modeltype}.png")), 
   plot = train_roc)
 
 
@@ -423,7 +408,7 @@ final_cm <- first_train_predictions %>%
 final_cm
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("classification_confusion_matrix_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("classification_confusion_matrix_{cfg$dataset_type}{modeltype}.png")), 
   plot = final_cm)
 
 
@@ -486,7 +471,7 @@ p_cal
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_test_calibrated_windowed_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("validation_test_calibrated_windowed_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_cal)
 
 
@@ -519,7 +504,7 @@ calibrate_beta <- cal_estimate_beta(
 
 
 
-write_rds(calibrate_beta, file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+write_rds(calibrate_beta, file = here("results", "tilefish", glue("calibrate_beta_{cfg$dataset_type}{tuning_vintage}.Rds")))
 
 
 
@@ -602,7 +587,7 @@ iso_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("isotonic_calibration_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("isotonic_calibration_{cfg$dataset_type}{modeltype}.png")), 
   plot = iso_applied_window)
 
 
@@ -621,7 +606,7 @@ multi_applied_window <- cal_plot_windowed(
 multi_applied_window
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("multinomial_calibration_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("multinomial_calibration_{cfg$dataset_type}{modeltype}.png")), 
   plot = multi_applied_window)
 
 
@@ -639,7 +624,7 @@ beta_applied_window
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("beta_calibration_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("beta_calibration_{cfg$dataset_type}{modeltype}.png")), 
   plot = beta_applied_window)
 
 
@@ -664,7 +649,7 @@ roc_plot <- autoplot(roc_data)
 roc_plot
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("validation_ROC_beta_{cfg$dataset_type}{modeltype}.png")), 
   plot = roc_plot)
 
 
@@ -715,7 +700,7 @@ p_facet
 # save the plot
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("colorful_facet_beta_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("colorful_facet_beta_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_facet)
 
 
@@ -779,7 +764,7 @@ calibrated <- cal_plot_windowed(
 calibrated
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{cfg$dataset_type}{modeltype}.png")), 
   plot = calibrated)
 
 
@@ -827,7 +812,7 @@ p_cal_test_beta
 
 #save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_COLOR{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("BETA_calibration_applied_test_data_{cfg$dataset_type}COLOR{modeltype}.png")), 
   plot = p_cal_test_beta)
 
 #publication ready curves on uncalibrated
@@ -885,7 +870,7 @@ p_uncal
 
 # save
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_color_ready_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("uncalibrated_color_ready_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_uncal)
 
 
@@ -905,7 +890,7 @@ roc_plot2
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot_test_data{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_ROC_plot_test_data_{cfg$dataset_type}{modeltype}.png")), 
   plot = roc_plot2)
 
 
@@ -962,7 +947,7 @@ p_facetUW
 #SAVE
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_ROC_{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("calibrated_pubready_ROC_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_facetUW)
 
 # calibration gains
@@ -1110,7 +1095,7 @@ combinedplot <- combined_data %>%
 # Save
 ggsave(
   filename = here("images", "tilefish", "exploratory", 
-                  glue("2007vs2015_lengths_plot_{modeltype}.png")), 
+                  glue("2007vs2015_lengths_plot_{cfg$dataset_type}{modeltype}.png")), 
   plot = combinedplot,
   width = 12,
   height = 8,
@@ -1268,17 +1253,20 @@ digits=0, align=c("l",rep('r',times=4)))
 
 # out of sample predictions with beta calibration
 
-raw_oos_data_vintage_string <- list.files(here("data_folder", "main", "tilefish"), pattern = glob2rx("tilefish_unclassified_dataset*Rds")) 
-raw_oos_data_vintage_string <- gsub("tilefish_unclassified_dataset", "", raw_oos_data_vintage_string) 
+raw_oos_data_vintage_string <- list.files(here("data_folder", "main", "tilefish"), pattern = glob2rx(glue(
+  "tilefish_unclassified_dataset_{cfg$dataset_type}*.Rds")) 
+)
+raw_oos_data_vintage_string <- gsub(glue(
+  "tilefish_unclassified_dataset_{cfg$dataset_type}"), "", raw_oos_data_vintage_string) 
 raw_oos_data_vintage_string <- gsub(".Rds", "", raw_oos_data_vintage_string) 
 raw_oos_data_vintage_string <- max(raw_oos_data_vintage_string)
 
 # raw out-of-sample data
 oos_data <- readr::read_rds(
-  file = here("data_folder", "main", "tilefish", glue("tilefish_unclassified_dataset{raw_oos_data_vintage_string}.Rds")))
+  file = here("data_folder", "main", "tilefish", glue("tilefish_unclassified_dataset_{cfg$dataset_type}{raw_oos_data_vintage_string}.Rds")))
 
 
-calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{tuning_vintage}.Rds")))
+calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{cfg$dataset_type}{tuning_vintage}.Rds")))
 
 # this is for out of sample dataset for unclassified
 final_workflow <- extract_workflow(first_tilefish_model)
@@ -1362,7 +1350,7 @@ YRS_predictions <- oos_predictions_calibrated %>%
 
 
 
-readr::write_csv(YRS_predictions, here("data_folder", "predictions", glue("tilefish_out_of-sample_predictions_{vintage_string}.csv")))
+readr::write_csv(YRS_predictions, here("data_folder", "predictions", glue("tilefish_out_of_sample_predictions_{cfg$dataset_type}{vintage_string}.csv")))
 
 
 
@@ -1450,7 +1438,7 @@ p_predictions
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_2004_2013{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_2004_2013_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_predictions)
 
 
@@ -1521,7 +1509,7 @@ p_predictions2
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_all_years{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("Final_Predictions_histogram_all_years_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_predictions2)
 
 
@@ -1645,7 +1633,7 @@ p_mtcm
 
 
 ggsave(
-  filename = here("images", "tilefish", "exploratory", glue("Final_ConfusionMatrix_MT{modeltype}.png")), 
+  filename = here("images", "tilefish", "exploratory", glue("Final_ConfusionMatrix_MT_{cfg$dataset_type}{modeltype}.png")), 
   plot = p_mtcm)
 
 

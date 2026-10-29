@@ -22,8 +22,7 @@ conflicts_prefer(dplyr::arrange)
 
 here::i_am("R_code/data_extraction_processing/processing/tilefish/00_tilefish_processing_wrapper.R")
 
-my_datapull<-dirname(here())
-my_datapull<-file.path(my_datapull,"READ-SSB-Lee-BSB-DataPull")
+cfg <- config::get(file = here("config.yml"))
 
 tile_data_dir<-here("data_folder", "main", "tilefish")     
 dir.create(tile_data_dir, showWarnings=FALSE)
@@ -46,7 +45,7 @@ source(here("R_code", "data_extraction_processing","processing", "tilefish", "A0
 #final data prep.
 # there's no great reason to have these start with B, execpt that the A files were previously made by stata.
 source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B01_data_prep_tilefish_ml.R"))
-# aggreggate landings that were excluded
+# aggregate landings that were excluded
 
 source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B02_handle_not_in_tilefish_estimation_dataset.R"))
     
