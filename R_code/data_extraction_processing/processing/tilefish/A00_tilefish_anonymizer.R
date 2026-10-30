@@ -197,3 +197,4 @@ landings_anon<-landings_anon %>%
  saveRDS(keyfiles,  file =  here("data_folder","main", "tilefish",
                                      glue("tilefish_keyfiles_{in_string}.Rds")))
 
+ cat("A00_tilefish_anonymizer.R finished \n")

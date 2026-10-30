@@ -359,6 +359,8 @@ estimation_dataset<-combined_dataset %>%
   select(-c("mark_in", "flag_in"))
 
 write_rds(estimation_dataset, file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{out_data_string}.Rds")))
+cat("B01_data_prep_tilefish_ml.R finished \n")
+cat(glue("Dataset produced: tilefish_estimation_dataset_{cfg$dataset_type}{out_data_string}.Rds" \n))
 
 
 

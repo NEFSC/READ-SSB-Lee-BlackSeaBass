@@ -71,4 +71,5 @@ excluded_from_estimation_dataset<-rbind(excluded_from_estimation_dataset,qs) %>%
   summarise(LANDINGS_CAMS_KG=sum(LANDINGS_CAMS_KG, na.rm=TRUE),.groups="drop_last")
 write_rds(excluded_from_estimation_dataset, file=here("data_folder","predictions",glue("excluded_from_tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds")))
 
+cat("B02_handle_not_in_tilefish_estimation_dataset.R finished \n")
 

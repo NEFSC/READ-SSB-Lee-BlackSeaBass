@@ -295,3 +295,4 @@ saveRDS(
                    glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
+cat("A01_make_tilefish_landings_cleaned.R finished \n")

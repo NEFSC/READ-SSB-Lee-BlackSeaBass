@@ -138,6 +138,8 @@ class_colours <- c(
 
 
 
+cat(glue("Fitting ML model using tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds \n" ))
+
 # Load data from data_prep_ml.Rmd
 estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds"))
 ) %>% 

@@ -164,3 +164,5 @@ saveRDS(
   file = here("data_folder", "main", "tilefish",
               glue("tile_grand_moving_average_prices_{cfg$dataset_type}{vintage_string}.Rds"))
 )
+
+cat("A04_make_tilefish_moving_average_prices.R finished \n")
