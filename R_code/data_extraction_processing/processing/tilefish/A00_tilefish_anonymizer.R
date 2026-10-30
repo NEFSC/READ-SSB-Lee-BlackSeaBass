@@ -77,16 +77,120 @@ landings <- read_rds(
 # Anonymize
 # -----------------------------------------------------------------------------
 
-landings_anon<-landings
 
 
 
+#explictly set RNG state
+RNGkind( kind="Mersenne-Twister",normal.kind="Inversion", sample.kind="Rejection")
+
+
+generate_anonymized_key <- function(data, id_col, seed = NULL) {
+  # NOTE: Explicit seed argument avoids non-reproducible keys across runs
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  data %>%
+    # Subset to distinct IDs using tidy-eval data masking
+    distinct({{ id_col }}) %>%
+    # Assign uniform pseudo-random deviate for sorting
+    mutate(rand_u = runif(n())) %>%
+    # Reorder table based on random draw
+    arrange(rand_u) %>%
+    # Assign consecutive integers; glue syntax dynamic LHS constructs "new_<colname>"
+    mutate("new_{{ id_col }}" := if_else(is.na({{ id_col }}), 
+                                         NA_integer_, 
+                                         row_number()
+                                         )
+           ) %>%    
+    # Remove temporary sorting column
+    select(-rand_u)
+}
+
+
+docid_keys  <- generate_anonymized_key(landings, docid, seed = 101)
+camsid_keys <- generate_anonymized_key(landings, camsid, seed = 25152)
+permit_keys <- generate_anonymized_key(landings, permit, seed = 8971)
+hullid_keys <- generate_anonymized_key(landings, hullid, seed = 1546)
+dlrid_keys <- generate_anonymized_key(landings, dlrid, seed = 142367)
+area_keys <- generate_anonymized_key(landings, area, seed = 54871)
+port_keys <- generate_anonymized_key(landings, port, seed = 57431)
+
+
+keyfiles<-list()
+keyfiles[[1]]<-docid_keys
+keyfiles[[2]]<-camsid_keys
+keyfiles[[3]]<-permit_keys
+keyfiles[[4]]<-hullid_keys
+keyfiles[[5]]<-dlrid_keys
+keyfiles[[6]]<-area_keys
+keyfiles[[7]]<-port_keys
+
+
+names(keyfiles)<-c("docid_keys", "camsid_keys", "permit_keys", "hullid_keys", "dlrid_keys", "area_keys","port_keys")
+
+
+landings_anon<-landings %>%
+  left_join(docid_keys, by=join_by(docid==docid) )%>%
+  select(-docid)%>%
+  rename(docid=new_docid)
+
+landings_anon<-landings_anon %>%
+  left_join(camsid_keys, by=join_by(camsid==camsid) )%>%
+  select(-camsid)%>%
+  rename(camsid=new_camsid)
+
+
+landings_anon<-landings_anon %>%
+  left_join(permit_keys, by=join_by(permit==permit) )%>%
+  select(-permit)%>%
+  rename(permit=new_permit)
+
+landings_anon<-landings_anon %>%
+  left_join(hullid_keys, by=join_by(hullid==hullid) )%>%
+  select(-hullid)%>%
+  rename(hullid=new_hullid)
+
+landings_anon<-landings_anon %>%
+  left_join(dlrid_keys, by=join_by(dlrid==dlrid) )%>%
+  select(-dlrid)%>%
+  rename(dlrid=new_dlrid)
+
+landings_anon<-landings_anon %>%
+  left_join(area_keys, by=join_by(area==area) )%>%
+  select(-area)%>%
+  rename(area=new_area)
+
+landings_anon<-landings_anon %>%
+  left_join(port_keys, by=join_by(port==port) )%>%
+  select(-port)%>%
+  rename(port=new_port)
+
+#reorder
+stopifnot(ncol(landings_anon)==ncol(landings))
+
+landings_anon <- landings_anon %>% 
+  select(all_of(names(landings)))
+
+  
+
+# truncate dlr_date to just the date (without the time)
+# generate a fishing time variable that is record_land-record_sail
+
+landings_anon<-landings_anon %>%
+  mutate(fishing_time=as.numeric(record_land-record_sail, units="days"),
+      dlr_date = as_date(dlr_date))
+
+landings_anon<-landings_anon %>%
+  select(-c(dlr_stid, dlr_cflic, merge_species_codes, rec, record_land, record_sail) )
 
 # -----------------------------------------------------------------------------
 # Save anonymized dataset and keyfile
 # -----------------------------------------------------------------------------
-
-saveRDS(landings_anon,  file =  here("data_folder","main", "tilefish",
-                                     glue("tile_landings_all_anon_{in_string}.Rds")))
-        
+ 
+ saveRDS(landings_anon,  file =  here("data_folder","main", "tilefish",
+                                      glue("tile_landings_all_anon_{in_string}.Rds")))
+         
+ saveRDS(keyfiles,  file =  here("data_folder","main", "tilefish",
+                                     glue("tilefish_keyfiles_{in_string}.Rds")))
 
