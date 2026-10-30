@@ -32,12 +32,12 @@ conflicts_prefer(dplyr::arrange)
 here::i_am("R_code/data_extraction_processing/processing/tilefish/A00_tilefish_anonymizer.R")
 
 cfg <- config::get(file = here("config.yml"))
-
+stopifnot(cfg$runtype=="NefscContainer")
 tile_data_dir<-here("data_folder", "main", "tilefish")     
 dir.create(tile_data_dir, showWarnings=FALSE)
 
 commercial_data_dir<-here("data_folder", "main", "commercial")     
-dir.create(tile_data_dir, showWarnings=FALSE)
+dir.create(commercial_data_dir, showWarnings=FALSE)
 
 
 in_string      <- "2026-06-09"  
