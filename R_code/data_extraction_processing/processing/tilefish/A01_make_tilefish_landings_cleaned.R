@@ -21,7 +21,7 @@
 # Read landings_all
 # -----------------------------------------------------------------------------
 landings <- read_rds(
-  file.path(cfg$data_root, "data_folder", "main", "tilefish",
+  file.path(cfg$data_root, "data_folder", "main", "commercial", "tilefish",
             glue("tile_landings_all_{cfg$dataset_type}{in_string}.Rds"))
 )
 # drop rows where lndlb==0

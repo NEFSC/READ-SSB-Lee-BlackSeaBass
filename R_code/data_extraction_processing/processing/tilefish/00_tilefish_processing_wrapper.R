@@ -24,7 +24,7 @@ here::i_am("R_code/data_extraction_processing/processing/tilefish/00_tilefish_pr
 
 cfg <- config::get(file = here("config.yml"))
 
-tile_data_dir<-here("data_folder", "main", "tilefish")     
+tile_data_dir<-here("data_folder", "main", "commercial", "tilefish")     
 dir.create(tile_data_dir, showWarnings=FALSE)
 
 in_string      <- "2026-06-09"  
