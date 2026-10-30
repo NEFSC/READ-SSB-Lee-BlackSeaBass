@@ -72,7 +72,10 @@ landings <- read_rds(
   file.path(cfg$data_root, "data_folder", "main", "tilefish",
             glue("tile_landings_all_{in_string}.Rds"))
 )
-
+# fill dlr_date with record_land if it is missing. This happens for "not sold" records 
+landings <- landings %>%
+  mutate(dlr_date = if_else(is.na(dlr_date), record_land, dlr_date) 
+)
 # -----------------------------------------------------------------------------
 # Anonymize
 # -----------------------------------------------------------------------------

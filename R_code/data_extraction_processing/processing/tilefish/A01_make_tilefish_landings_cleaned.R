@@ -28,11 +28,6 @@ landings <- read_rds(
 landings<-landings%>%
   filter(lndlb != 0) 
 
-# fill dlr_date with record_land if it is missing. This happens for "not sold" records
-landings <- landings %>%
-  mutate( 
-    dlr_date = if_else(is.na(dlr_date), record_land, dlr_date) 
-  )
 
 
 # # -----------------------------------------------------------------------------
