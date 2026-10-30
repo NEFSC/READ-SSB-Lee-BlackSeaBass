@@ -63,6 +63,9 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 
 cfg <- config::get(file = here("config.yml"))
 
+
+
+
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 #Set up model type
@@ -100,12 +103,15 @@ dir.create(here("images","tilefish"), showWarnings=FALSE)
 dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE)
 dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE)
 
+
+
 my_images<-here("images", "tilefish")
 descriptive_images<-here("images","tilefish", "descriptive")
 exploratory_images<-here("images","tilefish", "exploratory")
 
+tile_data_dir<-here("data_folder", "main", "commercial", "tilefish")     
 
-vintage_string<-list.files(here("data_folder","main","tilefish"), 
+vintage_string<-list.files(file.path(tile_data_dir), 
                            pattern=glob2rx(glue(("tilefish_estimation_dataset_{cfg$dataset_type}*.Rds")))
                             )
 
@@ -140,9 +146,9 @@ class_colours <- c(
 
 cat(glue("Fitting ML model using tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds \n" ))
 
+
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds"))
-) %>% 
+estimation_dataset<-readr::read_rds(file=file.path(tile_data_dir ,glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds")))%>% 
   mutate(market_desc = gsub("[/-]", " ", market_desc))
 
 set.seed(4587315)

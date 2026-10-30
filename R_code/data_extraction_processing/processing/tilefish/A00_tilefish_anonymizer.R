@@ -33,7 +33,7 @@ here::i_am("R_code/data_extraction_processing/processing/tilefish/A00_tilefish_a
 
 cfg <- config::get(file = here("config.yml"))
 stopifnot(cfg$runtype=="NefscContainer")
-tile_data_dir<-here("data_folder", "main", "tilefish")     
+tile_data_dir<-here("data_folder", "main", "commercial", "tilefish")     
 dir.create(tile_data_dir, showWarnings=FALSE)
 
 commercial_data_dir<-here("data_folder", "main", "commercial")     
@@ -69,7 +69,7 @@ file.copy(
 # Read landings_all
 # -----------------------------------------------------------------------------
 landings <- read_rds(
-  file.path(cfg$data_root, "data_folder", "main", "tilefish",
+  file.path(cfg$data_root, "data_folder", "main", "commercial", "tilefish",
             glue("tile_landings_all_{in_string}.Rds"))
 )
 # fill dlr_date with record_land if it is missing. This happens for "not sold" records 
@@ -191,10 +191,11 @@ landings_anon<-landings_anon %>%
 # Save anonymized dataset and keyfile
 # -----------------------------------------------------------------------------
  
- saveRDS(landings_anon,  file =  here("data_folder","main", "tilefish",
+ saveRDS(landings_anon,  file =  file.path(tile_data_dir,
                                       glue("tile_landings_all_anon_{in_string}.Rds")))
          
- saveRDS(keyfiles,  file =  here("data_folder","main", "tilefish",
+ saveRDS(keyfiles,  file =   file.path(tile_data_dir,
                                      glue("tilefish_keyfiles_{in_string}.Rds")))
+
 
  cat("A00_tilefish_anonymizer.R finished \n")
