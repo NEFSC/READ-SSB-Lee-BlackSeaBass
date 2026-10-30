@@ -185,7 +185,7 @@ landings_anon<-landings_anon %>%
       dlr_date = as_date(dlr_date))
 
 landings_anon<-landings_anon %>%
-  select(-c(dlr_stid, dlr_cflic, merge_species_codes, rec, record_land, record_sail) )
+  select(-c(dlr_stid, dlr_cflic, rec, record_land, record_sail) )
 
 # -----------------------------------------------------------------------------
 # Save anonymized dataset and keyfile
