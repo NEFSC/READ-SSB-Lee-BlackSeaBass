@@ -16,11 +16,8 @@
 #   Reproduced with slider::slide_index() using .before=14, .after=-1.
 ###############################################################################
 
-
-
-landings <- readRDS(
-  file = here("data_folder","main","tilefish",
-              glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
+landings <- readRDS(file = file.path(tile_data_dir,
+                                     glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
 landings <- landings %>%
@@ -161,6 +158,8 @@ stopifnot(
 
 saveRDS(
   grand_ma_prices,
-  file = here("data_folder", "main", "tilefish",
+  file = file.path(tile_data_dir,
               glue("tile_grand_moving_average_prices_{cfg$dataset_type}{vintage_string}.Rds"))
 )
+
+cat("A04_make_tilefish_moving_average_prices.R finished \n")

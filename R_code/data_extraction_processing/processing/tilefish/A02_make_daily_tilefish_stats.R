@@ -297,3 +297,4 @@ saveRDS(
                    glue("gear_tilefish_ma_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
+cat("A02_make_daily_tilefish_stats.R finished \n")

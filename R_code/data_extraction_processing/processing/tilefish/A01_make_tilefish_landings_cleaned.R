@@ -21,18 +21,13 @@
 # Read landings_all
 # -----------------------------------------------------------------------------
 landings <- read_rds(
-  file.path(cfg$data_root, "data_folder", "main", "tilefish",
+  file.path(cfg$data_root, "data_folder", "main", "commercial", "tilefish",
             glue("tile_landings_all_{cfg$dataset_type}{in_string}.Rds"))
 )
 # drop rows where lndlb==0
 landings<-landings%>%
   filter(lndlb != 0) 
 
-# fill dlr_date with record_land if it is missing. This happens for "not sold" records
-landings <- landings %>%
-  mutate( 
-    dlr_date = if_else(is.na(dlr_date), record_land, dlr_date) 
-  )
 
 
 # # -----------------------------------------------------------------------------
@@ -300,3 +295,4 @@ saveRDS(
                    glue("tilefish_landings_cleaned_{cfg$dataset_type}{vintage_string}.Rds"))
 )
 
+cat("A01_make_tilefish_landings_cleaned.R finished \n")

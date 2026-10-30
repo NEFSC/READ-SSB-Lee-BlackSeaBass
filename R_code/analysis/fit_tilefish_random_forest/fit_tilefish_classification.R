@@ -63,6 +63,9 @@ here::i_am("R_code/analysis/fit_tilefish_random_forest/fit_tilefish_classificati
 
 cfg <- config::get(file = here("config.yml"))
 
+
+
+
 # Set these two to control the size of the dataset. Useful for making sure code 
 # works.
 #Set up model type
@@ -100,12 +103,15 @@ dir.create(here("images","tilefish"), showWarnings=FALSE)
 dir.create(here("images","tilefish", "descriptive"), showWarnings=FALSE)
 dir.create(here("images","tilefish", "exploratory"), showWarnings=FALSE)
 
+
+
 my_images<-here("images", "tilefish")
 descriptive_images<-here("images","tilefish", "descriptive")
 exploratory_images<-here("images","tilefish", "exploratory")
 
+tile_data_dir<-here("data_folder", "main", "commercial", "tilefish")     
 
-vintage_string<-list.files(here("data_folder","main","tilefish"), 
+vintage_string<-list.files(file.path(tile_data_dir), 
                            pattern=glob2rx(glue(("tilefish_estimation_dataset_{cfg$dataset_type}*.Rds")))
                             )
 
@@ -138,9 +144,11 @@ class_colours <- c(
 
 
 
+cat(glue("Fitting ML model using tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds \n" ))
+
+
 # Load data from data_prep_ml.Rmd
-estimation_dataset<-readr::read_rds(file=here("data_folder","main","tilefish",glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds"))
-) %>% 
+estimation_dataset<-readr::read_rds(file=file.path(tile_data_dir ,glue("tilefish_estimation_dataset_{cfg$dataset_type}{vintage_string}.Rds")))%>% 
   mutate(market_desc = gsub("[/-]", " ", market_desc))
 
 set.seed(4587315)
@@ -976,11 +984,11 @@ rCalLoss
 # join key into lengths, explore combined datasets, explore 2007 and min-yang sent another year to look out.
 
 
-seven <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2007.csv"))
+seven <- readr::read_csv(file = file.path(tile_data_dir, "tilefish_lengths2007.csv"))
 
-key <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_keyfile.csv"))
+key <- readr::read_csv(file =file.path(tile_data_dir, "tilefish_keyfile.csv"))
 
-fifteen <- readr::read_csv(file = here("data_folder", "main", "tilefish", "tilefish_lengths2015.csv"))
+fifteen <- readr::read_csv(file = file.path(tile_data_dir,"tilefish_lengths2015.csv"))
 
 
 # Need to combine my categories
@@ -1253,7 +1261,7 @@ digits=0, align=c("l",rep('r',times=4)))
 
 # out of sample predictions with beta calibration
 
-raw_oos_data_vintage_string <- list.files(here("data_folder", "main", "tilefish"), pattern = glob2rx(glue(
+raw_oos_data_vintage_string <- list.files(file.path(tile_data_dir), pattern = glob2rx(glue(
   "tilefish_unclassified_dataset_{cfg$dataset_type}*.Rds")) 
 )
 raw_oos_data_vintage_string <- gsub(glue(
@@ -1263,7 +1271,7 @@ raw_oos_data_vintage_string <- max(raw_oos_data_vintage_string)
 
 # raw out-of-sample data
 oos_data <- readr::read_rds(
-  file = here("data_folder", "main", "tilefish", glue("tilefish_unclassified_dataset_{cfg$dataset_type}{raw_oos_data_vintage_string}.Rds")))
+  file = file.path(tile_data_dir, glue("tilefish_unclassified_dataset_{cfg$dataset_type}{raw_oos_data_vintage_string}.Rds")))
 
 
 calibrate_beta <- readr::read_rds(file = here("results", "tilefish", glue("calibrate_beta_{cfg$dataset_type}{tuning_vintage}.Rds")))
@@ -1644,6 +1652,7 @@ ggsave(
 
 
 
+message("fit_tilefish_classification.R successfully finished \n")
 
 
 

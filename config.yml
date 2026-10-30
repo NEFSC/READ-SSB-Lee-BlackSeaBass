@@ -1,6 +1,8 @@
 default:
   runtype: "default"
-  threads: 2
+  my.parallel.threads: 1
+  my.ranger.multi.threads: 5
+  my.ranger.sequential.threads: 7
   dataset_type: ""
 # Resolves to sibling directory ../READ-SSB-Lee-BSB-DataPull
   data_root: !expr file.path(dirname(here::here()), "READ-SSB-Lee-BSB-DataPull")

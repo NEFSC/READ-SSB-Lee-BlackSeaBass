@@ -24,7 +24,18 @@ here::i_am("R_code/data_extraction_processing/processing/tilefish/00_tilefish_pr
 
 cfg <- config::get(file = here("config.yml"))
 
-tile_data_dir<-here("data_folder", "main", "tilefish")     
+cat("==============================\n")
+if (cfg$dataset_type=="anon_"){
+  cat("Starting Data prep using ANONYMIZED data \n")
+} else {
+  cat("Starting Data prep using CONFIDENTIAL data \n")
+}
+cat("==============================\n")
+
+
+
+
+tile_data_dir<-here("data_folder", "main", "commercial", "tilefish")     
 dir.create(tile_data_dir, showWarnings=FALSE)
 
 in_string      <- "2026-06-09"  
@@ -48,4 +59,18 @@ source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B
 # aggregate landings that were excluded
 
 source(here("R_code", "data_extraction_processing","processing",  "tilefish", "B02_handle_not_in_tilefish_estimation_dataset.R"))
-    
+
+cat("==============================\n")
+cat("==============================\n")
+cat("All data prep finished \n")
+
+if (cfg$dataset_type=="anon_"){
+  cat("Successfully finished data prep on ANONYMIZED data \n")
+} else {
+    cat("Successfully finished data prep on CONFIDENTIAL data \n")
+  }
+
+cat("Ready to estimate machine learning models \n")
+cat("==============================\n")
+cat("==============================\n")
+

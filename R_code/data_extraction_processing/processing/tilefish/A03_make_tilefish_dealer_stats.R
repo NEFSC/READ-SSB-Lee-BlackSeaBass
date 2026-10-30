@@ -82,3 +82,4 @@ saveRDS(
   file = file.path(tile_data_dir,
               glue("dlrid_tile_lag_stats_{cfg$dataset_type}{vintage_string}.Rds"))
 )
+cat("A03_make_tilefish_dealer_stats.R finished \n")
