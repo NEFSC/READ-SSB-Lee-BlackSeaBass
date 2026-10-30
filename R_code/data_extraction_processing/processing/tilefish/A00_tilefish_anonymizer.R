@@ -51,14 +51,16 @@ file.copy(
     from=file.path(cfg$data_root,"data_folder", "main", "commercial",
                    glue("cams_gears_{in_string}.Rds")),
     to=here("data_folder","main", "commercial", 
-                    glue("cams_gears_{in_string}.Rds"))
+                    glue("cams_gears_{in_string}.Rds")),
+            overwrite = TRUE
 )
 
 file.copy(
   from=file.path(cfg$data_root,"data_folder", "external",
                  glue("deflatorsQ_{in_string}.Rds")),
   to=here("data_folder", "external",
-          glue("deflatorsQ_{in_string}.Rds"))
+          glue("deflatorsQ_{in_string}.Rds")),
+  overwrite = TRUE
 )
 
       
