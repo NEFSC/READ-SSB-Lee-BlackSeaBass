@@ -207,7 +207,7 @@ value_keys<-landings_anon %>%
 
 landings_anon <-landings_anon %>%
   mutate(value=value*value_anonymizer) %>%
-  select(-c(value_anonymizer, value))
+  select(-c(value_anonymizer))
 
 keyfiles[[9]]<-value_keys
 names(keyfiles)<-c("docid_keys", "camsid_keys", "permit_keys", "hullid_keys", "dlrid_keys", "area_keys","port_keys", "state_keys", "value_keys")
