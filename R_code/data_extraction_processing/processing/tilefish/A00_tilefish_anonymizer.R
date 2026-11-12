@@ -119,6 +119,7 @@ dlrid_keys <- generate_anonymized_key(landings, dlrid, seed = 142367)
 area_keys <- generate_anonymized_key(landings, area, seed = 54871)
 port_keys <- generate_anonymized_key(landings, port, seed = 57431)
 
+state_keys <- generate_anonymized_key(landings, state, seed = 64582)
 
 keyfiles<-list()
 keyfiles[[1]]<-docid_keys
@@ -128,9 +129,10 @@ keyfiles[[4]]<-hullid_keys
 keyfiles[[5]]<-dlrid_keys
 keyfiles[[6]]<-area_keys
 keyfiles[[7]]<-port_keys
+keyfiles[[8]]<-state_keys
 
 
-names(keyfiles)<-c("docid_keys", "camsid_keys", "permit_keys", "hullid_keys", "dlrid_keys", "area_keys","port_keys")
+names(keyfiles)<-c("docid_keys", "camsid_keys", "permit_keys", "hullid_keys", "dlrid_keys", "area_keys","port_keys", "state_keys")
 
 
 landings_anon<-landings %>%
@@ -169,6 +171,12 @@ landings_anon<-landings_anon %>%
   select(-port)%>%
   rename(port=new_port)
 
+landings_anon<-landings_anon %>%
+  left_join(state_keys, by=join_by(state==state) )%>%
+  select(-state)%>%
+  rename(state=new_state)
+
+
 #reorder
 stopifnot(ncol(landings_anon)==ncol(landings))
 
@@ -186,6 +194,23 @@ landings_anon<-landings_anon %>%
 
 landings_anon<-landings_anon %>%
   select(-c(dlr_stid, dlr_cflic, rec, record_land, record_sail) )
+
+# Add noise to value
+
+set.seed(40950392)
+landings_anon <-landings_anon %>%
+  mutate(id=n(), 
+         value_anonymizer=runif(nrow(landings_anon),min=0.9, max=1.1))
+
+value_keys<-landings_anon %>%
+  select(id, value_anonymizer, value)
+
+landings_anon <-landings_anon %>%
+  mutate(value=value*value_anonymizer) %>%
+  select(-c(value_anonymizer, value))
+
+keyfiles[[9]]<-value_keys
+names(keyfiles)<-c("docid_keys", "camsid_keys", "permit_keys", "hullid_keys", "dlrid_keys", "area_keys","port_keys", "state_keys", "value_keys")
 
 # -----------------------------------------------------------------------------
 # Save anonymized dataset and keyfile
