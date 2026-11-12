@@ -21,7 +21,10 @@ conflicts_prefer(dplyr::arrange)
 
 
 here::i_am("R_code/data_extraction_processing/processing/tilefish/00_tilefish_processing_wrapper.R")
-
+# Different things happen based on the value of 
+# R_CONFIG_ACTIVE
+# Sys.getenv(R_CONFIG_ACTIVE)  to see it
+# Sys.setenv(R_CONFIG_ACTIVE= somethign else) to reset it
 cfg <- config::get(file = here("config.yml"))
 
 cat("==============================\n")
