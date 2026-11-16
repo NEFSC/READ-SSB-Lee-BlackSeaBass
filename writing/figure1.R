@@ -436,7 +436,7 @@ lfplot.mktcomb <- plot.data %>%
   ) +
   facet_grid(rows=vars(MKTCOMB), cols=NULL) + 
   scale_x_continuous(
-    name   = "Length (cm))",
+    name   = "Length (cm)",
   ) +
   scale_y_continuous(
     name   = "Density",
