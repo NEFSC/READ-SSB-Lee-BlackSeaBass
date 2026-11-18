@@ -28,41 +28,42 @@ conflicts_prefer(viridis::viridis_pal())
 ###############################################################################
 here::i_am("writing/EIDC_length_histograms.R")
 
-lbs_per_kg<-2.20462
+lbs_per_kg <- 2.20462
 
-my_images<-here("images")
-descriptive_images<-here("images","descriptive")
-exploratory_images<-here("images","exploratory")
+my_images <- here("images")
+descriptive_images <- here("images","descriptive")
+exploratory_images <- here("images","exploratory")
 
-dataset_name<-list.files(here("data_folder","main","commercial"), pattern=glob2rx("BSB_original_combined_dataset*.Rds"))
-dataset_name<-max(dataset_name)
-vintage_string<-gsub("BSB_original_combined_dataset","",dataset_name)
-vintage_string<-gsub(".Rds","",vintage_string)
+dataset_name <- list.files(here("data_folder","main","commercial"), pattern = glob2rx("BSB_original_combined_dataset*.Rds"))
+dataset_name <- max(dataset_name)
+vintage_string <- gsub("BSB_original_combined_dataset","",dataset_name)
+vintage_string <- gsub(".Rds","",vintage_string)
 
-combined_dataset<-read_rds(here("data_folder","main","commercial", dataset_name))
+combined_dataset <- read_rds(here("data_folder","main","commercial", dataset_name))
 
-combined_dataset<-combined_dataset %>%
-  filter(mark_in==1)
+combined_dataset <- combined_dataset %>%
+  filter(mark_in == 1)
 
-combined_dataset<-combined_dataset %>%
-  mutate(lndkg=lndlb/lbs_per_kg)%>%
-  mutate(pricekgR_CPI=valueR_CPI/lndkg) %>%
+combined_dataset <- combined_dataset %>%
+  mutate(lndkg = lndlb / lbs_per_kg)%>%
+  mutate(pricekgR_CPI = valueR_CPI / lndkg) %>%
   filter(pricekgR_CPI >= 0)
 
 # To upper case, rename as SMALL_COMB, and relevel to re-order
-combined_dataset<-combined_dataset %>%
-  mutate(market_desc=str_to_upper(market_desc))#%>%
+combined_dataset <- combined_dataset %>%
+  mutate(market_desc = str_to_upper(market_desc))#%>%
  # mutate(market_desc = if_else(market_desc == "SMALL", 
 #                               "SMALL.COMB", 
 #                               market_desc))
-combined_dataset<-combined_dataset %>%
+combined_dataset <- combined_dataset %>%
   filter(market_desc !="UNCLASSIFIED") %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("SMALL", "MEDIUM", "LARGE", "JUMBO")))
 
 price.mktcomb <- ggplot(
   combined_dataset %>% 
     filter( pricekgR_CPI <= 12*lbs_per_kg,
-            ),
+            year >= 2017, 
+            year <= 2019), 
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
@@ -106,6 +107,15 @@ ggsave(
   device = cairo_pdf
 )
 
+ggsave(
+  here("images", "exploratory",
+       glue("EIDC_wprice_histograms.png")),
+  plot   = price.mktcomb,
+  width  = 84,
+  height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = png
+)
 
 
 
@@ -122,7 +132,8 @@ ggsave(
 price.mktcomb.year <- ggplot(
   combined_dataset %>% 
     filter( pricekgR_CPI <= 12*lbs_per_kg,
-            year>=2019),
+            year>=2017,
+            year<=2019),
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
@@ -164,6 +175,19 @@ ggsave(
   height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
   units  = "mm",
   device = cairo_pdf
+)
+
+
+
+
+ggsave(
+  here("images", "exploratory",
+       glue("EIDC_wprice_year_histograms.png")),
+  plot   = price.mktcomb.year,
+  width  = 150,
+  height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = png
 )
 
 
@@ -548,10 +572,21 @@ ggsave(
     device = cairo_pdf
   )
 
+ggsave(
+  here("images", "background",
+       glue("EIDC_LenFq.Mktcomb.png")),
+  plot   = EIDC_LenFq.Mktcomb,
+  width  = 84,
+  height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = png
+)
+
 
 
 EIDC_LenFq.Mktcomb.Year <- plot.data %>%
-  filter(YEAR>=2019) %>%
+  filter(YEAR>=2017,
+         YEAR<=2019) %>%
   ggplot() +
   aes(x=LENGTH,y=after_stat(density)) + 
   geom_histogram(
@@ -595,6 +630,17 @@ ggsave(
   height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
   units  = "mm",
   device = cairo_pdf
+)
+
+
+ggsave(
+  here("images", "background",
+       glue("EIDC_LenFq.Mktcomb.Year.png")),
+  plot   = EIDC_LenFq.Mktcomb.Year,
+  width  = 150,
+  height = 150,    # 4 stacked panels; adjust in 5mm increments if strips crowd
+  units  = "mm",
+  device = png
 )
 
 
