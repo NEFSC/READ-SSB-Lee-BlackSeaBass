@@ -239,7 +239,12 @@ CAA_compositions <- purrr::imap(
     select(SPECIES_ITIS, STOCK_ABBREV, MARKET_DESC, YEAR, AGE, CAA_comp) 
 )
 
-alpha<-50
+
+alpha_list<-c(10,20, 30, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90)
+
+
+
+
 
 
 CAA_MB<-CAA_compositions$`MEDIUM OR SELECT` %>% 
@@ -258,25 +263,44 @@ CAA_blend<-CAA_MB %>%
 
 
 CAA_blend<-CAA_blend %>%
-  mutate(CAA_Comp_Large_sub=alpha/100*CAA_Comp_Jumbo + (1-alpha/100)*CAA_Comp_Medium)
-
-CAA_blend<-CAA_blend %>%
   full_join(CAA_compositions$LARGE, by=join_by(SPECIES_ITIS, STOCK_ABBREV, YEAR, AGE)) %>%
   select(-MARKET_DESC) %>%
   rename(CAA_Comp_Large=CAA_comp)
 
 
-CAA_blend<-CAA_blend %>%
-  pivot_longer(cols=starts_with("CAA_Comp"),
-               values_to="CAA_prop",
-               names_to="CAA_TYPE",
-               names_prefix="CAA_Comp_")
 
 
-CAA_PLOT <- ggplot(data=CAA_blend %>% 
-                     filter(YEAR<=2020, YEAR>=2016) %>%
-                     filter(CAA_TYPE %in% c("Large","Large_sub")),
-                   aes(x=AGE,y=CAA_prop,col=CAA_TYPE,fill = CAA_TYPE)) + 
+# Map over the list of dataframes
+CAA_blend_list <- purrr::map(
+  alpha_list, 
+  ~ CAA_blend %>%
+    mutate(
+      alpha = .x,
+      CAA_Comp_Large_sub = (.x / 100) * CAA_Comp_Jumbo + (1 - (.x / 100)) * CAA_Comp_Medium
+    ) %>%
+    pivot_longer(cols=starts_with("CAA_Comp"),
+                 values_to="CAA_prop",
+                 names_to="CAA_TYPE",
+                 names_prefix="CAA_Comp_")
+  
+  )
+
+#Name the items in the list
+CAA_blend_list<-set_names(CAA_blend_list,alpha_list)
+
+CAA_plots<-purrr::imap(
+  CAA_blend_list, 
+  ~ {
+    
+    p<-.x %>%
+    filter(YEAR>=2017, YEAR<=2019) %>%
+    filter(CAA_TYPE %in% c("Large","Large_sub")) %>%
+    ggplot(
+      aes(x=AGE,
+          y=CAA_prop,
+          col=CAA_TYPE,
+          fill = CAA_TYPE)
+      ) + 
   geom_col(position = "dodge", alpha = 0.5, linewidth=0.1) + 
   theme_bw(base_size = 9) +
   scale_x_continuous(
@@ -304,33 +328,32 @@ CAA_PLOT <- ggplot(data=CAA_blend %>%
     y = "Catch-at-Age proportions (based on numbers)",
     color = NULL, 
     fill = NULL,
-    title = glue::glue("Large_sub is {alpha}% Jumbo and (1-{alpha})% Medium")
+    title = glue::glue("Large_sub is {.y}% Jumbo and (100-{.y})% Medium")
   ) +
   facet_grid(YEAR ~ STOCK_ABBREV)  
 
-CAA_PLOT
-
-
- 
-ggsave(
-  filename = here("results",glue("EIDC_CAA_blend_{alpha}.pdf")),
-  plot = CAA_PLOT,
-  width  = 84,
-  height = 168,
-  units  = "mm",
-  device = cairo_pdf
+  
+  ggsave(
+    filename = here("results",glue("EIDC_CAA_blend_{.y}.png")),
+    plot=p,
+    width  = 168,
+    height = 168,
+    units  = "mm",
+    device = png
+  )
+return(p)
+  }
 )
 
+# Use imagemagick's convert to stack into a gif.
+fp<-here("results")
+command_to_eval<-glue("convert -delay 100 -loop 0  {fp}/EIDC_*.png   {fp}/EIDC_CAA_blended.gif")
+system(command_to_eval)
 
+# I've got alot of graphs and combinations here
+# 2017  -- North 70%J, 30% M
+# 2018  -- North 60%J, 40%M
+# 2019  -- South 10% J, 90% M
 
-
-
-#done to here.
-
-
-
-
-
-
-
+# It looks like we can match a single peak or a double peak, but not a plateau.
 
