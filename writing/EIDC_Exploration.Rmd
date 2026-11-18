@@ -1,0 +1,213 @@
+---
+title: 'Economics Can Inform Data Collected for Fish Stock Assessment: An Application to Black Sea Bass (*Centropristis striata*) Age- and -Length Data'
+authors:                      # plural: v0's old-style block, which bypasses the broken \Ref lookup
+  - name: Min-Yang Lee
+    address: NOAA Fisheries, Northeast Fisheries Science Center, 166 Water Street, Woods Hole, MA 02543, USA
+    email: Min-Yang.Lee@noaa.gov
+    corresponding_author: true
+  - name: Emily M. Liljestrand
+    address: NOAA Fisheries, Northeast Fisheries Science Center, 166 Water Street, Woods Hole, MA 02543, USA
+    email: Emily.Liljestrand@noaa.gov
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+abstract: |
+keywords: 
+  - Hedonic Prices
+  - Law of One Price
+  - Stock assessment
+  - Machine Learning
+  - Random Forest
+bibliography: "PricesInStockAssessment.bib"
+csl: ices-journal-of-marine-science.csl
+link-citations: true
+header-includes:
+  - \usepackage{float}
+  - \usepackage{pdflscape}
+  - \usepackage{makecell}
+  - \usepackage{setspace}
+  - \doublespacing
+  - \newcommand{\blandscape}{\begin{landscape}}
+  - \newcommand{\elandscape}{\end{landscape}}
+output:
+  bookdown::html_document2:
+    toc: false
+    fig_caption: true
+  bookdown::pdf_book:
+    base_format: rticles::oup_article
+    keep_tex: true
+    toc: false
+    fig_caption: true
+    pandoc_args: ["--lua-filter=suppress-publisher.lua"]
+---
+
+
+ <!---- 
+Summary and Housekeeping
+
+Data extraction is handled in the "DataPull" repository. 
+Data processing was ported to R and handled with 
+
+R_code/data_extraction_processing/processing/commercial\00_commercial_processing_wrapper.R
+
+Step 1: 
+  Extract the Age and Length data. Look at the age composition of J, L, and M separately.
+      This is basically Figures 1 (left only) and 2 but converted into Age structures.
+      
+Step 2: 
+  Depart from the the age-length conversion scripts What does it look like if we 'blend' J and M together 
+
+
+I've tried to put the entire pipelein into "R_code/analysis/batch_RF_run.sh"
+
+The RF model was tuned with tune_random_forest_nocluster.R
+The RF model was trained with train_random_forest_nocluster.R
+Variable importance metrics and figures produced by variable_importance_random_forest_nocluster.R
+
+The model is calibrated with "writing/calibration and validation.Rmd" (unweighted and not used) and 
+"/R_code/analysis/weighted_calibration.R" (weighted calibration)
+
+
+Hedonic model was fit with "bsb_size_classifications.do". This file also generates summary statistics for the hedonic model, a table of coefficient results, and graphs some of the marginal effects of the factors.
+
+
+
+
+--->
+
+```{r global_options, include=FALSE}
+
+library("foreign")
+library("here")
+library("tidyverse")
+library("tidymodels")
+library("scales")
+library("knitr")
+library("lubridate")
+library("kableExtra")
+library("haven")
+library("mapview")
+library("sf")
+library("htmltools")
+here::i_am("writing/EIDC_Exploration.Rmd")
+library("glue")
+
+#############################################################################
+#knitr options
+knitr::opts_chunk$set(echo = TRUE)
+
+#knitr::opts_chunk$set(echo=FALSE, warning = FALSE, error = FALSE, message = FALSE, comment = FALSE, cache = FALSE, progress = TRUE, verbose = FALSE, 
+#											dpi = 600)
+options(tinytex.verbose = TRUE)
+# options(knitr.table.format = "latex")
+options(scipen=999)
+
+
+#############################################################################
+my_images<-here("images")
+
+descriptive_images<-here("images","descriptive")
+exploratory_images<-here("images","exploratory")
+
+
+# Read in statistical areas
+stat_areas_location<-here("data_folder","external","shapefiles","Statistical_Areas_2010.shp")
+stat_areas <- st_read(dsn = stat_areas_location)
+
+#trim out some stat areas that I don't care about.
+stat_areas<-stat_areas %>%
+  dplyr::filter(Id>=460) %>% # Canada
+   dplyr::filter(Id<=711) %>% # SERO
+  dplyr::filter(!Id %in% c(640,650,660,670,680) ) #Offshore
+
+
+options(scipen=0)
+lbs_per_kg<-2.20462
+lbs_per_mt<-lbs_per_kg*1000
+
+imagefolder<-here("images")
+finalfit_vintage<-"2026-06-15"
+
+data_vintage_string<-"2026-05-28"
+pred_vintage<-finalfit_vintage
+
+#Set up model type
+modeltype<-"nocluster"
+# OR "nocluster", or "fiveclass", or "noc5class" OR "standard"
+
+search_type<-"Advanced"
+# search_type in "Initial", "Prototype","Advanced")
+
+
+source(here("R_code","analysis","helpers","modeltype_patterns.R"))
+source(here("R_code","analysis","helpers","predict_byhand.R"))
+
+
+```
+\clearpage
+# Introduction
+
+In previous work, we  used socioeconomic theory and data in a novel way to improve our understanding of commercial removals and improve stock assessment.  
+We relied on the Law of One Price to assign Unclassified landings to other market categories with more age- and length- information.  If an Unclassified sales transaction is priced identically to a Jumbo, Large, Medium, or Small transaction, the Law of One price states that it belongs to that category.
+We tuned, trained, and validated a classification model and our validation experiment confirmed that the model performs well.  
+
+The concepts underlying the previous approach can also be used to reconsider the stratified random sampling design used to collect age and length data. Collecting samples is costly. The information embedded in prices could substitute for some of this data collection and allow resources to be reallocated to other market categories, stocks, or species. Difficult-to-sample market categories are good candidates for reduced sampling, particularly when there is substantial size overlap with neighboring categories. Again, we note that a successful empirical setting needs a competitive market in which prices depend monotonically on size. Additionally, we specifically caution against forgoing age-sampling on "terminal" size market categories (Jumbo and Small in the case of Black Sea Bass).  
+
+A change to a sampling structure could be investigated by training a classifier without a particular market category. For example, to investigate the effects of forgoing sampling of the Medium class, we could train a classifier on the Small, Large, and Jumbo classes, predict the class membership of the Medium class, and convert the aggregated landings to an age composition and compare the results with the true age composition. We also leave the feasibility of this approach to future research.
+
+# Preliminary Analysis
+
+# Results and Discussion 
+
+
+\clearpage
+
+
+<!---
+\clearpage
+--->
+# References
+<div id="refs"></div>
+\clearpage
+
+# Figures{-}
+
+(ref:LengthHistograms-cap) Length (left) and Real Price (2023Q1 USD) (right) Frequencies by market categories, 2013-2024. Mean length of the Unclassified Black Sea Bass is 34.6cm, which at the midpoint of the Medium and Large market categories, however the variance of Unclassified (40.5) is more than nearly twice as large as the category (Jumbo) with the next highest variance (24.5).  Similarly, mean price per kg of the Unclassified category is \$5.30, just above the price of Medium and the variance (40.4) is more than 3 times large than the category (Jumbo) with the next highest variance (11.9).
+
+```{r LengthHistograms, echo=FALSE,out.width="48%", fig.show='hold', fig.align='center', fig.pos='H', fig.cap='(ref:LengthHistograms-cap)'}
+
+#verified july 2 (no code change needed)
+
+knitr::include_graphics(c(here("images","background","EIDC_LenFq.Mktcomb.png"),here("images","exploratory","EIDC_wprice_histograms.png")))
+```
+
+(ref:PriceHistogramsYear-cap) Histograms of Real Prices by market category, selected years.  
+
+
+```{r PriceHistogramsYear, echo=FALSE,fig.show='hold', fig.align='center', fig.pos='H', fig.cap='(ref:PriceHistogramsYear-cap)'}
+
+#verified july 2 (no code change needed)
+
+knitr::include_graphics(here("images","background","EIDC_LenFq.Mktcomb.Year.png"))
+```
+
+(ref:LengthHistogramsYear-cap) Histograms of Length by market category, selected years.  
+
+```{r LengthHistogramsYear, echo=FALSE, fig.show='hold', fig.align='center', fig.pos='H', fig.cap='(ref:LengthHistogramsYear-cap)'}
+
+#verified july 2 (no code change needed)
+
+knitr::include_graphics(here("images","exploratory","EIDC_wprice_year_histograms.png"))
+```
+
+
+
+```{r Blends,echo=FALSE,out.height="80%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap='Animation. Example blends of Jumbo and Mediums compared to the Large Market category', eval=TRUE}
+#verified Sept 21
+if (knitr::is_latex_output()) {
+  # Fallback static image for PDF output
+  knitr::include_graphics(here("results", "EIDC_CAA_blend50.png"))
+} else {
+  # Animated gif for HTML output
+  knitr::include_graphics(here("results", "EIDC_CAA_blended.gif"))
+}
+```
+
