@@ -1,0 +1,186 @@
+---
+title: "BSB Prices and Lengths"
+author: "Chris Legault"
+date: today
+date-format: long
+format:
+ html:
+    code-fold: true
+    embed-resources: true 
+    toc: true
+warning: false
+---
+
+## BLUF
+
+It is not exactly simple, but also not too hard, to connect price and length data for black sea bass. Hopefully it will become easier as the cflen_aa table is replaced with something better (see JIRA [CAMSNR-1236](https://apps-st.fisheries.noaa.gov/jira/browse/CAMSNR-1236)).
+
+## Connection
+
+```{r}
+library(tidyverse)
+library(DT)
+
+#source("../set_up_connection_to_Oracle.R")
+con <- eval(nefscdb_con)
+
+# this file creates a connection to the main Oracle database using keyring (see below)
+# any other approach to create the connection called "con" is fine to use
+# library(ROracle)
+# drv <-  ROracle::Oracle()
+# connect.string <- 'NEFSC_pw_oraprod'
+# con <- dbConnect(drv, 
+#                  username = keyring::key_get("user_oracle_oraprod"), 
+#                  password = keyring::key_get("pw_oracle_oraprod"), 
+#                  dbname = connect.string)
+
+# test connection
+# mysql <- "select * from cams_garfo.cfg_itis where itis_name like '%COD%'"
+# 
+# rs <- dbSendQuery(con, mysql)
+# dat <- fetch(rs)
+# knitr::kable(dat)
+```
+
+## Black Sea Bass Bottom Line
+
+Here is an example of how to connect black sea bass price and length measurements by market category.
+
+```{r}
+mysql <- "with tmplen as
+(
+  select camsid, nespp4, length, numlen
+  from cams_garfo.cams_cflen_aa
+  where itis_tsn = '167687' -- bsb
+  and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+  and year = 2024
+), tmpland as
+(
+  select camsid, dlr_mkt, livlb, value, 
+    case when dlr_mkt = 'LG' then '3351'
+         when dlr_mkt = 'JB' then '3352'
+         when dlr_mkt = 'MD' then '3353'
+         when dlr_mkt = 'SQ' then '3355'
+         when dlr_mkt = 'ES' then '3356'
+       else '3350' end as nespp4
+  from cams_garfo.cams_land
+  where itis_tsn = '167687' -- bsb
+  and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 
+               631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+  and year = 2024
+), tmpland2 as
+(
+  select camsid, dlr_mkt, nespp4, sum(livlb) as livlb, sum(value) as value
+  from tmpland
+  group by camsid, dlr_mkt, nespp4
+)
+select e.camsid, e.nespp4, a.dlr_mkt, e.length, e.numlen, a.livlb, a.value, 
+  round(a.value/a.livlb, 3) as priceperlb
+from tmplen e
+left join tmpland2 a
+on e.camsid = a.camsid and e.nespp4 = a.nespp4
+order by e.camsid, e.nespp4"
+
+rs <- dbSendQuery(con, mysql)
+bigdat <- fetch(rs)
+
+ggplot(filter(bigdat, !is.na(DLR_MKT)), aes(x=PRICEPERLB, y=LENGTH, color=DLR_MKT)) +
+  geom_point(aes(size = NUMLEN), alpha = 0.4) +
+  scale_size_continuous(
+    trans = "log10",
+    range = c(1, 3), # Controls min and max point sizes on the plot
+    name = "Number of Lengths (log scale)"
+  ) +
+  labs(x="Price per Pound ($)", y="Length (cm)", title="Southern Black Sea Bass in 2024") +
+  theme_bw()
+```
+
+## How Did I Get Here?
+
+First need to figure out the ITIS code for black sea bass and areas associated with one of the regions. I used cfg_itis for the former and looked at StockEff website for the latter.
+
+```{r}
+mysql <- "select itis_tsn, itis_name, itis_sci_name from cams_garfo.cfg_itis
+where itis_name like '%BASS%'"
+
+rs <- dbSendQuery(con, mysql)
+dat <- fetch(rs)
+knitr::kable(dat)
+```
+
+Now get the landings and prices for southern BSB in 2024.
+
+```{r}
+mysql <- "select dlr_mkt, sum(livlb) as sumlbs, sum(value) as sumvalue
+from cams_garfo.cams_land
+where itis_tsn = '167687' -- bsb
+and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 
+             631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+and year = 2024
+group by dlr_mkt
+order by dlr_mkt"
+
+rs <- dbSendQuery(con, mysql)
+dat <- fetch(rs)
+knitr::kable(dat)
+```
+
+Need to figure out NESPP4 for BSB because cams_garfo.cams_cflen_aa uses NESPP4 instead of market and grade (ugh).
+
+```{r}
+mysql <- "select c.*, m.market_desc, g.grade_desc 
+from stockeff.I_CF_NESPP4_C c
+left join nefsc_garfo.cfdbs_safismarket m
+on c.market_code = m.market_code 
+left join bsm.bsm_accsp_grade_categories g
+on c.grade_code = g.grade_code
+where species_itis = '167687'
+order by nespp4"
+
+rs <- dbSendQuery(con, mysql)
+dat <- fetch(rs)
+knitr::kable(dat)
+```
+
+Now pull the southern BSB lengths for 2024.
+
+```{r}
+mysql <- "select camsid, nespp4, length, numlen 
+from cams_garfo.cams_cflen_aa
+where itis_tsn = '167687' -- bsb
+and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 
+             631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+and year = 2024"
+
+rs <- dbSendQuery(con, mysql)
+dat <- fetch(rs)
+knitr::kable(head(dat))
+```
+
+Summarize the number of lengths by market category.
+
+```{r}
+datsum <- dat |>
+  group_by(NESPP4) |>
+  summarize(sumnumlen = sum(NUMLEN), .groups = "drop")
+
+knitr::kable(datsum)
+```
+
+Linking the length and price data results in the big data pull that is used to create the main plot above.
+
+## Explore the Data
+
+The follow table shows the values used in the main plot above. Note that there are two length samples that do not have a corresponding match in the landings data (sort on DLR_MKT to see null values). I have not dug in to figure out why this happened, as this is just a proof of concept.
+
+```{r}
+DT::datatable(bigdat)
+```
+
+## Clean up
+
+```{r}
+#| output: false
+
+ROracle::dbDisconnect(con)
+```
