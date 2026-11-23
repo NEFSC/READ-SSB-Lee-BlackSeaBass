@@ -208,7 +208,7 @@ CAA_solo <- purrr::map(
 )
 dbDisconnect(connection)
 
-# Contract to 8 age classes, stick market_desc back in the 
+# Contract to 8 age classes, stick market_desc back in the dataframe
 CAA_solo <- purrr::imap(
   CAA_solo, 
   ~.x %>%
@@ -240,7 +240,7 @@ CAA_compositions <- purrr::imap(
 )
 
 
-alpha_list<-c(10,20, 30, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90)
+alpha_list<-c(1, 10,20, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 99)
 
 
 
