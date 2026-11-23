@@ -46,6 +46,7 @@ combined_dataset <- combined_dataset %>%
 
 combined_dataset <- combined_dataset %>%
   mutate(lndkg = lndlb / lbs_per_kg)%>%
+  mutate(pricekg=value/lndkg) %>%
   mutate(pricekgR_CPI = valueR_CPI / lndkg) %>%
   filter(pricekgR_CPI >= 0)
 
@@ -59,15 +60,19 @@ combined_dataset <- combined_dataset %>%
   filter(market_desc !="UNCLASSIFIED") %>%
   mutate(market_desc=forcats::fct_relevel(market_desc,c("SMALL", "MEDIUM", "LARGE", "JUMBO")))
 
+combined_dataset <- combined_dataset %>%
+  relocate(all_of(c("lndlb","price", "priceR_CPI", "pricekgR_CPI")), .after="market_desc")
+
 price.mktcomb <- ggplot(
   combined_dataset %>% 
-    filter( pricekgR_CPI <= 12*lbs_per_kg,
+    filter( pricekgR_CPI <= 12*lbs_per_kg ,
             year >= 2017, 
-            year <= 2019), 
+            year <= 2019
+      ), 
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
-    binwidth  = 0.50,
+    binwidth  = 0.25*lbs_per_kg,
     fill      = "grey80",
     colour    = "grey20",
     linewidth = 0.3
@@ -137,7 +142,7 @@ price.mktcomb.year <- ggplot(
   aes(x = pricekgR_CPI, weight = lndlb, y = after_stat(density))
 ) +
   geom_histogram(
-    binwidth  = 0.50,
+    binwidth  = 0.5*lbs_per_kg,
     fill      = "grey80",
     colour    = "grey20",
     linewidth = 0.3
@@ -204,35 +209,6 @@ ggsave(
 
 
 
-
-
-
-
-# Compute group weighted means, variance, skew, and kurtosis
-
-# keep only the columns I need and uncount
-combined_dataset_UW<-combined_dataset %>%
-  select(market_desc, lndlb, pricekgR_CPI)%>%
-  uncount(lndlb)
-
-combined_dataset_UW<-combined_dataset_UW %>%
-  group_by(market_desc) %>%
-  mutate(meanP=mean(pricekgR_CPI),
-         count_obs=n(),
-         variance=var(pricekgR_CPI) ) %>%
-  mutate(deviations=pricekgR_CPI-meanP)
-
-
-combined_dataset_moments<-combined_dataset_UW %>%
-  group_by(market_desc) %>%
-  mutate(varianceHand=(1/count_obs)*sum(deviations^2)) %>%
-  mutate(skew=(1/count_obs)*sum(deviations^3)/((1/count_obs)*sum(deviations^2))^1.5) %>%
-  mutate(kurtosis=(1/count_obs)*sum(deviations^4)/((1/count_obs)*sum(deviations^2))^2) %>%
-  slice_head(n=1) %>%
-  select(-c(deviations, pricekgR_CPI))
-
-cat("mean prices and variances for figure 1 caption:")
-combined_dataset_moments
 
 
 

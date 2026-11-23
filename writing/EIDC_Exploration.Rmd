@@ -161,16 +161,23 @@ A change to a sampling structure could be investigated by training a classifier 
 - convert the aggregated landings to an age composition 
 - compare the results with the true age composition.
 
+We could do a similar analysis to forgo sampling of Mediums.
+
+
+
 
 # Preliminary Analysis
 <!--- done in less_sampling_exploration.R --->
 
-Getting the classifier right is time consuming, so we do a preliminary analysis to see whether an arbitrary blend of Medium and Jumbo can approximate the Large distribution.  To do so, we
+Getting the classifier right is time consuming. This is a preliminary analysis to figure out if an arbitrary blend of Medium and Jumbo can approximate the Large distribution.  
+
 
 - Extract length and age data from stockeff.
 - Convert each market category to an age composition.
-  - I did not drop the age- and length data for Larges from stockeff at this step. I am not sure if I should drop them. 
+  - I did not drop the age- and length data for Larges from stockeff at this step. I am not sure if I should drop them.
 - Aggregate to the Year, Subunit, and **market category** level
+  - This dataset has columns Year, Subunit, Market Category, Age class (1-8+), and CAA. CAA is catch (numbers) .
+  - Convert to proportions by dividing CAA by the  year-subunit-market category total numbers.
   - This is different from the usual case, where we would aggregate to the Year and subunit level.
 - Blend age compositions of the Medium and Jumbo together in varying proportions to create a Large_sub composition.
 - Graph age composition of the blended (Large_sub) next to the "true" Larges
@@ -178,13 +185,54 @@ Getting the classifier right is time consuming, so we do a preliminary analysis 
 
 # Preliminary Results and Discussion
 
-- I'm not sure what is going on with the Price graphs, maybe I did something funny with the binning?
-- I'm not sure how to interpret the blending results.  Sometimes a blended distribution can match the true distribution pretty well
-    - 2019 South -- the 10\% Jumbo looks pretty good.
-    - 2019 North -- maybe 50\% Jumbo.
-    - 2018 North -- maybe the 60% Jumbo
-    - 2018 South -- 20% or 30% Jumbo
-- A few years never look that great. This seems to happen when the Large age composition is 'flat' o
+Can this crude approach produce Large_sub that approximates Large well? 
+
+We don't need 1 proportion to work every time in every year, we want to quickly figure out if it can work at all.
+
+```{r Blends,echo=FALSE,out.height="80%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap='Animation. Example blends of Jumbo and Mediums compared to the Large Market category', eval=TRUE}
+#verified Sept 21
+if (knitr::is_latex_output()) {
+  # Fallback static image for PDF output
+  knitr::include_graphics(here("results", "EIDC_CAA_blend50.png"))
+} else {
+  # Animated gif for HTML output
+  knitr::include_graphics(here("results", "EIDC_CAA_blended.gif"))
+}
+```
+
+
+
+I'm not sure how to interpret the blending results.  Sometimes a blended distribution can match the true distribution pretty well
+  - 2019 South -- the 1 or 10\% Jumbo looks okay.
+  - 2019 North -- 35-55\% Jumbo.
+  - 2018 North -- 55-65% Jumbo
+  - 2018 South -- 20% or 30% Jumbo
+- A few years never look that great. This seems to happen when the Large age composition is 'flat' topped.
+    - 2017 South never looks too good.  Jumbos seem to be mostly Age 6 this year, Mediums are Age 3, and Larges are age 5.  
+    - 2017 North maybe 70% jumbo, but that misses the Age 5s.
+- The final RF model would also allow for Large to be assigned to "Small."  I don' think this helps any.
+
+
+I think Chris's concern about a bi-modal distribution is showing up pretty clearly
+-  If the Large has one peak (like 2019S), things look decent
+-  If the Large has 2 separated peaks (2019N, 2018N and S), things are also decent
+-  If there's a plateau because the two peaks are close together, it doesn't work well.
+
+
+Can we use the residuals from a hedonic regression to predict true lengths?
+OG suggestion:
+- Dataset is fish length data matched to prices, just Large and Small
+- Regress fish length on price (OLS was original suggestion but that's just for convenience)
+- Predict out of sample on the Mediums. 
+Problems are effective sample size related.  We have at most 91 independent samples in the 2025. These are repeated observations from a transaction. Each sample might collect 50 lengths, I'm expecting 1 price  (sampling the same basket/bundle).  But maybe it's mixed.
+
+
+This is a big redesign. We assigned Unclassifieds (or Mediums) to a different market category and used the existing Length and Age data to get an age composition. 
+
+Instead of re-classifying, can I infer the length of the Mediums based on prices and ? 
+
+
+
 
 \clearpage
 
@@ -192,13 +240,19 @@ Getting the classifier right is time consuming, so we do a preliminary analysis 
 <!---
 \clearpage
 --->
-# References
-<div id="refs"></div>
-\clearpage
 
-# Figures{-}
 
-(ref:LengthHistograms-cap) Length (left) and Real Price (2023Q1 USD) (right) Frequencies by market categories, 2013-2024. Mean length of the Unclassified Black Sea Bass is 34.6cm, which at the midpoint of the Medium and Large market categories, however the variance of Unclassified (40.5) is more than nearly twice as large as the category (Jumbo) with the next highest variance (24.5).  Similarly, mean price per kg of the Unclassified category is \$5.30, just above the price of Medium and the variance (40.4) is more than 3 times large than the category (Jumbo) with the next highest variance (11.9).
+# Background
+
+- The histograms in the price graphs are a little lumpy, the bin widths are too narrow given the distribution of the underlying data
+    - Underlying nominal prices are very 'round' -- usually multiples of \$0.25 per pound, and multiples of \$0.50 and \$1.00 are even more common
+    - The manuscript had 2013-2024/5 data, so the extra data AND noramalizing it to real prices 'filled-in' the holes.
+    - This is not a problem for the RF model, but it does make the histograms look a little ugly.
+    - I can make them look nicer by setting the bins to \$1 per pound (2.204 per kg), but that over-smooths things.
+
+
+
+(ref:LengthHistograms-cap) Length (left) and Real Price (2023Q1 USD) (right) Frequencies by market categories, 2017-2019.  This only has 3 years of data, the paper had 2013-2025.
 
 ```{r LengthHistograms, echo=FALSE,out.width="48%", fig.show='hold', fig.align='center', fig.pos='H', fig.cap='(ref:LengthHistograms-cap)'}
 
@@ -225,17 +279,7 @@ knitr::include_graphics(here("images","background","EIDC_LenFq.Mktcomb.Year.png"
 
 knitr::include_graphics(here("images","exploratory","EIDC_wprice_year_histograms.png"))
 ```
-
-
-
-```{r Blends,echo=FALSE,out.height="80%", fig.show='hold', fig.pos='H', fig.align='center',fig.cap='Animation. Example blends of Jumbo and Mediums compared to the Large Market category', eval=TRUE}
-#verified Sept 21
-if (knitr::is_latex_output()) {
-  # Fallback static image for PDF output
-  knitr::include_graphics(here("results", "EIDC_CAA_blend50.png"))
-} else {
-  # Animated gif for HTML output
-  knitr::include_graphics(here("results", "EIDC_CAA_blended.gif"))
-}
-```
+# References
+<div id="refs"></div>
+\clearpage
 
