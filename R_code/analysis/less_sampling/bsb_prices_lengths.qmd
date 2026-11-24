@@ -20,9 +20,13 @@ It is not exactly simple, but also not too hard, to connect price and length dat
 ```{r}
 library(tidyverse)
 library(DT)
+library(ROracle)
+library(here)
+#here::i_am("R_code/analysis/less_sampling/bsb_prices_lengths.qmd")
 
-#source("../set_up_connection_to_Oracle.R")
-con <- eval(nefscdb_con)
+#source(here("R_code","helpers","set_up_connection_to_Oracle.R"))
+ drv<-dbDriver("Oracle")
+ con <- eval(nefscdb_con)
 
 # this file creates a connection to the main Oracle database using keyring (see below)
 # any other approach to create the connection called "con" is fine to use
@@ -47,12 +51,13 @@ con <- eval(nefscdb_con)
 Here is an example of how to connect black sea bass price and length measurements by market category.
 
 ```{r}
+
 mysql <- "with tmplen as
 (
-  select camsid, nespp4, length, numlen
+  select camsid, area , nespp4, length, numlen
   from cams_garfo.cams_cflen_aa
   where itis_tsn = '167687' -- bsb
-  and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+ /* and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern */
   and year = 2024
 ), tmpland as
 (
@@ -65,24 +70,36 @@ mysql <- "with tmplen as
        else '3350' end as nespp4
   from cams_garfo.cams_land
   where itis_tsn = '167687' -- bsb
-  and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 
-               631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern
+/*  and area in (614, 615, 621, 622, 623, 624, 625, 626, 627, 628, 629, 
+               631, 632, 633, 634, 635, 636, 637, 638, 639, 640) -- southern */
   and year = 2024
 ), tmpland2 as
 (
-  select camsid, dlr_mkt, nespp4, sum(livlb) as livlb, sum(value) as value
+  select camsid, dlr_mkt, nespp4, sum(livlb) as livlb, sum(nvl(value,0)) as value
   from tmpland
   group by camsid, dlr_mkt, nespp4
 )
-select e.camsid, e.nespp4, a.dlr_mkt, e.length, e.numlen, a.livlb, a.value, 
+select e.camsid, e.nespp4, a.dlr_mkt, e.length, e.numlen, e.area, a.livlb, a.value, 
   round(a.value/a.livlb, 3) as priceperlb
 from tmplen e
 left join tmpland2 a
 on e.camsid = a.camsid and e.nespp4 = a.nespp4
 order by e.camsid, e.nespp4"
-
+  
 rs <- dbSendQuery(con, mysql)
 bigdat <- fetch(rs)
+bigdat<-bigdat %>%
+  mutate(
+    STOCK_ABBREV = case_when(
+      AREA >= 621 & AREA<=639 ~ "SOUTH",
+      AREA %in% c(614, 615)   ~ "SOUTH",
+      AREA %in% c(464,465,467,468,510,511,512,513,514,515) ~ "NORTH",
+      AREA %in% c(520,521,522,523,524,525,526,530,533,534,537,538,539,541,542) ~ "NORTH",
+      AREA %in% c(543,551,552,560,561,562,611,612,613,616)~ "NORTH",
+      AREA %in% c(0,000) ~ "UNK",
+      .default = "UNK"
+    )
+  )
 
 ggplot(filter(bigdat, !is.na(DLR_MKT)), aes(x=PRICEPERLB, y=LENGTH, color=DLR_MKT)) +
   geom_point(aes(size = NUMLEN), alpha = 0.4) +
@@ -93,6 +110,29 @@ ggplot(filter(bigdat, !is.na(DLR_MKT)), aes(x=PRICEPERLB, y=LENGTH, color=DLR_MK
   ) +
   labs(x="Price per Pound ($)", y="Length (cm)", title="Southern Black Sea Bass in 2024") +
   theme_bw()
+```
+
+
+```{r}
+#Facet Wrapped over STOCK ABBREV
+ggplot(filter(bigdat, !is.na(DLR_MKT), STOCK_ABBREV !="UNK"), aes(x=PRICEPERLB, y=LENGTH, color=DLR_MKT)) +
+    facet_wrap(vars(STOCK_ABBREV)) +
+    geom_point(aes(size = NUMLEN), alpha = 0.4) +
+    scale_size_continuous(
+      trans = "log10",
+      range = c(1, 3), # Controls min and max point sizes on the plot
+      name = "Number of Lengths (log scale)"
+    ) +
+    labs(x="Price per Pound ($)", y="Length (cm)", title="Black Sea Bass in 2024") +
+    theme_bw()
+  
+```
+
+```{r}
+# how many distinct CAMSID?
+  bigdat2 %>%
+    group_by(STOCK_ABBREV) %>%
+    summarise(count=n_distinct(CAMSID))
 ```
 
 ## How Did I Get Here?
@@ -127,7 +167,7 @@ knitr::kable(dat)
 
 Need to figure out NESPP4 for BSB because cams_garfo.cams_cflen_aa uses NESPP4 instead of market and grade (ugh).
 
-```{r}
+```{r, eval=FALSE}
 mysql <- "select c.*, m.market_desc, g.grade_desc 
 from stockeff.I_CF_NESPP4_C c
 left join nefsc_garfo.cfdbs_safismarket m
